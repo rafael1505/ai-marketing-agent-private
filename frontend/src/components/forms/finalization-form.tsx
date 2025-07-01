@@ -155,24 +155,39 @@ export const FinalizationForm: React.FC<FinalizationFormProps> = ({
             </div>
           </div>
         </CardContent>
-        <CardFooter className="flex justify-end space-x-4 pt-2">
+        <CardFooter className="flex justify-between items-center border-t pt-6">
+          <div className="text-sm text-muted-foreground">
+            Select an image and add feedback to complete
+          </div>
           <Button
             type="submit"
             disabled={isSubmitting || !formData.selectedImage}
-            className="btn-scale bg-success hover:bg-success/90"
+            className="btn-scale bg-gradient-to-r from-emerald-500 to-green-500 hover:from-emerald-600 hover:to-green-600 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+            size="lg"
           >
             {isSubmitting ? (
               <>
-                <Loader size="sm" color="white" className="mr-2" />
-                {submittingLabel}
+                <Loader size="sm" color="white" className="mr-3" />
+                <span className="font-medium">{submittingLabel}</span>
               </>
             ) : (
               <>
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
-                  <path d="m8.5 14.5 2 2 5-5"/>
-                  <path d="M22 12c0-5.5-4.5-10-10-10S2 6.5 2 12s4.5 10 10 10 10-4.5 10-10z"/>
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  width="18" 
+                  height="18" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  className="mr-3"
+                >
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                  <polyline points="22 4 12 14.01 9 11.01"/>
                 </svg>
-                {submitLabel}
+                <span className="font-medium">{submitLabel}</span>
               </>
             )}
           </Button>

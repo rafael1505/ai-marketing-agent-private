@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Loader } from "@/components/ui/loader";
 import { IdeaGenerationFormData } from "@/types";
 
 interface IdeaGenerationFormProps {
@@ -216,31 +217,41 @@ export const IdeaGenerationForm: React.FC<IdeaGenerationFormProps> = ({
               </div>
             )}
           </div>
-        </CardContent>        <CardFooter className="flex justify-between border-t pt-6">
+        </CardContent>        <CardFooter className="flex justify-between items-center border-t pt-6">
           <div className="text-sm text-muted-foreground">
             All fields are required for optimal results
           </div>
           <Button 
             type="submit" 
             isLoading={isLoading}
-            className="btn-scale shadow-md relative overflow-hidden transition-all"
+            className="btn-scale bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+            size="lg"
           >
-            <svg 
-              xmlns="http://www.w3.org/2000/svg" 
-              width="16" 
-              height="16" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2" 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              className="mr-2"
-            >
-              <line x1="22" y1="2" x2="11" y2="13"></line>
-              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-            </svg>
-            {t.creation.idea.form.submit}
+            {isLoading ? (
+              <>
+                <Loader size="sm" color="white" className="mr-3" />
+                <span className="font-medium">Creating...</span>
+              </>
+            ) : (
+              <>
+                <svg 
+                  xmlns="http://www.w3.org/2000/svg" 
+                  width="18" 
+                  height="18" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  strokeWidth="2" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  className="mr-3"
+                >
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                </svg>
+                <span className="font-medium">{t.creation.idea.form.submit}</span>
+              </>
+            )}
           </Button>
         </CardFooter>
       </form>

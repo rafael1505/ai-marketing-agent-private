@@ -61,7 +61,12 @@ export default function CreateMaterialPage({
   };
 
   const handleGenerateImage = async (prompt: string, aiProvider: string) => {
-    if (!material) return;
+    if (!material) {
+      console.error("Cannot generate image: no material found");
+      return;
+    }
+    
+    console.log("Generating image with:", { materialId: material.id, prompt, aiProvider });
     
     try {
       // In a real implementation, you would integrate with the chosen AI provider here
@@ -74,6 +79,7 @@ export default function CreateMaterialPage({
       };
       
       const placeholderImageUrl = `https://picsum.photos/seed/${generationParams.seed}/512/512`;
+      console.log("Generated placeholder image URL:", placeholderImageUrl);
       
       const updatedMaterial = await addGeneratedImage(
         material.id,
@@ -83,15 +89,22 @@ export default function CreateMaterialPage({
         generationParams
       );
       
+      console.log("Updated material with new image:", updatedMaterial);
       setMaterial(updatedMaterial);
       setGeneratedImages(updatedMaterial.generated_images);
     } catch (error) {
       console.error("Error generating image:", error);
+      alert(`Failed to generate image: ${error.message || "Unknown error"}`);
     }
   };
 
   const handleRefinementSubmit = async (data: RefinementFormData) => {
-    if (!material) return;
+    if (!material) {
+      console.error("Cannot submit refinement: no material found");
+      return;
+    }
+    
+    console.log("Submitting refinement with data:", data);
     
     try {
       const updatedMaterial = await updateStage(
@@ -100,10 +113,13 @@ export default function CreateMaterialPage({
         MaterialStatus.IN_PROGRESS
       );
       
+      console.log("Material stage updated:", updatedMaterial);
       setMaterial(updatedMaterial);
       setCurrentStep(2);
     } catch (error) {
       console.error("Error updating stage:", error);
+      alert(`Failed to proceed to finalization: ${error.message || "Unknown error"}`);
+      throw error; // Re-throw to allow form to handle error state
     }
   };
 

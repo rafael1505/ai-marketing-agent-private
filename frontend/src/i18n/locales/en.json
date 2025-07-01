@@ -2,17 +2,11 @@
   "app": {
     "title": "AI Marketing Agent",
     "description": "Generate marketing materials with AI"
-  },  "nav": {
+  },
+  "nav": {
     "dashboard": "Dashboard",
     "materials": "Materials",
     "settings": "Settings",
-    "logout": "Logout"
-  },
-  "user_menu": {
-    "profile": "My Profile",
-    "account_settings": "Account Settings", 
-    "preferences": "Preferences",
-    "help_support": "Help & Support",
     "logout": "Logout"
   },
   "user_menu": {
@@ -46,7 +40,7 @@
       "refinement": "Refinement",
       "finalization": "Finalization"
     },
-    "status": {
+    "statuses": {
       "draft": "Draft",
       "in_progress": "In Progress",
       "ready_for_review": "Ready for Review",
@@ -95,9 +89,11 @@
         "prompt": "Generation Prompt",
         "prompt_placeholder": "Describe the image you want to generate",
         "ai_provider": "AI Provider",
-        "generate": "Generate Image",
+        "generate_image": "Generate Image",
         "generating": "Generating...",
-        "submit": "Proceed to Finalization"
+        "generated_images": "Generated Images",
+        "save": "Continue to Finalization",
+        "saving": "Saving..."
       }
     },
     "finalization": {

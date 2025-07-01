@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Material Creation Refinement</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-step { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 8px; }
+        .success { background-color: #d4edda; border-color: #c3e6cb; }
+        .error { background-color: #f8d7da; border-color: #f5c6cb; }
+    </style>
+</head>
+<body>
+    <h1>Material Creation Refinement Test</h1>
+    
+    <div class="test-step">
+        <h3>Step 1: Go to Material Creation</h3>
+        <p><strong>Option A:</strong> <a href="/en/materials/create" target="_blank">Complete the full flow</a></p>
+        <p>Fill out the first form (Idea Generation) with ALL required fields and submit to proceed to refinement step.</p>
+        
+        <p><strong>Option B:</strong> <a href="/refinement-test" target="_blank">Direct Refinement Test</a></p>
+        <p>Skip to the refinement form directly to test just the buttons.</p>
+        
+        <div style="background: #fff3cd; padding: 10px; border-radius: 4px; margin: 10px 0;">
+            <strong>⚠️ Important:</strong> You MUST fill out ALL required fields in the Idea Generation step:
+            <ul>
+                <li>Title (required)</li>
+                <li>Description (required)</li>
+                <li>Target Audience (required)</li>
+                <li>Campaign Objective (required)</li>
+                <li>Keywords (at least one)</li>
+            </ul>
+        </div>
+    </div>
+    
+    <div class="test-step">
+        <h3>Step 2: Test Refinement Buttons</h3>
+        <p>Once in the refinement step:</p>
+        <ul>
+            <li>✅ <strong>Generate Image Button</strong>: Large purple/pink gradient button with AI sparkle icon</li>
+            <li>✅ <strong>Continue to Finalization Button</strong>: Green gradient button at bottom</li>
+            <li>🐛 <strong>Debug Button</strong>: Small outline button for development testing</li>
+        </ul>
+    </div>
+    
+    <div class="test-step">
+        <h3>Step 3: Check Console</h3>
+        <p>Open browser dev tools (F12) and check the Console tab for debug messages:</p>
+        <ul>
+            <li>Form submission logs</li>
+            <li>Image generation logs</li>
+            <li>Translation loading logs</li>
+            <li>API call simulation logs</li>
+        </ul>
+    </div>
+    
+    <div class="test-step success">
+        <h3>✅ What We Fixed</h3>
+        <ul>
+            <li><strong>Generate Image Button:</strong> Now has purple gradient + AI sparkle icon</li>
+            <li><strong>Continue Button:</strong> Now has green gradient + checkmark icon</li>
+            <li><strong>Missing Functions:</strong> Added addGeneratedImage, updateStage, etc.</li>
+            <li><strong>Translation Issues:</strong> Fixed fallback translations</li>
+            <li><strong>Error Handling:</strong> Added console logging and user feedback</li>
+            <li><strong>Debug Features:</strong> Added development debug button</li>
+        </ul>
+    </div>
+    
+    <div class="test-step">
+        <h3>🔧 Current Status</h3>
+        <p><strong>Server restarted:</strong> ✅ Frontend server has been restarted</p>
+        <p><strong>Files updated:</strong> ✅ All changes have been applied</p>
+        <p><strong>Direct test available:</strong> ✅ <a href="/refinement-test">Refinement test page</a></p>
+    </div>
+        <h3>Expected Behavior</h3>
+        <ul>
+            <li>✅ Generate Image button should work and add placeholder images</li>
+            <li>✅ Continue button should proceed to finalization step</li>
+            <li>✅ Both buttons should have proper loading states</li>
+            <li>✅ Debug button shows current form state</li>
+            <li>✅ All buttons have clear labels and modern styling</li>
+        </ul>
+    </div>
+    
+    <script>
+        console.log("Material Creation Test Page loaded");
+        console.log("Open /en/materials/create to test the functionality");
+    </script>
+</body>
+</html>

@@ -366,6 +366,173 @@ export async function deleteMaterial(id: string): Promise<void> {
   }
 }
 
+// Add generated image to material
+export async function addGeneratedImage(
+  materialId: string,
+  imageUrl: string,
+  prompt: string,
+  aiProvider: string,
+  generationParams: any
+): Promise<Material> {
+  try {
+    console.log('Adding generated image:', { materialId, imageUrl, prompt, aiProvider });
+    
+    const response = await api.post(`/materials/${materialId}/images`, {
+      url: imageUrl,
+      prompt,
+      ai_provider: aiProvider,
+      generation_params: generationParams
+    });
+    
+    // Clear cache to ensure fresh data
+    materialsCache.data = null;
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error adding generated image:', error);
+    
+    // In development mode, simulate adding image to demo material
+    if (isDevelopmentMode()) {
+      console.log('Development mode: Simulating image addition');
+      
+      const materials = getDemoMaterials();
+      const material = materials.find(m => m.id === materialId);
+      
+      if (material) {
+        const newImage = {
+          url: imageUrl,
+          prompt,
+          ai_provider: aiProvider,
+          generation_params: generationParams,
+          created_at: new Date().toISOString()
+        };
+        
+        // Add to generated_images array
+        const updatedMaterial = {
+          ...material,
+          generated_images: [...(material.generated_images || []), newImage]
+        };
+        
+        return updatedMaterial;
+      }
+    }
+    
+    throw error;
+  }
+}
+
+// Select image for material
+export async function selectImage(materialId: string, imageUrl: string): Promise<Material> {
+  try {
+    const response = await api.post(`/materials/${materialId}/select-image`, {
+      image_url: imageUrl
+    });
+    
+    // Clear cache to ensure fresh data
+    materialsCache.data = null;
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error selecting image:', error);
+    
+    // In development mode, simulate selecting image
+    if (isDevelopmentMode()) {
+      console.log('Development mode: Simulating image selection');
+      
+      const materials = getDemoMaterials();
+      const material = materials.find(m => m.id === materialId);
+      
+      if (material) {
+        const updatedMaterial = {
+          ...material,
+          selected_image: imageUrl
+        };
+        
+        return updatedMaterial;
+      }
+    }
+    
+    throw error;
+  }
+}
+
+// Add feedback to material
+export async function addFeedback(materialId: string, feedback: string): Promise<Material> {
+  try {
+    const response = await api.post(`/materials/${materialId}/feedback`, {
+      feedback
+    });
+    
+    // Clear cache to ensure fresh data
+    materialsCache.data = null;
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error adding feedback:', error);
+    
+    // In development mode, simulate adding feedback
+    if (isDevelopmentMode()) {
+      console.log('Development mode: Simulating feedback addition');
+      
+      const materials = getDemoMaterials();
+      const material = materials.find(m => m.id === materialId);
+      
+      if (material) {
+        const updatedMaterial = {
+          ...material,
+          final_feedback: feedback
+        };
+        
+        return updatedMaterial;
+      }
+    }
+    
+    throw error;
+  }
+}
+
+// Update material stage
+export async function updateStage(
+  materialId: string,
+  stage: MaterialStage,
+  status: MaterialStatus
+): Promise<Material> {
+  try {
+    const response = await api.patch(`/materials/${materialId}/stage`, {
+      stage,
+      status
+    });
+    
+    // Clear cache to ensure fresh data
+    materialsCache.data = null;
+    
+    return response.data;
+  } catch (error) {
+    console.error('Error updating stage:', error);
+    
+    // In development mode, simulate stage update
+    if (isDevelopmentMode()) {
+      console.log('Development mode: Simulating stage update');
+      
+      const materials = getDemoMaterials();
+      const material = materials.find(m => m.id === materialId);
+      
+      if (material) {
+        const updatedMaterial = {
+          ...material,
+          stage,
+          status,
+          updated_at: new Date().toISOString()
+        };
+        
+        return updatedMaterial;
+      }
+    }
+    
+    throw error;
+  }
+}
+
 // Edge-compatible localStorage wrapper
 const safeLocalStorage = {
   getItem: (key: string): string | null => {
