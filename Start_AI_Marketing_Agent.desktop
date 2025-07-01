@@ -1,0 +1,10 @@
+#!/usr/bin/env xdg-open
+[Desktop Entry]
+Type=Application
+Name=Start AI Marketing Agent (Correct Port)
+Icon=utilities-terminal
+Exec=bash -c "cd \"%k\" && ./start-with-correct-ports.sh; echo 'Press Enter to close'; read"
+Terminal=true
+StartupNotify=true
+Comment=Launches the AI Marketing Agent with the correct port configuration (8088)
+Categories=Development;

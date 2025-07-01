@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Auth & API Test Suite</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 20px;
+            max-width: 1000px;
+            margin: 0 auto;
+            line-height: 1.5;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        h2 {
+            margin-top: 0;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 8px;
+        }
+        button {
+            margin: 5px;
+            padding: 8px 12px;
+            background: #3B82F6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #2563EB;
+        }
+        pre {
+            background: #f7f7f7;
+            padding: 10px;
+            border-radius: 4px;
+            overflow: auto;
+            max-height: 300px;
+        }
+        .result {
+            margin-top: 10px;
+        }
+        .error {
+            color: #e53e3e;
+        }
+        .success {
+            color: #10B981;
+        }
+        details {
+            margin-bottom: 10px;
+        }
+        summary {
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .headers-input {
+            width: 100%;
+            height: 80px;
+            font-family: monospace;
+        }
+        .flex {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        input[type="text"] {
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+            flex: 1;
+        }
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .tab-button {
+            padding: 8px 16px;
+            background: #f1f5f9;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .tab-button.active {
+            background: #3B82F6;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <h1>Frontend Auth & API Test Suite</h1>
+    <p>This tool helps diagnose authentication and API request issues with the AI Marketing Agent application.</p>
+    
+    <div class="tab-buttons">
+        <button class="tab-button active" data-tab="auth-tab">Auth Tests</button>
+        <button class="tab-button" data-tab="company-tab">Company API Tests</button>
+        <button class="tab-button" data-tab="form-tab">FormData Tests</button>
+        <button class="tab-button" data-tab="fetch-tab">Custom Fetch Tests</button>
+    </div>
+
+    <div id="auth-tab" class="tab-content active">
+        <div class="test-section">
+            <h2>Auth Status</h2>
+            <button id="check-token">Check Local Storage Token</button>
+            <button id="verify-token">Verify Token with Backend</button>
+            <div class="result" id="auth-status-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Login Test</h2>
+            <div class="flex">
+                <input type="text" id="username" placeholder="Username" value="test@example.com">
+                <input type="text" id="password" placeholder="Password" value="testpassword">
+                <button id="login-btn">Login</button>
+            </div>
+            <div class="result" id="login-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Token Inspection</h2>
+            <button id="decode-token">Decode JWT Token</button>
+            <div class="result" id="token-inspection-result"></div>
+        </div>
+    </div>
+
+    <div id="company-tab" class="tab-content">
+        <div class="test-section">
+            <h2>Company API Tests</h2>
+            <div class="flex">
+                <input type="text" id="company-id" placeholder="Company ID" value="test_company">
+                <button id="get-company">GET Company</button>
+                <button id="update-company">UPDATE Company (JSON)</button>
+            </div>
+            <div class="result" id="company-api-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>Path Testing</h2>
+            <p>Test different API path constructions</p>
+            <button id="test-path-1">/companies-proxy/{id}</button>
+            <button id="test-path-2">/api-debug/companies/{id}</button>
+            <div class="result" id="path-test-result"></div>
+        </div>
+    </div>
+
+    <div id="form-tab" class="tab-content">
+        <div class="test-section">
+            <h2>FormData Submission Tests</h2>
+            <div class="flex">
+                <input type="text" id="form-company-id" placeholder="Company ID" value="test_company">
+                <input type="file" id="test-file">
+                <button id="submit-form">Submit FormData</button>
+                <button id="submit-json-fallback">JSON Fallback</button>
+            </div>
+            <div class="result" id="form-test-result"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Content-Type Tests</h2>
+            <p>Test different Content-Type settings with FormData</p>
+            <button id="form-auto">Auto (No Content-Type)</button>
+            <button id="form-multipart">multipart/form-data</button>
+            <button id="form-json">application/json (correct)</button>
+            <div class="result" id="content-type-test-result"></div>
+        </div>
+    </div>
+
+    <div id="fetch-tab" class="tab-content">
+        <div class="test-section">
+            <h2>Custom Fetch Tests</h2>
+            <div class="flex">
+                <input type="text" id="custom-url" placeholder="API URL" value="/companies-proxy/test_company">
+                <select id="custom-method">
+                    <option value="GET">GET</option>
+                    <option value="POST">POST</option>
+                    <option value="PUT">PUT</option>
+                    <option value="DELETE">DELETE</option>
+                </select>
+            </div>
+            <details>
+                <summary>Custom Headers</summary>
+                <textarea id="custom-headers" class="headers-input">{"Content-Type": "application/json"}</textarea>
+            </details>
+            <details>
+                <summary>Request Body (JSON)</summary>
+                <textarea id="custom-body" class="headers-input">{"name": "Test Company", "description": "This is a test"}</textarea>
+            </details>
+            <button id="send-custom">Send Request</button>
+            <div class="result" id="custom-fetch-result"></div>
+        </div>
+    </div>
+
+    <script>
+        // Utility functions
+        function showResult(elementId, message, isError = false) {
+            const resultElement = document.getElementById(elementId);
+            if (typeof message === 'object') {
+                message = JSON.stringify(message, null, 2);
+            }
+            resultElement.innerHTML = `<pre class="${isError ? 'error' : 'success'}">${message}</pre>`;
+        }
+
+        function getToken() {
+            return localStorage.getItem('token') || sessionStorage.getItem('token') || '';
+        }
+
+        function setToken(token) {
+            localStorage.setItem('token', token);
+            console.log("Token saved to localStorage");
+        }
+
+        // Tab functionality
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                // Remove active class from all buttons and content
+                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                
+                // Add active class to clicked button and corresponding content
+                button.classList.add('active');
+                const tabId = button.dataset.tab;
+                document.getElementById(tabId).classList.add('active');
+            });
+        });
+
+        // Auth Status
+        document.getElementById('check-token').addEventListener('click', () => {
+            const token = getToken();
+            if (token) {
+                const tokenPreview = token.length > 30 ? token.substring(0, 15) + '...' + token.substring(token.length - 15) : token;
+                showResult('auth-status-result', `Token found: ${tokenPreview}\nLength: ${token.length} characters`);
+            } else {
+                showResult('auth-status-result', 'No token found in localStorage or sessionStorage', true);
+            }
+        });
+
+        document.getElementById('verify-token').addEventListener('click', async () => {
+            const token = getToken();
+            if (!token) {
+                showResult('auth-status-result', 'No token found to verify', true);
+                return;
+            }
+
+            try {
+                // Use the proxy route to avoid corporate proxy issues
+                const response = await fetch('/auth-proxy/verify', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showResult('auth-status-result', {
+                        message: 'Token is valid',
+                        status: response.status,
+                        data
+                    });
+                } else {
+                    showResult('auth-status-result', {
+                        message: 'Token verification failed',
+                        status: response.status,
+                        error: await response.text()
+                    }, true);
+                }
+            } catch (error) {
+                showResult('auth-status-result', `Error: ${error.message}`, true);
+            }
+        });
+
+        // Login Test
+        document.getElementById('login-btn').addEventListener('click', async () => {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const formData = new URLSearchParams();
+                formData.append('username', username);
+                formData.append('password', password);
+                
+                const response = await fetch('/auth-proxy/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    setToken(data.access_token);
+                    showResult('login-result', {
+                        message: 'Login successful',
+                        token_type: data.token_type,
+                        token_preview: data.access_token.substring(0, 15) + '...'
+                    });
+                } else {
+                    showResult('login-result', {
+                        message: 'Login failed',
+                        status: response.status,
+                        error: await response.text()
+                    }, true);
+                }
+            } catch (error) {
+                showResult('login-result', `Error: ${error.message}`, true);
+            }
+        });
+
+        // Token Inspection
+        document.getElementById('decode-token').addEventListener('click', () => {
+            const token = getToken();
+            if (!token) {
+                showResult('token-inspection-result', 'No token found to decode', true);
+                return;
+            }
+
+            try {
+                // JWT consists of 3 parts: header.payload.signature
+                const parts = token.split('.');
+                if (parts.length !== 3) {
+                    showResult('token-inspection-result', 'Invalid JWT format', true);
+                    return;
+                }
+
+                const header = JSON.parse(atob(parts[0]));
+                const payload = JSON.parse(atob(parts[1]));
+                
+                // Calculate expiration
+                let expirationMsg = '';
+                if (payload.exp) {
+                    const expDate = new Date(payload.exp * 1000);
+                    const now = new Date();
+                    expirationMsg = `\nExpires: ${expDate.toLocaleString()}\nStatus: ${expDate > now ? 'Valid' : 'EXPIRED'}`;
+                }
+
+                showResult('token-inspection-result', {
+                    header,
+                    payload,
+                    notes: `Token type: ${header.typ}${expirationMsg}`
+                });
+            } catch (error) {
+                showResult('token-inspection-result', `Error decoding token: ${error.message}`, true);
+            }
+        });
+
+        // Company API Tests
+        document.getElementById('get-company').addEventListener('click', async () => {
+            const companyId = document.getElementById('company-id').value;
+            const token = getToken();
+            
+            if (!token) {
+                showResult('company-api-result', 'No token found. Please login first.', true);
+                return;
+            }
+
+            try {
+                const response = await fetch(`/companies-proxy/${companyId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showResult('company-api-result', {
+                        message: 'Company retrieved successfully',
+                        data
+                    });
+                } else {
+                    showResult('company-api-result', {
+                        message: 'Failed to get company',
+                        status: response.status,
+                        error: await response.text()
+                    }, true);
+                }
+            } catch (error) {
+                showResult('company-api-result', `Error: ${error.message}`, true);
+            }
+        });
+
+        document.getElementById('update-company').addEventListener('click', async () => {
+            const companyId = document.getElementById('company-id').value;
+            const token = getToken();
+            
+            if (!token) {
+                showResult('company-api-result', 'No token found. Please login first.', true);
+                return;
+            }
+
+            const companyData = {
+                name: "Updated via Test Suite",
+                description: "This is a test update via the API test suite",
+                brand_colors: ["#3B82F6", "#93C5FD"]
+            };
+
+            try {
+                const response = await fetch(`/companies-proxy/${companyId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(companyData)
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    showResult('company-api-result', {
+                        message: 'Company updated successfully',
+                        data
+                    });
+                } else {
+                    showResult('company-api-result', {
+                        message: 'Failed to update company',
+                        status: response.status,
+                        error: await response.text()
+                    }, true);
+                }
+            } catch (error) {
+                showResult('company-api-result', `Error: ${error.message}`, true);
+            }
+        });
+
+        // Path testing
+        document.getElementById('test-path-1').addEventListener('click', async () => {
+            const companyId = document.getElementById('company-id').value;
+            const token = getToken();
+            
+            try {
+                const response = await fetch(`/companies-proxy/${companyId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                showResult('path-test-result', {
+                    path: `/companies-proxy/${companyId}`,
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: Object.fromEntries(response.headers.entries())
+                }, !response.ok);
+            } catch (error) {
+                showResult('path-test-result', `Error: ${error.message}`, true);
+            }
+        });
+
+        document.getElementById('test-path-2').addEventListener('click', async () => {
+            const companyId = document.getElementById('company-id').value;
+            const token = getToken();
+            
+            try {
+                const response = await fetch(`/api-debug/companies/${companyId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                showResult('path-test-result', {
+                    path: `/api-debug/companies/${companyId}`,
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: Object.fromEntries(response.headers.entries())
+                }, !response.ok);
+            } catch (error) {
+                showResult('path-test-result', `Error: ${error.message}`, true);
+            }
+        });
+
+        // FormData Tests
+        document.getElementById('submit-json-fallback').addEventListener('click', async () => {
+            const companyId = document.getElementById('form-company-id').value;
+            const token = getToken();
+            
+            if (!token) {
+                showResult('form-test-result', 'No token found. Please login first.', true);
+                return;
+            }
+
+            const jsonData = {
+                name: 'JSON Fallback Test Company',
+                description: 'This is a test using JSON data instead of FormData',
+                brand_colors: ['#3B82F6', '#93C5FD']
+            };
+
+            try {
+                console.log('Submitting JSON data...');
+                
+                const response = await fetch(`/api/v1/companies/${companyId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(jsonData)
+                });
+                
+                const responseText = await response.text();
+                let data;
+                
+                try {
+                    data = JSON.parse(responseText);
+                } catch (e) {
+                    data = responseText;
+                }
+                
+                if (response.ok) {
+                    showResult('form-test-result', {
+                        message: 'JSON submission successful',
+                        data
+                    });
+                    
+                    // Also try to load the active company to confirm changes
+                    try {
+                        const verifyResponse = await fetch('/api/v1/companies/active');
+                        const company = await verifyResponse.json();
+                        
+                        showResult('form-test-result', {
+                            message: 'JSON submission successful',
+                            data,
+                            verification: company
+                        });
+                    } catch (verifyError) {
+                        console.error('Error verifying company data:', verifyError);
+                    }
+                } else {
+                    showResult('form-test-result', {
+                        message: 'JSON submission failed',
+                        status: response.status,
+                        error: data,
+                        note: "Check network tab for request details"
+                    }, true);
+                }
+            } catch (error) {
+                console.error('JSON submission error:', error);
+                showResult('form-test-result', `Error: ${error.message}`, true);
+            }
+        });
+        
+        document.getElementById('submit-form').addEventListener('click', async () => {
+            const companyId = document.getElementById('form-company-id').value;
+            const fileInput = document.getElementById('test-file');
+            const token = getToken();
+            
+            if (!token) {
+                showResult('form-test-result', 'No token found. Please login first.', true);
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('name', 'FormData Test Company');
+            formData.append('description', 'This is a test using FormData');
+            
+            // Try both formats of brand colors for better compatibility
+            formData.append('brand_colors', JSON.stringify(['#3B82F6', '#93C5FD']));
+            formData.append('brand_colors[0]', '#3B82F6');
+            formData.append('brand_colors[1]', '#93C5FD');
+            
+            if (fileInput.files.length > 0) {
+                formData.append('logo_file', fileInput.files[0]);
+            }
+
+            try {
+                console.log('Submitting FormData to companies-proxy...');
+                
+                // Try with companies-proxy first
+                const response = await fetch(`/companies-proxy/${companyId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                        // Note: Don't set Content-Type for FormData requests
+                    },
+                    body: formData
+                });
+                
+                // If that fails, try direct API endpoint
+                let finalResponse = response;
+                let responseText = '';
+                
+                if (!response.ok) {
+                    responseText = await response.text();
+                    console.log(`Proxy request failed with status ${response.status}`, responseText);
+                    console.log('Trying direct API endpoint...');
+                    
+                    // Recreate FormData (can't reuse the previous one)
+                    const directFormData = new FormData();
+                    directFormData.append('name', 'FormData Test Company (Direct)');
+                    directFormData.append('description', 'This is a test using direct API endpoint');
+                    directFormData.append('brand_colors', JSON.stringify(['#3B82F6', '#93C5FD']));
+                    
+                    if (fileInput.files.length > 0) {
+                        directFormData.append('logo_file', fileInput.files[0]);
+                    }
+                    
+                    try {
+                        const directResponse = await fetch(`/api/v1/companies/${companyId}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Authorization': `Bearer ${token}`
+                            },
+                            body: directFormData
+                        });
+                        
+                        if (directResponse.ok) {
+                            finalResponse = directResponse;
+                            console.log('Direct API request succeeded!');
+                        } else {
+                            console.log(`Direct API request failed with status ${directResponse.status}`);
+                            responseText = await directResponse.text();
+                        }
+                    } catch (directError) {
+                        console.error('Error with direct API request:', directError);
+                    }
+                }
+                
+                if (finalResponse.ok) {
+                    let data;
+                    try {
+                        const responseText = await finalResponse.text();
+                        data = JSON.parse(responseText);
+                    } catch (e) {
+                        data = { success: true };
+                    }
+                    
+                    showResult('form-test-result', {
+                        message: 'FormData submission successful',
+                        data
+                    });
+                    
+                    // Also try to load the active company to confirm changes
+                    try {
+                        const verifyResponse = await fetch('/api/v1/companies/active');
+                        const company = await verifyResponse.json();
+                        
+                        showResult('form-test-result', {
+                            message: 'FormData submission successful',
+                            data,
+                            verification: company
+                        });
+                    } catch (verifyError) {
+                        console.error('Error verifying company data:', verifyError);
+                    }
+                } else {
+                    showResult('form-test-result', {
+                        message: 'FormData submission failed',
+                        status: finalResponse.status,
+                        error: responseText,
+                        note: "Check network tab for request details"
+                    }, true);
+                }
+            } catch (error) {
+                console.error('FormData submission error:', error);
+                showResult('form-test-result', `Error: ${error.message}`, true);
+            }
+        });
+
+        // Content-Type Tests
+        document.getElementById('form-auto').addEventListener('click', async () => {
+            testFormContentType();
+        });
+
+        document.getElementById('form-multipart').addEventListener('click', async () => {
+            testFormContentType('multipart/form-data');
+        });
+
+        document.getElementById('form-json').addEventListener('click', async () => {
+            testFormContentType('application/json');
+        });
+
+        async function testFormContentType(contentType = null) {
+            const companyId = document.getElementById('form-company-id').value;
+            const token = getToken();
+            
+            if (!token) {
+                showResult('content-type-test-result', 'No token found. Please login first.', true);
+                return;
+            }
+
+            let body;
+            const headers = {
+                'Authorization': `Bearer ${token}`
+            };
+            
+            // Handle differently based on content type
+            if (contentType === 'application/json') {
+                // For JSON content type, send JSON data
+                body = JSON.stringify({
+                    name: `Content-Type Test: ${contentType}`,
+                    description: 'Testing with JSON content type',
+                    brand_colors: ['#3B82F6', '#93C5FD']
+                });
+                headers['Content-Type'] = contentType;
+            } else {
+                // For FormData, use FormData object
+                const formData = new FormData();
+                formData.append('name', `Content-Type Test: ${contentType || 'Auto'}`);
+                formData.append('description', 'Testing FormData with different Content-Type settings');
+                formData.append('brand_colors', JSON.stringify(['#3B82F6', '#93C5FD']));
+                body = formData;
+                
+                if (contentType) {
+                    headers['Content-Type'] = contentType;
+                }
+            }
+
+            try {
+                // Make the request - first try direct API endpoint
+                const apiUrl = contentType === 'application/json' 
+                    ? `/api/v1/companies/${companyId}`
+                    : `/companies-proxy/${companyId}`;
+
+                console.log(`Sending request to ${apiUrl} with content type: ${contentType || 'Auto'}`);
+                console.log('Headers:', headers);
+                
+                const response = await fetch(apiUrl, {
+                    method: 'PUT',
+                    headers: headers,
+                    body: body
+                });
+                
+                // If failed and using companies-proxy, try direct API as fallback
+                let resultResponse = response;
+                if (!response.ok && !apiUrl.includes('/api/v1/')) {
+                    console.log('Trying fallback to direct API...');
+                    const fallbackResponse = await fetch(`/api/v1/companies/${companyId}`, {
+                        method: 'PUT',
+                        headers: headers,
+                        body: body
+                    });
+                    
+                    if (fallbackResponse.ok) {
+                        resultResponse = fallbackResponse;
+                        console.log('Fallback successful!');
+                    }
+                }
+                
+                const responseText = await resultResponse.text();
+                let responseData;
+                try {
+                    responseData = JSON.parse(responseText);
+                } catch (e) {
+                    responseData = responseText;
+                }
+                
+                showResult('content-type-test-result', {
+                    contentType: contentType || 'Auto (browser-determined)',
+                    status: resultResponse.status,
+                    statusText: resultResponse.statusText,
+                    response: responseData,
+                    note: "Check network tab for full request details"
+                }, !resultResponse.ok);
+            } catch (error) {
+                console.error('Error in request:', error);
+                showResult('content-type-test-result', `Error: ${error.message}`, true);
+            }
+        }
+
+        // Custom Fetch Tests
+        document.getElementById('send-custom').addEventListener('click', async () => {
+            const url = document.getElementById('custom-url').value;
+            const method = document.getElementById('custom-method').value;
+            const token = getToken();
+            
+            if (!token) {
+                showResult('custom-fetch-result', 'No token found. Please login first.', true);
+                return;
+            }
+            
+            let headers;
+            try {
+                headers = JSON.parse(document.getElementById('custom-headers').value);
+                headers['Authorization'] = `Bearer ${token}`;
+            } catch (e) {
+                showResult('custom-fetch-result', `Invalid headers JSON: ${e.message}`, true);
+                return;
+            }
+            
+            const options = {
+                method,
+                headers
+            };
+            
+            if (method !== 'GET' && method !== 'HEAD') {
+                try {
+                    const bodyText = document.getElementById('custom-body').value.trim();
+                    if (bodyText) {
+                        const contentType = headers['Content-Type'];
+                        if (contentType && contentType.includes('application/json')) {
+                            options.body = JSON.stringify(JSON.parse(bodyText));
+                        } else {
+                            options.body = bodyText;
+                        }
+                    }
+                } catch (e) {
+                    showResult('custom-fetch-result', `Invalid request body: ${e.message}`, true);
+                    return;
+                }
+            }
+
+            try {
+                const fullUrl = url.startsWith('/') ? url : `/${url}`;
+                const response = await fetch(fullUrl, options);
+                
+                let responseData;
+                const contentType = response.headers.get('content-type');
+                if (contentType && contentType.includes('application/json')) {
+                    responseData = await response.json();
+                } else {
+                    responseData = await response.text();
+                }
+                
+                showResult('custom-fetch-result', {
+                    url: fullUrl,
+                    method,
+                    status: response.status,
+                    statusText: response.statusText,
+                    headers: Object.fromEntries(response.headers.entries()),
+                    data: responseData
+                }, !response.ok);
+            } catch (error) {
+                showResult('custom-fetch-result', `Error: ${error.message}`, true);
+            }
+        });
+
+        // Initialize - check for token on load
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = getToken();
+            if (token) {
+                showResult('auth-status-result', `Token found (${token.length} characters)`);
+            } else {
+                showResult('auth-status-result', 'No token found. Please login first.', true);
+            }
+        });
+    </script>
+</body>
+</html>

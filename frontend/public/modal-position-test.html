@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Modal Position Test</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 20px; 
+            background: #f5f5f5;
+            /* Make page very tall to test scrolling */
+            min-height: 200vh;
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 30px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+        }
+        .section { 
+            margin: 40px 0; 
+            padding: 20px; 
+            background: #f8f9fa; 
+            border-left: 4px solid #007bff; 
+        }
+        .tall-content {
+            height: 100vh;
+            background: linear-gradient(45deg, #f0f0f0, #e0e0e0);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 40px 0;
+            border-radius: 8px;
+        }
+        button { 
+            padding: 12px 24px; 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            margin: 10px; 
+            font-size: 16px;
+        }
+        button:hover { background: #0056b3; }
+        
+        /* Test modal styles */
+        .test-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        
+        .test-modal.show {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 400px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            color: #999;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .close-btn:hover {
+            color: #666;
+            background: #f5f5f5;
+            border-radius: 50%;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #007bff;
+            box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+        }
+        
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 24px;
+            padding-top: 20px;
+            border-top: 1px solid #eee;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+        
+        .scroll-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: #007bff;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="scroll-indicator">
+        Scroll: <span id="scrollAmount">0</span>px
+    </div>
+    
+    <div class="container">
+        <h1>🎯 Modal Centering Test</h1>
+        <p>This page tests if the modal appears centered on the viewport regardless of scroll position.</p>
+        
+        <div class="section">
+            <h3>Test Instructions:</h3>
+            <ol>
+                <li>Scroll down to different positions on this page</li>
+                <li>Click the "Open Modal" button from any scroll position</li>
+                <li>Verify the modal appears centered on your screen (not at the top of the page)</li>
+                <li>Try clicking outside the modal to close it</li>
+                <li>Try the X button to close it</li>
+            </ol>
+        </div>
+        
+        <button onclick="openModal()">🚀 Open Modal (Test from Top)</button>
+    </div>
+    
+    <div class="tall-content">
+        <div style="text-align: center;">
+            <h2>Middle of Page</h2>
+            <p>Scroll position test area</p>
+            <button onclick="openModal()">🎯 Open Modal (Test from Middle)</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div class="section">
+            <h3>Expected Results:</h3>
+            <ul>
+                <li>✅ Modal should always appear in the center of your viewport</li>
+                <li>✅ No scrolling should be needed to see the modal</li>
+                <li>✅ Modal should be fully visible regardless of page scroll position</li>
+                <li>✅ Clicking outside the modal should close it</li>
+                <li>✅ Modal should have smooth appearance</li>
+            </ul>
+        </div>
+        
+        <div class="section">
+            <h3>Real Implementation Check:</h3>
+            <p>After testing this demo, go to the actual settings page:</p>
+            <a href="/en/settings" target="_blank">
+                <button>🔗 Open Settings Page</button>
+            </a>
+            <p><small>Look for the "+" icon in the AI Providers section header and test it.</small></p>
+        </div>
+        
+        <button onclick="openModal()">🎯 Open Modal (Test from Bottom)</button>
+    </div>
+    
+    <!-- Test Modal -->
+    <div id="testModal" class="test-modal" onclick="closeModalOnBackdrop(event)">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Add Provider</h3>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            
+            <form onsubmit="handleSubmit(event)">
+                <div class="form-group">
+                    <label class="form-label">Provider Name</label>
+                    <input type="text" class="form-input" placeholder="Stability AI" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Provider ID</label>
+                    <input type="text" class="form-input" placeholder="stability" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">API Key (Optional)</label>
+                    <input type="password" class="form-input" placeholder="Enter API key (optional)">
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button type="submit">Add Provider</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        // Update scroll indicator
+        window.addEventListener('scroll', function() {
+            document.getElementById('scrollAmount').textContent = Math.round(window.pageYOffset);
+        });
+        
+        function openModal() {
+            const modal = document.getElementById('testModal');
+            modal.classList.add('show');
+            
+            // Focus first input for better UX
+            setTimeout(() => {
+                const firstInput = modal.querySelector('input');
+                if (firstInput) firstInput.focus();
+            }, 100);
+        }
+        
+        function closeModal() {
+            const modal = document.getElementById('testModal');
+            modal.classList.remove('show');
+        }
+        
+        function closeModalOnBackdrop(event) {
+            if (event.target === event.currentTarget) {
+                closeModal();
+            }
+        }
+        
+        function handleSubmit(event) {
+            event.preventDefault();
+            alert('Form submitted! In the real app, this would open the provider configuration dialog.');
+            closeModal();
+        }
+        
+        // Close modal with Escape key
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape') {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>

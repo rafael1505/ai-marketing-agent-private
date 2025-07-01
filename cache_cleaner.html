@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear Frontend Cache - AI Providers</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f0f8ff; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .step { margin: 20px 0; padding: 15px; background: #f8f9fa; border-left: 4px solid #007bff; }
+        .success { background: #d4edda; border-color: #28a745; }
+        .warning { background: #fff3cd; border-color: #ffc107; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        .code { background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Frontend Cache Cleaner</h1>
+        <p>This tool will clear all cached AI provider data and force the frontend to fetch fresh data from the API.</p>
+        
+        <div class="step">
+            <h3>Step 1: Check Current Cache</h3>
+            <p>Click to see what's currently cached:</p>
+            <button onclick="checkCache()">Check Cache</button>
+            <div id="cacheInfo"></div>
+        </div>
+        
+        <div class="step">
+            <h3>Step 2: Clear All Cache</h3>
+            <p>This will remove all cached AI provider data:</p>
+            <button onclick="clearCache()">Clear Cache</button>
+            <div id="clearResult"></div>
+        </div>
+        
+        <div class="step">
+            <h3>Step 3: Test Fresh API Call</h3>
+            <p>Test if we can fetch fresh data from the API:</p>
+            <button onclick="testAPI()">Test API</button>
+            <div id="apiResult"></div>
+        </div>
+        
+        <div class="step warning">
+            <h3>Step 4: Visit Settings Page</h3>
+            <p>After clearing cache, visit the settings page:</p>
+            <a href="http://localhost:3001/en/settings" target="_blank">
+                <button>Open Settings Page</button>
+            </a>
+            <p><small>The page should now show all 9 AI providers with pricing badges.</small></p>
+        </div>
+        
+        <div class="step">
+            <h3>Step 5: Manual Cache Clear (If needed)</h3>
+            <p><strong>If the automatic clear doesn't work, do this manually:</strong></p>
+            <ol>
+                <li>Press <kbd>F12</kbd> to open Developer Tools</li>
+                <li>Go to the <strong>Application</strong> tab (or <strong>Storage</strong> in Firefox)</li>
+                <li>In the left sidebar, find <strong>Local Storage</strong></li>
+                <li>Click on <code>http://localhost:3001</code></li>
+                <li>Select all entries and delete them</li>
+                <li>Also clear <strong>Session Storage</strong> the same way</li>
+                <li>Close Developer Tools and refresh the settings page</li>
+            </ol>
+        </div>
+    </div>
+    
+    <script>
+        function checkCache() {
+            const infoDiv = document.getElementById('cacheInfo');
+            
+            // Check localStorage
+            const cached = localStorage.getItem('userAIProviders');
+            const tokenCached = localStorage.getItem('token');
+            const companyCached = localStorage.getItem('activeCompany');
+            
+            let info = '<div class="code">';
+            info += '<strong>LocalStorage Contents:</strong><br>';
+            info += `userAIProviders: ${cached ? 'EXISTS (length: ' + cached.length + ')' : 'NOT FOUND'}<br>`;
+            info += `token: ${tokenCached ? 'EXISTS' : 'NOT FOUND'}<br>`;
+            info += `activeCompany: ${companyCached ? 'EXISTS' : 'NOT FOUND'}<br>`;
+            
+            if (cached) {
+                try {
+                    const providers = JSON.parse(cached);
+                    info += `<br><strong>Cached Providers (${providers.length}):</strong><br>`;
+                    providers.forEach(p => info += `- ${p.name}<br>`);
+                } catch (e) {
+                    info += '<br><strong>Error parsing cached data</strong><br>';
+                }
+            }
+            
+            info += '</div>';
+            infoDiv.innerHTML = info;
+        }
+        
+        function clearCache() {
+            const resultDiv = document.getElementById('clearResult');
+            
+            // Clear all localStorage
+            localStorage.clear();
+            
+            // Clear all sessionStorage
+            sessionStorage.clear();
+            
+            // Also try to clear any potential caches
+            if ('caches' in window) {
+                caches.keys().then(names => {
+                    names.forEach(name => caches.delete(name));
+                });
+            }
+            
+            resultDiv.innerHTML = `
+                <div class="success">
+                    ✅ Cache cleared completely!<br>
+                    - Cleared all localStorage<br>
+                    - Cleared all sessionStorage<br>
+                    - Cleared browser caches<br>
+                    <strong>Now click "Open Settings Page" below to test!</strong>
+                </div>
+            `;
+        }
+        
+        async function testAPI() {
+            const resultDiv = document.getElementById('apiResult');
+            resultDiv.innerHTML = '<p>Testing API...</p>';
+            
+            try {
+                const response = await fetch('http://localhost:8088/api/v1/ai-providers');
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const providers = await response.json();
+                
+                let html = `<div class="success">`;
+                html += `✅ API is working!<br>`;
+                html += `Found ${providers.length} providers:<br>`;
+                
+                // Group by tier
+                const byTier = {};
+                providers.forEach(p => {
+                    const tier = p.pricing?.tier || 'unknown';
+                    if (!byTier[tier]) byTier[tier] = [];
+                    byTier[tier].push(p.name);
+                });
+                
+                Object.keys(byTier).forEach(tier => {
+                    html += `<br><strong>${tier.toUpperCase()}:</strong> ${byTier[tier].join(', ')}`;
+                });
+                
+                html += `</div>`;
+                resultDiv.innerHTML = html;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="warning">
+                        ❌ API Error: ${error.message}<br>
+                        Don't worry! The frontend will use default providers instead.<br>
+                        <strong>Still proceed to clear cache and test the settings page.</strong>
+                    </div>
+                `;
+            }
+        }
+        
+        // Auto-check cache on load
+        window.onload = function() {
+            checkCache();
+        }
+    </script>
+</body>
+</html>

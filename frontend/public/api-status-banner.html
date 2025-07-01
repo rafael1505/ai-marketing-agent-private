@@ -1,0 +1,57 @@
+<!-- API Connection Test Banner -->
+<div style="position: fixed; bottom: 20px; right: 20px; padding: 10px 20px; background-color: #0070f3; color: white; border-radius: 5px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); z-index: 1000; font-family: system-ui, -apple-system, sans-serif;">
+  <div style="display: flex; align-items: center; gap: 8px;">
+    <div id="api-status-indicator" style="display: flex; align-items: center; gap: 6px; margin-right: 10px;">
+      <div id="api-status-dot" style="width: 12px; height: 12px; border-radius: 50%; background-color: #ccc;"></div>
+      <span id="api-status-text" style="font-size: 14px;">Checking API...</span>
+    </div>
+    <a href="/api-connection-test.html" style="background-color: white; color: #0070f3; padding: 4px 10px; border-radius: 4px; text-decoration: none; font-weight: 500; font-size: 14px;">Test API Connection</a>
+    <a href="/port-configuration.html" style="background-color: rgba(255,255,255,0.2); color: white; padding: 4px 10px; border-radius: 4px; text-decoration: none; font-size: 14px;">Port Guide</a>
+    <button id="close-banner" style="background: none; border: none; color: white; cursor: pointer; padding: 4px; margin-left: 5px;">×</button>
+  </div>
+</div>
+
+<script>
+// Update API status indicator
+function checkApiStatus() {
+  const statusDot = document.getElementById('api-status-dot');
+  const statusText = document.getElementById('api-status-text');
+  
+  if (!statusDot || !statusText) return;
+  
+  fetch('http://127.0.0.1:8088/api/v1/diagnostic/health')
+    .then(res => {
+      if (res.ok) {
+        statusDot.style.backgroundColor = '#10b981'; // green
+        statusText.innerText = 'API Connected';
+      }
+    })
+    .catch(() => {
+      // Check wrong port
+      fetch('http://127.0.0.1:8089/api/v1/diagnostic/health', { mode: 'no-cors' })
+        .then(() => {
+          statusDot.style.backgroundColor = '#ef4444'; // red
+          statusText.innerText = 'Wrong Port (8089)';
+        })
+        .catch(() => {
+          statusDot.style.backgroundColor = '#ef4444'; // red
+          statusText.innerText = 'API Disconnected';
+        });
+    });
+}
+
+// Allow banner to be closed
+document.getElementById('close-banner').addEventListener('click', function() {
+  this.closest('div[style*="position: fixed"]').style.display = 'none';
+  localStorage.setItem('api-banner-closed', 'true');
+});
+
+// Check if banner was previously closed
+if (localStorage.getItem('api-banner-closed') === 'true') {
+  document.querySelector('div[style*="position: fixed"]').style.display = 'none';
+}
+
+// Check API status on load and periodically
+checkApiStatus();
+setInterval(checkApiStatus, 10000);
+</script>

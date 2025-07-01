@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Menu Authentication Test</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.5;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            border: 1px solid #ddd;
+            padding: 20px;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        button {
+            margin: 5px;
+            padding: 10px 15px;
+            background: #3B82F6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #2563EB;
+        }
+        pre {
+            background: #ffffff;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e5e5e5;
+            overflow: auto;
+            font-size: 12px;
+        }
+        .result {
+            margin-top: 15px;
+        }
+        .success {
+            color: #10b981;
+        }
+        .error {
+            color: #ef4444;
+        }
+        .info {
+            color: #3b82f6;
+        }
+        input {
+            margin: 5px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 200px;
+        }
+        .login-form {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            margin: 20px 0;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 6px;
+            margin: 10px 0;
+        }
+        .status.success {
+            background: #d1fae5;
+            border: 1px solid #10b981;
+            color: #065f46;
+        }
+        .status.error {
+            background: #fee2e2;
+            border: 1px solid #ef4444;
+            color: #991b1b;
+        }
+        .status.info {
+            background: #dbeafe;
+            border: 1px solid #3b82f6;
+            color: #1e40af;
+        }
+    </style>
+</head>
+<body>
+    <h1>User Menu Authentication Test</h1>
+    <p>This page tests the authentication flow to verify the UserMenu component will display correctly.</p>
+
+    <div class="test-section">
+        <h2>🎯 Authentication Test</h2>
+        <p>Test login functionality through the Next.js proxy to verify UserMenu will appear.</p>
+        
+        <div class="login-form">
+            <h3>Login Credentials</h3>
+            <div>
+                <label>Username: </label>
+                <input type="text" id="username" value="test@example.com" placeholder="Email">
+            </div>
+            <div>
+                <label>Password: </label>
+                <input type="password" id="password" value="password" placeholder="Password">
+            </div>
+            <br>
+            <button onclick="testLogin()">Test Login</button>
+            <button onclick="testTokenValidation()">Validate Current Token</button>
+            <button onclick="testLogout()">Test Logout</button>
+            <button onclick="goToMainApp()">Go to Main App</button>
+        </div>
+
+        <div id="loginResult" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🔍 Current Authentication Status</h2>
+        <button onclick="checkAuthStatus()">Check Current Status</button>
+        <div id="authStatus" class="result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>🛠️ Direct API Tests (Bypass Proxy)</h2>
+        <p>Test direct connection to backend API (simulates what Next.js proxy should do).</p>
+        <button onclick="testDirectAPI()">Test Direct Backend</button>
+        <div id="directApiResult" class="result"></div>
+    </div>
+
+    <script>
+        let currentToken = null;
+
+        function log(containerId, message, type = 'info') {
+            const container = document.getElementById(containerId);
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            const timestamp = new Date().toLocaleTimeString();
+            container.innerHTML += `<div class="status ${className}">[${timestamp}] ${message}</div>`;
+        }
+
+        function clearLog(containerId) {
+            document.getElementById(containerId).innerHTML = '';
+        }
+
+        async function testLogin() {
+            clearLog('loginResult');
+            log('loginResult', 'Testing login through Next.js server-side API route...', 'info');
+            
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                // Test login through the Next.js server-side API route (bypasses corporate proxy)
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        password: password
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    currentToken = data.access_token;
+                    log('loginResult', '✅ Login successful! Token received.', 'success');
+                    log('loginResult', `Token: ${currentToken.substring(0, 20)}...`, 'info');
+                    
+                    // Store token in localStorage (like the real app does)
+                    localStorage.setItem('token', currentToken);
+                    
+                    log('loginResult', '🎉 UserMenu should now be visible in the main app!', 'success');
+                } else {
+                    const errorText = await response.text();
+                    log('loginResult', `❌ Login failed: ${response.status} - ${errorText}`, 'error');
+                }
+            } catch (error) {
+                log('loginResult', `❌ Network error: ${error.message}`, 'error');
+                log('loginResult', 'This may be due to the corporate proxy interfering with requests.', 'error');
+            }
+        }
+
+        async function testTokenValidation() {
+            clearLog('loginResult');
+            const token = localStorage.getItem('token') || currentToken;
+            
+            if (!token) {
+                log('loginResult', '❌ No token found. Please login first.', 'error');
+                return;
+            }
+
+            log('loginResult', 'Testing token validation...', 'info');
+
+            try {
+                const response = await fetch('/api/auth/verify', {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    log('loginResult', '✅ Token is valid!', 'success');
+                    log('loginResult', `User info: ${JSON.stringify(data, null, 2)}`, 'info');
+                } else {
+                    log('loginResult', `❌ Token validation failed: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                log('loginResult', `❌ Validation error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testLogout() {
+            localStorage.removeItem('token');
+            currentToken = null;
+            log('loginResult', '✅ Logged out successfully. Token removed.', 'success');
+        }
+
+        async function checkAuthStatus() {
+            clearLog('authStatus');
+            
+            const token = localStorage.getItem('token');
+            if (token) {
+                log('authStatus', `✅ Token found in localStorage: ${token.substring(0, 20)}...`, 'success');
+                log('authStatus', '🎯 UserMenu should be visible in the main app.', 'success');
+            } else {
+                log('authStatus', '❌ No authentication token found.', 'error');
+                log('authStatus', '🔄 Login button should be visible instead of UserMenu.', 'info');
+            }
+        }
+
+        async function testDirectAPI() {
+            clearLog('directApiResult');
+            log('directApiResult', 'Testing direct backend API connection...', 'info');
+            
+            // Note: This will fail due to CORS, but we can see if the server is reachable
+            try {
+                const response = await fetch('http://127.0.0.1:8088/api/v1/auth/token', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: 'username=test@example.com&password=password'
+                });
+                
+                log('directApiResult', `Response status: ${response.status}`, 'info');
+            } catch (error) {
+                if (error.message.includes('CORS')) {
+                    log('directApiResult', '✅ Backend is reachable (CORS error expected)', 'success');
+                    log('directApiResult', 'This confirms the backend is running correctly.', 'info');
+                } else {
+                    log('directApiResult', `❌ Backend error: ${error.message}`, 'error');
+                }
+            }
+        }
+
+        function goToMainApp() {
+            window.location.href = '/';
+        }
+
+        // Check initial auth status
+        window.onload = function() {
+            checkAuthStatus();
+        };
+    </script>
+</body>
+</html>

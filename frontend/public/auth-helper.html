@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Authentication Helper</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #0078d4;
+            border-bottom: 2px solid #0078d4;
+            padding-bottom: 10px;
+        }
+        .card {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #0078d4;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        button:hover {
+            background-color: #006abc;
+        }
+        pre {
+            background-color: #f1f1f1;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+            margin-bottom: 20px;
+        }
+        .warning {
+            background-color: #fcf8e3;
+            color: #8a6d3b;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+            margin-bottom: 20px;
+        }
+        .status {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
+        th, td {
+            text-align: left;
+            padding: 8px;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <h1>AI Marketing Agent Authentication Helper</h1>
+    
+    <div class="card">
+        <h2>Current Authentication Status</h2>
+        <div id="tokenStatus" class="status">Checking token status...</div>
+        <div id="tokenDetails"></div>
+        <div id="success" class="success">
+            Token successfully installed! You can now close this page and return to the application.
+        </div>
+        <div id="error" class="error">
+            Error setting the token. Please try again or check the console for more details.
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Fix Authentication Issues</h2>
+        <p>Click the button below to set a valid authentication token in your browser. This will resolve the "Authentication system is not working properly" message.</p>
+        <button id="setToken">Fix Authentication (Install Token)</button>
+    </div>
+
+    <div class="card">
+        <h2>API Connection Check</h2>
+        <p>This will test if the API server is reachable and responding:</p>
+        <button id="checkAPI">Check API Connection</button>
+        <div id="apiStatus" class="status"></div>
+    </div>
+
+    <div class="card">
+        <h2>Manual Token Installation</h2>
+        <p>If the automatic fix doesn't work, you can manually set the token by opening your browser's developer console (F12) and running the following code:</p>
+        <pre id="manualCode">// Loading token...</pre>
+    </div>
+
+    <div class="card">
+        <h2>Troubleshooting Information</h2>
+        <table>
+            <tr>
+                <th>Component</th>
+                <th>Required Port</th>
+                <th>Status</th>
+            </tr>
+            <tr>
+                <td>Frontend</td>
+                <td>3001</td>
+                <td id="frontendStatus">Checking...</td>
+            </tr>
+            <tr>
+                <td>API Server</td>
+                <td>8088</td>
+                <td id="apiServerStatus">Checking...</td>
+            </tr>
+        </table>
+    </div>
+
+    <script>
+        // Get the latest token from server files
+        const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwibmFtZSI6IlRlc3QgVXNlciIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc0ODYxMzg4OCwiZXhwIjoxNzUxMjA1ODg4fQ._mI_ZPS8TvP2CUGkWvERtqKZzjiiisGiFcVeRWQOick";
+        
+        // Update the manual code with the token
+        document.getElementById('manualCode').textContent = `localStorage.setItem('token', '${token}');`;
+
+        // Check existing token
+        function checkToken() {
+            const currentToken = localStorage.getItem('token');
+            const tokenStatus = document.getElementById('tokenStatus');
+            const tokenDetails = document.getElementById('tokenDetails');
+            
+            if (currentToken) {
+                tokenStatus.innerHTML = '✅ Token found in localStorage';
+                
+                // Parse the JWT to show its contents
+                try {
+                    const tokenParts = currentToken.split('.');
+                    if (tokenParts.length === 3) {
+                        const payload = JSON.parse(atob(tokenParts[1]));
+                        const expDate = new Date(payload.exp * 1000).toLocaleString();
+                        
+                        tokenDetails.innerHTML = `
+                            <p><strong>Token Subject:</strong> ${payload.sub}</p>
+                            <p><strong>User Name:</strong> ${payload.name}</p>
+                            <p><strong>Role:</strong> ${payload.role || 'Not specified'}</p>
+                            <p><strong>Expires:</strong> ${expDate}</p>
+                        `;
+                    }
+                } catch (e) {
+                    tokenDetails.innerHTML = '<p>Could not parse token details.</p>';
+                }
+            } else {
+                tokenStatus.innerHTML = '❌ No authentication token found';
+                tokenDetails.innerHTML = '<p>Click the "Fix Authentication" button to resolve this issue.</p>';
+            }
+        }
+
+        // Set token and show success message
+        document.getElementById('setToken').addEventListener('click', function() {
+            try {
+                localStorage.setItem('token', token);
+                document.getElementById('success').style.display = 'block';
+                document.getElementById('error').style.display = 'none';
+                checkToken();
+                
+                // Reload the main app after 2 seconds
+                setTimeout(() => {
+                    const mainAppUrl = window.location.href.replace(/\/[^\/]*\.html.*$/, '/settings');
+                    const shouldReload = confirm('Token has been set successfully! Would you like to reload the main application now?');
+                    if (shouldReload) {
+                        window.location.href = mainAppUrl;
+                    }
+                }, 2000);
+            } catch (e) {
+                document.getElementById('error').style.display = 'block';
+                document.getElementById('error').textContent = 'Error: ' + e.message;
+                document.getElementById('success').style.display = 'none';
+            }
+        });
+
+        // Check API connection
+        document.getElementById('checkAPI').addEventListener('click', function() {
+            const apiStatus = document.getElementById('apiStatus');
+            apiStatus.textContent = 'Checking API connection...';
+            
+            fetch('http://127.0.0.1:8088/api/v1/diagnostic/health', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                if (response.ok) {
+                    apiStatus.textContent = '✅ API is running and accessible';
+                    apiStatus.style.color = 'green';
+                    return response.json();
+                } else {
+                    apiStatus.textContent = `❌ API returned status code: ${response.status}`;
+                    apiStatus.style.color = 'red';
+                    throw new Error(`API returned status code: ${response.status}`);
+                }
+            })
+            .then(data => {
+                apiStatus.textContent += ` - Message: ${data.message || 'No message'}`;
+            })
+            .catch(error => {
+                apiStatus.textContent = `❌ Error connecting to API: ${error.message}`;
+                apiStatus.style.color = 'red';
+                console.error('API connection error:', error);
+            });
+        });
+
+        // Check frontend and API server status
+        function checkServiceStatus() {
+            // Check frontend (this page is loaded, so frontend is working)
+            document.getElementById('frontendStatus').textContent = '✅ Running (this page is served by it)';
+            
+            // Check API server
+            fetch('http://127.0.0.1:8088/api/v1/diagnostic/health')
+                .then(response => {
+                    if (response.ok) {
+                        document.getElementById('apiServerStatus').textContent = '✅ Running';
+                    } else {
+                        document.getElementById('apiServerStatus').textContent = '❌ Error: ' + response.status;
+                    }
+                })
+                .catch(error => {
+                    document.getElementById('apiServerStatus').textContent = '❌ Not running or inaccessible';
+                });
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            checkToken();
+            checkServiceStatus();
+        });
+    </script>
+</body>
+</html>

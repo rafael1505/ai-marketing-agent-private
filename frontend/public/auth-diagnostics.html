@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Authentication Diagnostics</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+    .result { background: #f5f5f5; padding: 10px; border-radius: 4px; margin: 10px 0; }
+    button { background: #4285f4; color: white; border: none; padding: 8px 16px; border-radius: 4px; margin: 5px; cursor: pointer; }
+    button:hover { background: #3b78e7; }
+    .error { color: red; }
+    .success { color: green; }
+    h2 { margin-top: 30px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <h1>Authentication Diagnostics</h1>
+  
+  <h2>1. Check Token</h2>
+  <button id="checkToken">Check Auth Token</button>
+  <div id="tokenResult" class="result"></div>
+  
+  <h2>2. Test Login</h2>
+  <input id="username" placeholder="Username" value="test@example.com" />
+  <input id="password" type="password" placeholder="Password" value="testpassword" />
+  <button id="testLogin">Test Login</button>
+  <div id="loginResult" class="result"></div>
+  
+  <h2>3. Test API with Auth</h2>
+  <button id="testAPI">Test API with Auth</button>
+  <div id="apiResult" class="result"></div>
+  
+  <h2>4. Test FormData with Auth</h2>
+  <button id="testFormData">Test FormData with Auth</button>
+  <div id="formDataResult" class="result"></div>
+  
+  <script>
+    // Check Token
+    document.getElementById('checkToken').addEventListener('click', function() {
+      const token = localStorage.getItem('token');
+      const result = document.getElementById('tokenResult');
+      
+      if (token) {
+        result.innerHTML = `<div class="success">✅ Token found!</div>
+          <div>Token: ${token.substring(0, 20)}...</div>
+          <div>Length: ${token.length} characters</div>`;
+      } else {
+        result.innerHTML = '<div class="error">❌ No token found in localStorage</div>';
+      }
+    });
+    
+    // Test Login
+    document.getElementById('testLogin').addEventListener('click', async function() {
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const result = document.getElementById('loginResult');
+      
+      result.innerHTML = 'Logging in...';
+      
+      const formData = new URLSearchParams();
+      formData.append('username', username);
+      formData.append('password', password);
+      
+      try {
+        // Try both endpoints
+        let response;
+        
+        try {
+          response = await fetch('/api/v1/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formData
+          });
+        } catch (e) {
+          response = await fetch('/api/v1/auth/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: formData
+          });
+        }
+        
+        if (response.ok) {
+          const data = await response.json();
+          localStorage.setItem('token', data.access_token);
+          
+          result.innerHTML = `<div class="success">✅ Login successful!</div>
+            <div>Token: ${data.access_token.substring(0, 20)}...</div>
+            <div>Token stored in localStorage</div>`;
+        } else {
+          const text = await response.text();
+          result.innerHTML = `<div class="error">❌ Login failed (${response.status})</div>
+            <div>${text}</div>`;
+        }
+      } catch (error) {
+        result.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+      }
+    });
+    
+    // Test API with Auth
+    document.getElementById('testAPI').addEventListener('click', async function() {
+      const token = localStorage.getItem('token');
+      const result = document.getElementById('apiResult');
+      
+      if (!token) {
+        result.innerHTML = '<div class="error">❌ No token found. Please login first.</div>';
+        return;
+      }
+      
+      result.innerHTML = 'Testing API...';
+      
+      try {
+        const response = await fetch('/api/v1/companies/active', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          result.innerHTML = `<div class="success">✅ API call successful!</div>
+            <pre>${JSON.stringify(data, null, 2)}</pre>`;
+        } else {
+          const text = await response.text();
+          result.innerHTML = `<div class="error">❌ API call failed (${response.status})</div>
+            <div>${text}</div>`;
+        }
+      } catch (error) {
+        result.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+      }
+    });
+    
+    // Test FormData with Auth
+    document.getElementById('testFormData').addEventListener('click', async function() {
+      const token = localStorage.getItem('token');
+      const result = document.getElementById('formDataResult');
+      
+      if (!token) {
+        result.innerHTML = '<div class="error">❌ No token found. Please login first.</div>';
+        return;
+      }
+      
+      result.innerHTML = 'Testing FormData...';
+      
+      // Create FormData
+      const formData = new FormData();
+      formData.append('name', 'Test Company');
+      formData.append('description', 'This is a test from the diagnostic tool');
+      
+      // Create a simple text file as blob
+      const fileContent = new Blob(['This is a test file'], { type: 'text/plain' });
+      formData.append('logo_file', fileContent, 'test-file.txt');
+      
+      try {
+        const response = await fetch('/api/v1/companies/test_company', {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          result.innerHTML = `<div class="success">✅ FormData submission successful!</div>
+            <pre>${JSON.stringify(data, null, 2)}</pre>`;
+        } else {
+          const text = await response.text();
+          result.innerHTML = `<div class="error">❌ FormData submission failed (${response.status})</div>
+            <div>${text}</div>`;
+        }
+      } catch (error) {
+        result.innerHTML = `<div class="error">❌ Error: ${error.message}</div>`;
+      }
+    });
+    
+    // Initial check for token
+    document.addEventListener('DOMContentLoaded', function() {
+      document.getElementById('checkToken').click();
+    });
+  </script>
+</body>
+</html>

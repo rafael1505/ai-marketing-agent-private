@@ -1,0 +1,10 @@
+services:
+  mongo-test:
+    build:
+      context: .
+      dockerfile: test-mongo.Dockerfile
+    volumes:
+      - mongodb_test_data:/data/db
+
+volumes:
+  mongodb_test_data:

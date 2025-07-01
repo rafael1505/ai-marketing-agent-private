@@ -1,0 +1,33 @@
+/* Special override styles for the login button */
+button[type="submit"] {
+  background: linear-gradient(to right, #2563eb, #3b82f6) !important;
+  color: white !important;
+  font-weight: bold !important;
+  border: none !important;
+  height: auto !important;
+  padding: 14px 20px !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2) !important;
+  transition: all 0.3s ease !important;
+}
+
+button[type="submit"]:hover {
+  background: linear-gradient(to right, #1d4ed8, #2563eb) !important;
+  box-shadow: 0 6px 8px rgba(37, 99, 235, 0.3) !important;
+  transform: translateY(-1px) !important;
+}
+
+/* Ensure text color is white inside button */
+button[type="submit"] span,
+button[type="submit"] * {
+  color: white !important;
+}
+
+/* Target the text inside the login button specifically */
+button[type="submit"] > span {
+  color: white !important;
+  font-size: 16px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.025em !important;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.1) !important;
+}

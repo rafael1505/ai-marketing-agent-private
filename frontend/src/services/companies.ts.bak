@@ -1,0 +1,172 @@
+import api from './api';
+import { Company } from '@/types';
+import { makeReliableRequest } from '@/lib/network-utils';
+
+// Helper function to diagnose errors
+function diagnoseApiError(error: any, context: string) {
+  console.group(`🔍 API Error Diagnosis: ${context}`);
+  if (error.response) {
+    console.error(`Status: ${error.response.status}`);
+    console.error(`Response data:`, error.response.data);
+    console.error(`Response headers:`, error.response.headers);
+  } else if (error.request) {
+    console.error(`No response received. Request:`, error.request);
+    console.error(`Is this a connection error? ${error.code === 'ERR_NETWORK'}`);
+    console.error(`Error message: ${error.message}`);
+  } else {
+    console.error(`Error setting up request: ${error.message}`);
+  }
+  console.error(`Config URL: ${error.config?.url}`);
+  console.error(`Config headers:`, error.config?.headers);
+  console.groupEnd();
+}
+
+export async function getActiveCompany(): Promise<Company> {
+  console.log('Attempting to fetch active company...');
+  
+  try {    // Use our reliable request utility to handle network issues
+    // Fixing path to avoid duplicate 'companies' segment
+    const data = await makeReliableRequest<Company>('/active', {
+      method: 'GET',
+      proxyPath: 'companies-proxy',
+      nextApiPath: '/api/companies/active',
+    });
+    
+    console.log('Company data fetched successfully:', data);
+    return data;
+  } catch (error) {
+    console.error('All company fetch methods failed', error);
+    // Diagnose the error for better troubleshooting
+    diagnoseApiError(error, 'getActiveCompany');
+    // Return default error company
+    return {
+      id: 'error',
+      name: 'Connection Error',
+      description: 'Could not connect to the API server. Please check your connection and try again.',
+      logo_url: '',
+      brand_colors: ['#FF0000'],
+      active: false,
+      api_error: true, // Add flag to indicate API error
+    } as Company;
+  }
+}
+
+export async function updateCompany(id: string, data: Partial<Company>): Promise<Company> {
+  console.log('Attempting to update company:', id);
+  console.log('Company data to update:', JSON.stringify({
+    ...data,
+    logo_file: data.logo_file ? `File: ${data.logo_file.name} (${data.logo_file.size} bytes)` : undefined
+  }, null, 2));
+  
+  // Prepare data for submission
+  let formData: FormData | null = null;
+  let requestData: any = data;
+  let contentType: string | undefined = undefined;
+  
+  // Check if there's a logo_file in the data, which means we need to use FormData
+  if (data.logo_file instanceof File) {
+    console.log('Creating FormData for file upload:', data.logo_file.name);
+    // Create FormData for multipart/form-data submission
+    formData = new FormData();
+    
+    // Add all the company data except logo_file
+    Object.keys(data).forEach(key => {
+      const value = data[key as keyof typeof data];
+      if (key !== 'logo_file' && value !== undefined && value !== null) {
+        // Handle arrays like brand_colors specially
+        if (Array.isArray(value)) {
+          // Format arrays as simple repeated fields without indices
+          value.forEach((item, index) => {
+            console.log(`Adding form field: ${key} = ${item} (item ${index})`);
+            formData!.append(key, item);
+          });
+        } else {
+          console.log(`Adding form field: ${key} = ${value}`);
+          formData!.append(key, String(value));
+        }
+      }
+    });
+    
+    // Add the file last
+    console.log(`Adding file: logo_file (${data.logo_file.size} bytes)`);
+    formData.append('logo_file', data.logo_file);
+    requestData = formData;
+    // Don't set contentType - browser will set it automatically with boundary
+  }
+  
+  const token = localStorage.getItem('token');
+  if (!token) {
+    console.error('No auth token found');
+    throw new Error('Authentication token is missing. Please login again.');
+  }    try {
+    // Try multiple API endpoints to work around potential issues
+    // Ensure correct authorization header format with Bearer prefix
+    const authHeaders = token ? { 'Authorization': `Bearer ${token}` } : undefined;
+    
+    console.log(`Updating company with ID: ${id} - attempt 1`);
+    
+    // Debug FormData contents if present
+    if (formData instanceof FormData) {
+      console.log('FormData entries for debugging:');
+      for (const [key, value] of formData.entries()) {
+        const valueDisplay = value instanceof File 
+          ? `File: ${value.name} (${value.size} bytes)` 
+          : value;
+        console.log(`- ${key}: ${valueDisplay}`);
+      }
+    }
+    
+    try {
+      console.log(`Attempting to update company with ID: ${id} using companies-proxy`);
+      console.log(`Company data being sent:`, 
+        formData instanceof FormData 
+          ? "FormData object with files" 
+          : requestData
+      );
+      
+      // First attempt: Use the fixed path with companies-proxy
+      const result = await makeReliableRequest<Company>(`/${id}`, {
+        method: 'PUT',
+        data: requestData,
+        headers: authHeaders, // Auth headers are now correctly formatted
+        proxyPath: 'companies-proxy',
+        timeout: 30000, // Increase timeout for file uploads
+        retries: 2,     // Try multiple times
+      });
+      
+      console.log('Company updated successfully:', result);
+      return result;
+    } catch (error1) {
+      diagnoseApiError(error1, 'First update attempt (companies-proxy)');
+      // Diagnose the error for better troubleshooting
+      diagnoseApiError(error1, 'updateCompany - attempt 1');
+      
+      // Second attempt: Try the direct-company-api path
+      console.log(`Updating company with ID: ${id} - attempt 2`);
+      try {
+        console.log(`Attempting to update company with ID: ${id} using direct-company-api`);
+        const result2 = await makeReliableRequest<Company>(`${id}`, {
+          method: 'PUT',
+          data: requestData,
+          headers: authHeaders,
+          proxyPath: 'direct-company-api',
+          timeout: 30000, // Increase timeout for file uploads
+          retries: 2,     // Try multiple times
+        });
+        
+        console.log('Company updated successfully (attempt 2):', result2);
+        return result2;
+      } catch (error2) {
+        console.error('Second update attempt failed:', error2);
+        // Diagnose the error for better troubleshooting
+        diagnoseApiError(error2, 'updateCompany - attempt 2');
+        throw error2;
+      }
+    }
+  } catch (error) {
+    console.error('All company update methods failed', error);
+    // Diagnose the error for better troubleshooting
+    diagnoseApiError(error, 'updateCompany');
+    throw error; // Re-throw to let the component handle the error
+  }
+}

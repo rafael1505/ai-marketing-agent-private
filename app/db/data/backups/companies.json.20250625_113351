@@ -1,0 +1,36 @@
+{
+  "2": {
+    "_id": "test_company",
+    "name": "Test Company",
+    "description": "Updated by verify script at 20250613140719",
+    "email": "contact@testcompany.com",
+    "phone": "+1 (555) 123-4567",
+    "address": "123 Test Street, Test City, TC 12345",
+    "active": true,
+    "created_at": "2025-06-13T17:41:37.504073",
+    "updated_at": "2025-06-24T16:44:01.596529",
+    "brand_colors": [
+      "#FF0000",
+      "#00FF00",
+      "#0000FF"
+    ],
+    "logo_url": "/uploads/default_logo.png",
+    "id": "test_company"
+  },
+  "test_company": {
+    "_id": "test_company",
+    "name": "Test Company",
+    "description": "This is a test company for development",
+    "email": "contact@testcompany.com",
+    "phone": "+1 (555) 123-4567",
+    "address": "123 Test Street, Test City, TC 12345",
+    "brand_colors": [
+      "#FF0000",
+      "#00FF00",
+      "#0000FF"
+    ],
+    "active": true,
+    "created_at": "2025-06-25T14:33:51.834390",
+    "updated_at": "2025-06-25T14:33:51.834391"
+  }
+}

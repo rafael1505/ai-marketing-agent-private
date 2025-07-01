@@ -1,0 +1,49 @@
+/* 
+ * Direct CSS Styling
+ * This is a CSS file that will be imported directly in components to ensure styling is properly applied
+ * It's using standard CSS instead of relying on CSS modules or Tailwind processing
+ */
+
+/* Modern Card Hover Effects */
+.directHoverCard {
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease !important;
+}
+
+.directHoverCard:hover {
+  transform: translateY(-4px) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.03) !important;
+  border-color: #3B82F6 !important;
+}
+
+/* Modern Button Effects */
+.directBtnScale {
+  transition: transform 0.15s ease !important;
+}
+
+.directBtnScale:hover {
+  transform: scale(1.03) !important;
+}
+
+.directBtnScale:active {
+  transform: scale(0.98) !important;
+}
+
+/* Gradient text */
+.directGradientText {
+  background: linear-gradient(90deg, #3B82F6, #C026D3) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+  color: transparent !important;
+}
+
+/* Fade In Animation */
+.directFadeIn {
+  opacity: 0;
+  animation: directFadeInAnimation 0.5s forwards;
+}
+
+@keyframes directFadeInAnimation {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

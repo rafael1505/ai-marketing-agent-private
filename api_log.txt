@@ -1,0 +1,112 @@
+nohup: ignoring input
+INFO:     Will watch for changes in these directories: ['/mnt/c/Users/brc07274/OneDrive - Philips/Philips Files/BU - CI/Repository/AI Marketing Agent (Python)/ai-marketing-agent']
+INFO:     Uvicorn running on http://127.0.0.1:8088 (Press CTRL+C to quit)
+INFO:     Started reloader process [1949529] using StatReload
+INFO:root:CORS origins: ['http://localhost:3001', 'http://frontend:3001', 'http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001']
+INFO:root:Database persistence patch has been applied
+INFO:     Started server process [1949540]
+INFO:     Waiting for application startup.
+INFO:root:Using simple mock database for development
+INFO:root:Test user found: {'name': 'Test User', 'full_name': 'Test User', 'email': 'test@example.com', 'hashed_password': '$2b$12$KEM/.wsdaeBqeOSyN8gVAubF.uyCe21l4cF5zdTCLlYtsMkpVd8Be', 'active': True, 'is_admin': True, 'company_id': 'test_company', 'created_at': datetime.datetime(2025, 6, 24, 11, 7, 44, 557311), 'updated_at': datetime.datetime(2025, 6, 24, 11, 7, 44, 557312), '_id': 1, 'id': '1'}
+INFO:root:Test user created successfully: test@example.com
+INFO:root:Database loaded with 2 companies
+INFO:root:Found company: Test Company, ID: 2, active: True, brand_colors: ['#FF0000', '#00FF00', '#0000FF', '#20250613140719']
+INFO:root:Found company: Test Company, ID: test_company, active: False, brand_colors: []
+INFO:root:Found 2 existing companies - skipping test company creation
+INFO:     Application startup complete.
+[DB Persistence] Applying database persistence patch...
+[DB Persistence] Database persistence patch applied successfully
+[DB Persistence] Applying database persistence patch...
+[DB Persistence] Database persistence patch applied successfully
+[DB Persistence] Loaded company data from /mnt/c/Users/brc07274/OneDrive - Philips/Philips Files/BU - CI/Repository/AI Marketing Agent (Python)/ai-marketing-agent/app/db/data/companies.json
+[DB Persistence] Found 2 companies
+[DB Persistence] Loaded company data from /mnt/c/Users/brc07274/OneDrive - Philips/Philips Files/BU - CI/Repository/AI Marketing Agent (Python)/ai-marketing-agent/app/db/data/companies.json
+[DB Persistence] Found 2 companies
+INFO:     127.0.0.1:56204 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56204 - "GET /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:37034 - "GET /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:app.core.formdata_array_fix:FormData middleware processing request with content-type: application/x-www-form-urlencoded
+INFO:app.core.formdata_array_fix:Parsing FormData arrays manually
+INFO:app.core.formdata_array_fix:Form fields: ['username', 'password']
+INFO:app.core.formdata_array_fix:FormData arrays parsing complete. Result: {'username': 'test@example.com', 'password': 'testpassword'}
+INFO:app.core.formdata_array_fix:FormData middleware processed fields: ['username', 'password']
+INFO:     127.0.0.1:56326 - "GET /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59052 - "GET /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57222 - "GET /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51140 - "GET /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:44458 - "GET /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'app/api/v1/auth.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for connections to close. (CTRL+C to force quit)
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1949540]
+INFO:root:CORS origins: ['http://localhost:3001', 'http://frontend:3001', 'http://localhost:3000', 'http://localhost:3001', 'http://127.0.0.1:3000', 'http://127.0.0.1:3001']
+INFO:root:Database persistence patch has been applied
+INFO:     Started server process [1962704]
+INFO:     Waiting for application startup.
+INFO:root:Using simple mock database for development
+INFO:root:Test user found: {'name': 'Test User', 'full_name': 'Test User', 'email': 'test@example.com', 'hashed_password': '$2b$12$KEM/.wsdaeBqeOSyN8gVAubF.uyCe21l4cF5zdTCLlYtsMkpVd8Be', 'active': True, 'is_admin': True, 'company_id': 'test_company', 'created_at': datetime.datetime(2025, 6, 24, 11, 52, 41, 136737), 'updated_at': datetime.datetime(2025, 6, 24, 11, 52, 41, 136738), '_id': 1, 'id': '1'}
+INFO:root:Test user created successfully: test@example.com
+INFO:root:Database loaded with 2 companies
+INFO:root:Found company: Test Company, ID: 2, active: True, brand_colors: ['#FF0000', '#00FF00', '#0000FF', '#20250613140719']
+INFO:root:Found company: Test Company, ID: test_company, active: False, brand_colors: []
+INFO:root:Found 2 existing companies - skipping test company creation
+INFO:     Application startup complete.
+[DB Persistence] Applying database persistence patch...
+[DB Persistence] Database persistence patch applied successfully
+[DB Persistence] Applying database persistence patch...
+[DB Persistence] Database persistence patch applied successfully
+[DB Persistence] Loaded company data from /mnt/c/Users/brc07274/OneDrive - Philips/Philips Files/BU - CI/Repository/AI Marketing Agent (Python)/ai-marketing-agent/app/db/data/companies.json
+[DB Persistence] Found 2 companies
+[DB Persistence] Loaded company data from /mnt/c/Users/brc07274/OneDrive - Philips/Philips Files/BU - CI/Repository/AI Marketing Agent (Python)/ai-marketing-agent/app/db/data/companies.json
+[DB Persistence] Found 2 companies
+INFO:     127.0.0.1:59246 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46838 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40378 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34750 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41546 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41188 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59246 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46838 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40378 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34750 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41546 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41188 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46838 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59246 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40378 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41546 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34750 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41188 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40378 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59246 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46838 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41546 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34750 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41188 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46838 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40378 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59246 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34750 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41546 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:41188 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:46838 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:40378 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59246 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:34750 - "OPTIONS /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:36218 - "GET /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60720 - "GET /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:app.core.formdata_array_fix:FormData middleware processing request with content-type: application/x-www-form-urlencoded
+INFO:app.core.formdata_array_fix:Parsing FormData arrays manually
+INFO:app.core.formdata_array_fix:Form fields: ['username', 'password']
+INFO:app.core.formdata_array_fix:FormData arrays parsing complete. Result: {'username': 'test@example.com', 'password': 'testpassword'}
+INFO:app.core.formdata_array_fix:FormData middleware processed fields: ['username', 'password']
+INFO:     127.0.0.1:43336 - "GET /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+INFO:     127.0.0.1:48640 - "GET /api/v1/diagnostic/ping HTTP/1.1" 200 OK
+WARNING:  StatReload detected changes in 'fix_auth_debug.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for connections to close. (CTRL+C to force quit)
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [1962704]

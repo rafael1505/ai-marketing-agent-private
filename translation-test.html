@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings Page Translation Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .test-result { 
+            padding: 10px; 
+            margin: 10px 0; 
+            border-radius: 5px; 
+        }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; }
+        .translation-test { background: #f8f9fa; padding: 15px; margin: 10px 0; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Settings Page Translation Test</h1>
+    
+    <div id="results"></div>
+    
+    <div class="translation-test">
+        <h3>Translation Access Test</h3>
+        <p>This simulates the error that was occurring on the settings page:</p>
+        <button onclick="simulateTranslationError()">Simulate Translation Error</button>
+        <button onclick="simulateTranslationSafe()">Simulate Safe Translation Access</button>
+    </div>
+
+    <button onclick="testApiAndTranslations()">Test API + Translations</button>
+    <button onclick="clearResults()">Clear Results</button>
+
+    <script>
+        const API_BASE = 'http://localhost:8088/api/v1';
+        const resultsDiv = document.getElementById('results');
+
+        function addResult(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `test-result ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+            resultsDiv.appendChild(div);
+            resultsDiv.scrollTop = resultsDiv.scrollHeight;
+        }
+
+        function clearResults() {
+            resultsDiv.innerHTML = '';
+        }
+
+        // Simulate the original problematic translation access
+        function simulateTranslationError() {
+            addResult('Simulating original problematic code...', 'info');
+            
+            try {
+                // This simulates: setError(t.errors.server_error);
+                let t = {}; // Empty translations object
+                let errorMessage = t.errors.server_error; // This would cause: Cannot read properties of undefined (reading 'server_error')
+                addResult(`❌ This would cause the error: ${errorMessage}`, 'error');
+            } catch (error) {
+                addResult(`❌ Caught translation error: ${error.message}`, 'error');
+                addResult('This is the exact error that was happening on the settings page!', 'error');
+            }
+        }
+
+        // Simulate the fixed safe translation access
+        function simulateTranslationSafe() {
+            addResult('Simulating fixed safe translation access...', 'info');
+            
+            try {
+                // This simulates the fixed code
+                let t = {}; // Empty translations object
+                let errorMessage = (t.errors && t.errors.server_error) 
+                    ? t.errors.server_error 
+                    : "Server error. Please try again later.";
+                
+                addResult(`✅ Safe access works: "${errorMessage}"`, 'success');
+                addResult('The fallback message is used when translations are not loaded', 'success');
+                
+                // Now test with loaded translations
+                t = {
+                    errors: {
+                        server_error: "Translation loaded: Server error occurred"
+                    }
+                };
+                
+                errorMessage = (t.errors && t.errors.server_error) 
+                    ? t.errors.server_error 
+                    : "Server error. Please try again later.";
+                
+                addResult(`✅ With translations loaded: "${errorMessage}"`, 'success');
+            } catch (error) {
+                addResult(`❌ Unexpected error: ${error.message}`, 'error');
+            }
+        }
+
+        async function testApiAndTranslations() {
+            addResult('Testing combined API and translation behavior...', 'info');
+            
+            // Test 1: API connectivity
+            try {
+                const response = await fetch(`${API_BASE}/companies/active`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    addResult(`✅ API Connection: Working (${response.status})`, 'success');
+                    
+                    // Simulate how the frontend would handle this
+                    addResult('✅ Company data received, would populate UI', 'success');
+                } else {
+                    addResult(`⚠️ API Error: ${response.status} - ${data.detail}`, 'error');
+                }
+            } catch (error) {
+                addResult(`❌ API Connection Failed: ${error.message}`, 'error');
+                
+                // Simulate error handling with safe translations
+                let t = { errors: { server_error: "Connection error occurred" } };
+                let errorMessage = (t.errors && t.errors.server_error) 
+                    ? t.errors.server_error 
+                    : "Connection error. Please try again.";
+                
+                addResult(`✅ Error handled safely: "${errorMessage}"`, 'success');
+            }
+        }
+
+        // Auto-run basic test on page load
+        window.onload = function() {
+            addResult('Translation test page loaded.', 'info');
+            addResult('The settings page was failing because it tried to access t.errors.server_error before translations were loaded.', 'info');
+            addResult('Our fix adds safety checks: (t.errors && t.errors.server_error) ? t.errors.server_error : "fallback"', 'success');
+        };
+    </script>
+</body>
+</html>

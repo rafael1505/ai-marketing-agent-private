@@ -1,0 +1,51 @@
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import "./custom-styles.css";
+
+const inter = Inter({
+  variable: "--font-inter",
+  subsets: ["latin"],
+});
+
+export const metadata: Metadata = {
+  title: "AI Marketing Agent",
+  description: "Generate marketing materials with AI assistance",
+  keywords: ["AI", "Marketing", "Content Generation", "Automation"],
+  authors: [{ name: "AI Marketing Team" }],
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 5,
+  },
+  themeColor: "#3B82F6", // Primary color in hex
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/apple-icon.png",
+  },
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en" className="scroll-smooth">
+      <head>
+        <meta charSet="utf-8" />
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="msapplication-tap-highlight" content="no" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+      </head>
+      <body
+        className={`${inter.variable} antialiased`}
+      >
+        <a href="#main-content" className="skip-to-content">Skip to content</a>
+        {children}
+      </body>
+    </html>
+  );
+}

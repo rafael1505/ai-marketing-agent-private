@@ -1,0 +1,147 @@
+{
+  "app": {
+    "title": "Agente de Marketing com IA",
+    "description": "Gere materiais de marketing com IA"
+  },  "nav": {
+    "dashboard": "Painel",
+    "materials": "Materiais",
+    "settings": "Configurações",
+    "logout": "Sair"
+  },
+  "user_menu": {
+    "profile": "Meu Perfil",
+    "account_settings": "Configurações da Conta",
+    "preferences": "Preferências",
+    "help_support": "Ajuda e Suporte",
+    "logout": "Sair"
+  },
+  "login": {
+    "title": "Entrar",
+    "email": "Email",
+    "password": "Senha",
+    "button": "Entrar",
+    "error": "Email ou senha inválidos"
+  },
+  "materials": {
+    "create": "Criar Material",
+    "empty": "Nenhum material encontrado",
+    "title": "Título",
+    "description": "Descrição",
+    "stage": "Estágio",
+    "status": "Status",
+    "created": "Criado em",
+    "actions": "Ações",
+    "view": "Visualizar",
+    "edit": "Editar",
+    "delete": "Excluir",
+    "stages": {
+      "idea": "Ideia",
+      "refinement": "Refinamento",
+      "finalization": "Finalização"
+    },
+    "status": {
+      "draft": "Rascunho",
+      "in_progress": "Em Progresso",
+      "ready_for_review": "Pronto para Revisão",
+      "completed": "Concluído",
+      "archived": "Arquivado"
+    }
+  },
+  "material": {
+    "details": "Detalhes do Material",
+    "target_audience": "Público-alvo",
+    "campaign_objective": "Objetivo da Campanha",
+    "keywords": "Palavras-chave",
+    "generated_images": "Imagens Geradas",
+    "feedback": "Feedback",
+    "add_feedback": "Adicionar Feedback",
+    "submit_feedback": "Enviar",
+    "no_images": "Nenhuma imagem gerada ainda",
+    "select_image": "Selecionar Imagem",
+    "selected_image": "Imagem Selecionada",
+    "update_stage": "Atualizar Estágio",
+    "next_stage": "Próximo Estágio"
+  },
+  "creation": {
+    "title": "Criar Material de Marketing",
+    "idea": {
+      "title": "Geração de Ideia",
+      "description": "Comece definindo o conceito central do seu material de marketing",
+      "form": {
+        "title": "Título",
+        "title_placeholder": "Digite um título para seu material de marketing",
+        "description": "Descrição",
+        "description_placeholder": "Descreva seu material de marketing",
+        "target_audience": "Público-alvo",
+        "target_audience_placeholder": "Para quem este material é direcionado?",
+        "campaign_objective": "Objetivo da Campanha",
+        "campaign_objective_placeholder": "Qual é o objetivo desta campanha?",
+        "keywords": "Palavras-chave",
+        "keywords_placeholder": "Digite palavras-chave separadas por vírgulas",
+        "submit": "Prosseguir para Refinamento"
+      }
+    },
+    "refinement": {
+      "title": "Refinamento de Conteúdo",
+      "description": "Gere e refine o conteúdo visual",
+      "form": {
+        "prompt": "Prompt de Geração",
+        "prompt_placeholder": "Descreva a imagem que você deseja gerar",
+        "ai_provider": "Provedor de IA",
+        "generate": "Gerar Imagem",
+        "generating": "Gerando...",
+        "submit": "Prosseguir para Finalização"
+      }
+    },
+    "finalization": {
+      "title": "Finalização",
+      "description": "Selecione a imagem final e complete seu material",
+      "form": {
+        "select_image": "Selecionar Imagem Final",
+        "feedback": "Feedback Final",
+        "feedback_placeholder": "Quaisquer notas ou feedback final",
+        "submit": "Finalizar Material"
+      }
+    }
+  },
+  "settings": {
+    "title": "Configurações",
+    "company": {
+      "title": "Configurações da Empresa",
+      "name": "Nome da Empresa",
+      "description": "Descrição da Empresa",
+      "logo": "Logo da Empresa",
+      "brand_colors": "Cores da Marca",
+      "save": "Salvar Alterações"
+    },    "ai_providers": {
+      "title": "Provedores de IA",
+      "add": "Adicionar Provedor",
+      "name": "Nome do Provedor",
+      "api_key": "Chave API",
+      "save": "Salvar Provedor"
+    },
+    "api_diagnostics": {
+      "title": "Diagnóstico da API",
+      "status": "Status da API",
+      "connection_details": "Detalhes da Conexão",
+      "fix_connection": "Corrigir Conexão"
+    }
+  },
+  "errors": {
+    "required": "Este campo é obrigatório",
+    "email": "Endereço de email inválido",
+    "min_length": "Deve ter pelo menos {{min}} caracteres",
+    "max_length": "Deve ter no máximo {{max}} caracteres",
+    "server_error": "Erro no servidor. Por favor, tente novamente mais tarde."
+  },
+  "common": {
+    "loading": "Carregando...",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "submit": "Enviar",
+    "delete": "Excluir",
+    "confirm": "Confirmar",
+    "back": "Voltar",
+    "next": "Próximo"
+  }
+}

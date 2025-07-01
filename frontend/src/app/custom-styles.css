@@ -1,0 +1,233 @@
+html, body {
+  scroll-behavior: smooth;
+}
+
+/* Modern Card Hover Effects */
+.hover-card {
+  transition: transform var(--transition-medium), box-shadow var(--transition-medium), border-color var(--transition-medium);
+}
+
+.hover-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--card-shadow);
+  border-color: hsl(var(--primary));
+}
+
+/* Modern Button Effects */
+.btn-scale {
+  transition: transform var(--transition-fast);
+}
+
+.btn-scale:hover {
+  transform: scale(1.03);
+}
+
+.btn-scale:active {
+  transform: scale(0.98);
+}
+
+/* Fade In Animation */
+.fade-in {
+  opacity: 0;
+  animation: fadeIn var(--transition-medium) forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Staggered fade-in for children */
+.stagger-fade-in > * {
+  opacity: 0;
+  transform: translateY(10px);
+  animation: fadeIn var(--transition-medium) forwards;
+}
+
+.stagger-fade-in > *:nth-child(1) { animation-delay: 0.1s; }
+.stagger-fade-in > *:nth-child(2) { animation-delay: 0.2s; }
+.stagger-fade-in > *:nth-child(3) { animation-delay: 0.3s; }
+.stagger-fade-in > *:nth-child(4) { animation-delay: 0.4s; }
+.stagger-fade-in > *:nth-child(5) { animation-delay: 0.5s; }
+.stagger-fade-in > *:nth-child(6) { animation-delay: 0.6s; }
+
+/* Spinner with improved styling */
+.spinner {
+  border: 3px solid rgba(0, 0, 0, 0.05);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border-top-color: hsl(var(--primary));
+  animation: spin 0.8s ease-in-out infinite;
+}
+
+/* Small spinner for inline usage */
+.spinner-sm {
+  border: 2px solid rgba(0, 0, 0, 0.05);
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border-top-color: hsl(var(--primary));
+  animation: spin 0.8s ease-in-out infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Page transitions */
+.page-transition-enter {
+  opacity: 0;
+  transform: translateY(8px);
+}
+
+.page-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity var(--transition-medium), transform var(--transition-medium);
+}
+
+.page-transition-exit {
+  opacity: 1;
+}
+
+.page-transition-exit-active {
+  opacity: 0;
+  transition: opacity var(--transition-medium);
+}
+
+/* Material stages */
+.material-stage-idea {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.material-stage-refinement {
+  background-color: #f3e8ff;
+  color: #6b21a8;
+}
+
+.material-stage-finalization {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+/* Material statuses */
+.material-status-draft {
+  background-color: #f1f5f9;
+  color: #334155;
+}
+
+.material-status-in-progress {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.material-status-ready-for-review {
+  background-color: #fef9c3;
+  color: #854d0e;
+}
+
+.material-status-completed {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.material-status-archived {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
+
+/* Pulse animation for notification dots */
+.pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+/* Responsive improvements */
+@media (max-width: 640px) {
+  .sm-stack {
+    flex-direction: column;
+  }
+  
+  .sm-full {
+    width: 100%;
+  }
+  
+  .sm-center {
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  
+  .sm-my-2 > * {
+    margin-top: 0.5rem;
+    margin-bottom: 0.5rem;
+  }
+  
+  .sm-hidden {
+    display: none;
+  }
+}
+
+/* Skip to content for accessibility */
+.skip-to-content {
+  position: absolute;
+  top: -100px;
+  left: 0;
+  background: hsl(var(--primary));
+  color: white;
+  padding: 8px;
+  z-index: 100;
+  transition: top 0.3s;
+}
+
+.skip-to-content:focus {
+  top: 0;
+}
+
+/* Shimmer loading effect */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.2) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}

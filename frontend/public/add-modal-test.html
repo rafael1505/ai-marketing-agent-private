@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Providers Add Modal Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f0f8ff; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .test-step { margin: 20px 0; padding: 15px; background: #f8f9fa; border-left: 4px solid #007bff; }
+        .success { background: #d4edda; border-color: #28a745; }
+        .warning { background: #fff3cd; border-color: #ffc107; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        .feature-list { background: #f8f9fa; padding: 15px; border-radius: 4px; margin: 10px 0; }
+        .feature-list h4 { margin-top: 0; color: #007bff; }
+        .feature-list ul { margin: 0; }
+        .feature-list li { margin: 5px 0; }
+        .test-result { padding: 10px; border-radius: 4px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 AI Providers Add Modal Test</h1>
+        <p>This page helps you test the new "Add Provider" modal functionality.</p>
+        
+        <div class="feature-list">
+            <h4>✨ New Features Implemented:</h4>
+            <ul>
+                <li><strong>Professional Add Icon:</strong> A clean "+" SVG icon is now in the top right of the AI Providers card header</li>
+                <li><strong>Centered Modal Dialog:</strong> Clicking the icon opens a modal dialog that appears in the center of your screen (no scrolling needed)</li>
+                <li><strong>Click Outside to Close:</strong> You can close the modal by clicking outside of it or using the X button</li>
+                <li><strong>No More Bottom Form:</strong> The old form at the bottom of the provider list has been removed</li>
+                <li><strong>Responsive Design:</strong> Modal is responsive and works on different screen sizes</li>
+            </ul>
+        </div>
+        
+        <div class="test-step">
+            <h3>Step 1: Clear Cache & Navigate to Settings</h3>
+            <p>First, clear your browser cache and navigate to the settings page:</p>
+            <button onclick="clearCache()">Clear Cache</button>
+            <a href="/en/settings" target="_blank">
+                <button>Open Settings Page</button>
+            </a>
+            <div id="cacheResult"></div>
+        </div>
+        
+        <div class="test-step">
+            <h3>Step 2: Check AI Providers Section</h3>
+            <p><strong>What to look for:</strong></p>
+            <ul>
+                <li>In the AI Providers card header, you should see a professional "+" icon (SVG) on the right side</li>
+                <li>The icon should have a clean, modern look that fits with the overall design</li>
+                <li>The old "Add Provider" form at the bottom should be completely gone</li>
+                <li>If no providers are shown, the message should say "Click the settings icon above..."</li>
+            </ul>
+        </div>
+        
+        <div class="test-step">
+            <h3>Step 3: Test the Add Provider Modal</h3>
+            <p><strong>Click the "+" icon and verify:</strong></p>
+            <ul>
+                <li>A modal dialog opens centered on your screen (no need to scroll)</li>
+                <li>The modal appears with the title "Add Provider"</li>
+                <li>The modal has fields for Provider Name, Provider ID, and API Key (optional)</li>
+                <li>The modal has Cancel and Add Provider buttons</li>
+                <li>Clicking Cancel or the X button closes the modal</li>
+                <li>Clicking outside the modal also closes it</li>
+                <li>The modal is fully visible without any scrolling needed</li>
+            </ul>
+        </div>
+        
+        <div class="test-step">
+            <h3>Step 4: Test Modal Interaction</h3>
+            <p><strong>Expected behavior:</strong></p>
+            <ul>
+                <li>Modal should close when clicking Cancel or the X button</li>
+                <li>Modal should close when clicking outside the modal (if implemented)</li>
+                <li>Form validation should work (Name and ID are required)</li>
+                <li>Successfully adding a provider should close the modal and open the provider configuration dialog</li>
+            </ul>
+        </div>
+        
+        <div class="test-step success">
+            <h3>Step 5: Verify Complete Workflow</h3>
+            <p><strong>End-to-end test:</strong></p>
+            <ol>
+                <li>Click the "+" button in the AI Providers header</li>
+                <li>Fill in a test provider (Name: "Test Provider", ID: "test-provider")</li>
+                <li>Click "Add Provider"</li>
+                <li>Verify the provider configuration dialog opens</li>
+                <li>Configure or cancel the provider</li>
+                <li>Verify the provider appears in the list (if configured)</li>
+            </ol>
+        </div>
+        
+        <div class="test-step warning">
+            <h3>📊 Test Results</h3>
+            <p>After testing, record your results:</p>
+            <div class="test-result" style="border: 1px solid #ddd;">
+                <h4>Test Results Checklist:</h4>
+                <label><input type="checkbox"> Professional "+" icon appears in AI Providers header</label><br>
+                <label><input type="checkbox"> Icon has clean, modern design that fits the UI</label><br>
+                <label><input type="checkbox"> Old bottom form is completely removed</label><br>
+                <label><input type="checkbox"> Clicking icon opens modal dialog</label><br>
+                <label><input type="checkbox"> Modal appears centered on screen (no scrolling needed)</label><br>
+                <label><input type="checkbox"> Modal has all required fields</label><br>
+                <label><input type="checkbox"> Modal Cancel and X buttons work</label><br>
+                <label><input type="checkbox"> Clicking outside modal closes it</label><br>
+                <label><input type="checkbox"> Modal form validation works</label><br>
+                <label><input type="checkbox"> Adding provider opens configuration dialog</label><br>
+                <label><input type="checkbox"> Overall UI/UX is significantly improved</label><br>
+            </div>
+        </div>
+        
+        <div class="test-step">
+            <h3>🚨 Troubleshooting</h3>
+            <p>If something doesn't work:</p>
+            <ul>
+                <li><strong>No "+" button:</strong> Clear cache completely and hard refresh (Ctrl+F5)</li>
+                <li><strong>Modal doesn't open:</strong> Check browser console for JavaScript errors</li>
+                <li><strong>Old form still shows:</strong> The frontend code may not have updated - clear cache again</li>
+                <li><strong>Modal styling issues:</strong> CSS may not be loading properly</li>
+            </ul>
+        </div>
+    </div>
+    
+    <script>
+        function clearCache() {
+            const resultDiv = document.getElementById('cacheResult');
+            
+            // Clear all localStorage
+            localStorage.clear();
+            
+            // Clear all sessionStorage  
+            sessionStorage.clear();
+            
+            // Also try to clear any potential caches
+            if ('caches' in window) {
+                caches.keys().then(names => {
+                    names.forEach(name => caches.delete(name));
+                });
+            }
+            
+            resultDiv.innerHTML = `
+                <div style="background: #d4edda; color: #155724; padding: 10px; border-radius: 4px; margin-top: 10px;">
+                    ✅ Cache cleared! Now navigate to the settings page to test the new modal.
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

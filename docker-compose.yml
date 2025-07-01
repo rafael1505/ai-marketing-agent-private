@@ -1,0 +1,39 @@
+services:
+  web:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGODB_URL=mongodb://mongo:27017
+      - MONGODB_DB=ai_marketing_agent
+      - SECRET_KEY=your_secret_key_here
+    command: ["/bin/bash", "/app/start.sh"]
+    volumes:
+      - ./start.sh:/app/start.sh
+    depends_on:
+      - mongo
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
+      - NEXT_TELEMETRY_DISABLED=1
+      - ESLINT_NO_DEV_ERRORS=true
+      - TYPESCRIPT_STRICT=false
+      - NODE_ENV=development
+      - NEXT_SHARP_PATH=/tmp/node_modules/sharp
+      - SKIP_INVALID_PERMISSIONS=true
+    depends_on:
+      - web
+  mongo:
+    image: mongo:4.4
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+volumes:
+  mongodb_data:

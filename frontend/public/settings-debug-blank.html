@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Settings Page Debug</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background: #f5f5f5; 
+        }
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: white; 
+            padding: 30px; 
+            border-radius: 8px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        button { 
+            padding: 12px 24px; 
+            background: #3b82f6; 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            margin: 10px 5px; 
+        }
+        button:hover { background: #2563eb; }
+        .status { 
+            padding: 15px; 
+            border-radius: 6px; 
+            margin: 15px 0; 
+            border: 1px solid;
+        }
+        .error { 
+            background: #fef2f2; 
+            color: #991b1b; 
+            border-color: #fecaca; 
+        }
+        .success { 
+            background: #f0fdf4; 
+            color: #166534; 
+            border-color: #bbf7d0; 
+        }
+        .info { 
+            background: #eff6ff; 
+            color: #1e40af; 
+            border-color: #bfdbfe; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚨 Settings Page Debug</h1>
+        
+        <div class="status error">
+            <strong>Issue:</strong> Settings page is loading blank
+        </div>
+        
+        <div class="status info">
+            <strong>Possible Causes:</strong>
+            <ul>
+                <li>JavaScript error in React components</li>
+                <li>Missing import or component dependency</li>
+                <li>Build cache issue</li>
+                <li>Frontend server not running properly</li>
+            </ul>
+        </div>
+        
+        <h3>🔧 Debug Steps</h3>
+        
+        <button onclick="checkFrontend()">1. Check Frontend Status</button>
+        <div id="frontendStatus"></div>
+        
+        <button onclick="clearCacheAndRetry()">2. Clear Cache & Retry</button>
+        <div id="cacheStatus"></div>
+        
+        <button onclick="testBasicPages()">3. Test Basic Pages</button>
+        <div id="basicPagesStatus"></div>
+        
+        <button onclick="openDevTools()">4. Open Dev Tools</button>
+        <div id="devToolsInfo"></div>
+        
+        <h3>🔍 Manual Debug Steps</h3>
+        <div class="status info">
+            <ol>
+                <li><strong>Open Browser Dev Tools:</strong> Press F12</li>
+                <li><strong>Check Console Tab:</strong> Look for JavaScript errors</li>
+                <li><strong>Check Network Tab:</strong> See if files are loading</li>
+                <li><strong>Try Hard Refresh:</strong> Ctrl+F5 or Ctrl+Shift+R</li>
+                <li><strong>Check Application Tab:</strong> Clear localStorage/sessionStorage</li>
+            </ol>
+        </div>
+        
+        <div class="status info">
+            <strong>Quick Test Links:</strong><br>
+            <a href="/" target="_blank"><button>Home Page</button></a>
+            <a href="/en" target="_blank"><button>EN Home</button></a>
+            <a href="/en/settings" target="_blank"><button>Settings Page</button></a>
+            <a href="/modal-verification.html" target="_blank"><button>Modal Test</button></a>
+        </div>
+    </div>
+    
+    <script>
+        async function checkFrontend() {
+            const status = document.getElementById('frontendStatus');
+            status.innerHTML = 'Checking frontend...';
+            
+            try {
+                const response = await fetch('/');
+                if (response.ok) {
+                    status.innerHTML = '<div class="status success">✅ Frontend is running</div>';
+                } else {
+                    status.innerHTML = '<div class="status error">❌ Frontend returned error: ' + response.status + '</div>';
+                }
+            } catch (error) {
+                status.innerHTML = '<div class="status error">❌ Frontend not accessible: ' + error.message + '</div>';
+            }
+        }
+        
+        function clearCacheAndRetry() {
+            const status = document.getElementById('cacheStatus');
+            
+            // Clear all caches
+            localStorage.clear();
+            sessionStorage.clear();
+            
+            if ('caches' in window) {
+                caches.keys().then(names => {
+                    names.forEach(name => caches.delete(name));
+                });
+            }
+            
+            status.innerHTML = '<div class="status success">✅ Cache cleared! Now try opening settings page again.</div>';
+        }
+        
+        async function testBasicPages() {
+            const status = document.getElementById('basicPagesStatus');
+            status.innerHTML = 'Testing pages...';
+            
+            const pages = ['/', '/en', '/modal-verification.html'];
+            let results = '';
+            
+            for (const page of pages) {
+                try {
+                    const response = await fetch(page);
+                    if (response.ok) {
+                        results += `✅ ${page} - OK<br>`;
+                    } else {
+                        results += `❌ ${page} - Error ${response.status}<br>`;
+                    }
+                } catch (error) {
+                    results += `❌ ${page} - ${error.message}<br>`;
+                }
+            }
+            
+            status.innerHTML = `<div class="status info">${results}</div>`;
+        }
+        
+        function openDevTools() {
+            const info = document.getElementById('devToolsInfo');
+            info.innerHTML = `
+                <div class="status info">
+                    <strong>Press F12 to open Developer Tools, then:</strong><br>
+                    1. Go to Console tab<br>
+                    2. Look for red error messages<br>
+                    3. Try opening /en/settings in a new tab<br>
+                    4. Watch for any errors that appear<br>
+                    <br>
+                    <strong>Common errors to look for:</strong><br>
+                    - "Cannot read property of undefined"<br>
+                    - "Module not found"<br>
+                    - "Unexpected token"<br>
+                    - Network errors (failed to load files)
+                </div>
+            `;
+        }
+        
+        // Auto-run frontend check on load
+        window.onload = function() {
+            checkFrontend();
+        }
+    </script>
+</body>
+</html>

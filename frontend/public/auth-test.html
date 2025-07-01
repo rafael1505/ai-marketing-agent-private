@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>API Authentication Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    button {
+      padding: 8px 16px;
+      margin: 10px 0;
+      cursor: pointer;
+    }
+    pre {
+      background-color: #f5f5f5;
+      padding: 15px;
+      border-radius: 5px;
+      overflow: auto;
+      max-height: 400px;
+    }
+    .error {
+      color: red;
+    }
+    .success {
+      color: green;
+    }
+    .panel {
+      margin-bottom: 20px;
+      border: 1px solid #ddd;
+      padding: 15px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>API Authentication Test</h1>
+  
+  <div class="panel">
+    <h2>Current Authentication Status</h2>
+    <div>
+      <strong>Token exists:</strong> <span id="token-exists">Checking...</span>
+    </div>
+    <div>
+      <strong>Token preview:</strong> <span id="token-preview">Checking...</span>
+    </div>
+    <button id="check-token">Check Token</button>
+    <button id="clear-token">Clear Token</button>
+  </div>
+  
+  <div class="panel">
+    <h2>Test API Authentication</h2>
+    <button id="test-api">Test API Auth</button>
+    <button id="test-company-api">Test Company API</button>
+    <button id="test-formdata">Test FormData Auth</button>
+    <div id="test-result">
+      <p>Click "Test API Auth" to check authentication.</p>
+    </div>
+  </div>
+  
+  <div class="panel">
+    <h2>Login (Generate Test Token)</h2>
+    <button id="login-test">Generate Test Token</button>
+    <button id="login-real">Try Real Login</button>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Check token status initially
+      checkToken();
+      
+      // Set up event listeners
+      document.getElementById('check-token').addEventListener('click', checkToken);
+      document.getElementById('clear-token').addEventListener('click', clearToken);
+      document.getElementById('test-api').addEventListener('click', testApi);
+      document.getElementById('test-company-api').addEventListener('click', testCompanyApi);
+      document.getElementById('test-formdata').addEventListener('click', testFormData);
+      document.getElementById('login-test').addEventListener('click', generateTestToken);
+      document.getElementById('login-real').addEventListener('click', tryRealLogin);
+    });
+    
+    function checkToken() {
+      const token = localStorage.getItem('token');
+      const tokenExists = document.getElementById('token-exists');
+      const tokenPreview = document.getElementById('token-preview');
+      
+      if (token) {
+        tokenExists.textContent = 'Yes';
+        tokenExists.className = 'success';
+        tokenPreview.textContent = `${token.substring(0, 20)}...`;
+      } else {
+        tokenExists.textContent = 'No';
+        tokenExists.className = 'error';
+        tokenPreview.textContent = 'N/A';
+      }
+    }
+    
+    function clearToken() {
+      localStorage.removeItem('token');
+      checkToken();
+      showResult('Token cleared successfully', 'success');
+    }
+    
+    async function testApi() {
+      const resultDiv = document.getElementById('test-result');
+      resultDiv.innerHTML = '<p>Testing API authentication...</p>';
+      
+      try {
+        const response = await fetch('/api/test-auth', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+        
+        const data = await response.json();
+        
+        let resultHtml = `<h3>Test Result:</h3>`;
+        resultHtml += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+        
+        if (data.status === 'success') {
+          resultDiv.innerHTML = `<div class="success">${resultHtml}</div>`;
+        } else {
+          resultDiv.innerHTML = `<div class="error">${resultHtml}</div>`;
+        }
+      } catch (error) {
+        resultDiv.innerHTML = `<div class="error">
+          <h3>Error:</h3>
+          <pre>${error.message}</pre>
+        </div>`;
+      }
+    }
+    
+    function generateTestToken() {
+      const testToken = "DEVELOPMENT_MOCK_TOKEN_FOR_TESTING_" + Date.now();
+      localStorage.setItem('token', testToken);
+      checkToken();
+      showResult('Test token generated and saved', 'success');
+    }
+    
+    function tryRealLogin() {
+      // Redirect to login page
+      window.location.href = '/login';
+    }
+    
+    async function testCompanyApi() {
+      const resultDiv = document.getElementById('test-result');
+      resultDiv.innerHTML = '<p>Testing Company API endpoints...</p>';
+      
+      try {
+        // Get token from localStorage
+        const token = localStorage.getItem('token');
+        if (!token) {
+          resultDiv.innerHTML = `<div class="error">
+            <h3>Error:</h3>
+            <pre>No authentication token found. Please generate a test token or login first.</pre>
+          </div>`;
+          return;
+        }
+        
+        // Test company API using multiple endpoints to diagnose problems
+        const endpoints = [
+          // Test company API through Next.js proxy
+          { url: '/companies-proxy/test_company', name: 'Next.js Proxy' },
+          // Test company API through direct API
+          { url: '/direct-company-api/test_company', name: 'Direct Company API' },
+          // Test company active endpoint
+          { url: '/companies-proxy/active', name: 'Active Company' }
+        ];
+        
+        let resultsHtml = '<h3>Company API Test Results:</h3>';
+        
+        for (const endpoint of endpoints) {
+          try {
+            resultsHtml += `<h4>Testing ${endpoint.name} (${endpoint.url})...</h4>`;
+            
+            const response = await fetch(endpoint.url, {
+              method: 'GET',
+              headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+              },
+            });
+            
+            const data = await response.json();
+            resultsHtml += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            
+            if (response.ok) {
+              resultsHtml += `<p class="success">✓ ${endpoint.name} test succeeded!</p>`;
+            } else {
+              resultsHtml += `<p class="error">✗ ${endpoint.name} test failed with status ${response.status}</p>`;
+            }
+          } catch (endpointError) {
+            resultsHtml += `<p class="error">✗ ${endpoint.name} test error: ${endpointError.message}</p>`;
+          }
+        }
+        
+        // Test form data submission (without actual file for simplicity)
+        resultsHtml += `<h4>Testing Form Data Submission (Simulated)...</h4>`;
+        const formData = new FormData();
+        formData.append('name', 'Test Company');
+        formData.append('description', 'Test Description');
+        formData.append('brand_colors[0]', '#3B82F6');
+        
+        try {
+          const formResponse = await fetch('/direct-company-api/test_company', {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              // Note: Deliberately NOT setting Content-Type for FormData
+            },
+            body: formData
+          });
+          
+          const formResponseData = await formResponse.json();
+          resultsHtml += `<pre>${JSON.stringify(formResponseData, null, 2)}</pre>`;
+          
+          if (formResponse.ok) {
+            resultsHtml += `<p class="success">✓ FormData submission test succeeded!</p>`;
+          } else {
+            resultsHtml += `<p class="error">✗ FormData submission test failed with status ${formResponse.status}</p>`;
+          }
+        } catch (formError) {
+          resultsHtml += `<p class="error">✗ FormData submission error: ${formError.message}</p>`;
+        }
+        
+        resultDiv.innerHTML = resultsHtml;
+      } catch (error) {
+        resultDiv.innerHTML = `<div class="error">
+          <h3>Error:</h3>
+          <pre>${error.message}</pre>
+        </div>`;
+      }
+    }
+    
+    async function testFormData() {
+      const resultDiv = document.getElementById('test-result');
+      resultDiv.innerHTML = '<p>Testing authentication with FormData upload...</p>';
+      
+      try {
+        // Get token from localStorage
+        const token = localStorage.getItem('token');
+        if (!token) {
+          resultDiv.innerHTML = `<div class="error">
+            <h3>Error:</h3>
+            <pre>No authentication token found. Please generate a test token or login first.</pre>
+          </div>`;
+          return;
+        }
+        
+        // Create a simple FormData object with test data and a small file
+        const formData = new FormData();
+        formData.append('name', 'Test Company From Auth Test');
+        formData.append('description', 'Created from auth-test.html');
+        formData.append('brand_colors[0]', '#FF5733');
+        
+        // Create a small test file as blob
+        const textBlob = new Blob(['Test file content from auth test'], { type: 'text/plain' });
+        const testFile = new File([textBlob], 'test-file.txt', { type: 'text/plain' });
+        formData.append('logo_file', testFile);
+        
+        // Test with our enhanced test endpoint
+        const testResult = await fetch('/api/test-auth', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            // Note: Deliberately NOT setting Content-Type for FormData
+          },
+          body: formData
+        });
+        
+        const testData = await testResult.json();
+        
+        let resultsHtml = `<h3>FormData Authentication Test Results:</h3>`;
+        resultsHtml += `<h4>Test Endpoint Response:</h4>`;
+        resultsHtml += `<pre>${JSON.stringify(testData, null, 2)}</pre>`;
+        
+        if (testResult.ok && testData.status < 400) {
+          resultsHtml += `<p class="success">✓ FormData authentication test succeeded!</p>`;
+          resultsHtml += `<p>Key findings:</p>`;
+          resultsHtml += `<ul>`;
+          resultsHtml += `<li>Auth header: ${testData.authHeader || 'missing'}</li>`;
+          resultsHtml += `<li>Content-Type: ${testData.contentType || 'not detected'}</li>`;
+          resultsHtml += `</ul>`;
+        } else {
+          resultsHtml += `<p class="error">✗ FormData authentication test failed with status ${testData.status || testResult.status}</p>`;
+          resultsHtml += `<p>Possible issues:</p>`;
+          resultsHtml += `<ul>`;
+          if (!testData.authHeader || testData.authHeader === 'missing') {
+            resultsHtml += `<li>Authentication header is missing</li>`;
+          }
+          if (testData.contentType && !testData.contentType.includes('multipart/form-data')) {
+            resultsHtml += `<li>Content-Type issue: ${testData.contentType} (should be multipart/form-data)</li>`;
+          }
+          resultsHtml += `</ul>`;
+        }
+        
+        // Now test direct with API
+        resultsHtml += `<h4>Direct API Test:</h4>`;
+        
+        // Create a new FormData for direct test
+        const directFormData = new FormData();
+        directFormData.append('name', 'Direct API Test');
+        directFormData.append('description', 'Tested directly against API');
+        directFormData.append('brand_colors[0]', '#3344FF');
+        
+        // Create another test file
+        const directBlob = new Blob(['Another test file'], { type: 'text/plain' });
+        const directFile = new File([directBlob], 'direct-test.txt', { type: 'text/plain' });
+        directFormData.append('logo_file', directFile);
+        
+        try {
+          const directResponse = await fetch('/direct-company-api/test_company', {
+            method: 'PUT',
+            headers: {
+              'Authorization': `Bearer ${token}`
+            },
+            body: directFormData
+          });
+          
+          const directData = await directResponse.json();
+          resultsHtml += `<pre>${JSON.stringify(directData, null, 2)}</pre>`;
+          
+          if (directResponse.ok) {
+            resultsHtml += `<p class="success">✓ Direct FormData submission succeeded!</p>`;
+          } else {
+            resultsHtml += `<p class="error">✗ Direct FormData submission failed with status ${directResponse.status}</p>`;
+          }
+        } catch (directError) {
+          resultsHtml += `<p class="error">✗ Direct FormData error: ${directError.message}</p>`;
+        }
+        
+        resultDiv.innerHTML = resultsHtml;
+      } catch (error) {
+        resultDiv.innerHTML = `<div class="error">
+          <h3>Error:</h3>
+          <pre>${error.message}</pre>
+        </div>`;
+      }
+    }
+
+    function showResult(message, type) {
+      const resultDiv = document.getElementById('test-result');
+      resultDiv.innerHTML = `<div class="${type}"><p>${message}</p></div>`;
+    }
+  </script>
+</body>
+</html>

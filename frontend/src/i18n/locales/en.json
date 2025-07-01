@@ -1,0 +1,154 @@
+{
+  "app": {
+    "title": "AI Marketing Agent",
+    "description": "Generate marketing materials with AI"
+  },  "nav": {
+    "dashboard": "Dashboard",
+    "materials": "Materials",
+    "settings": "Settings",
+    "logout": "Logout"
+  },
+  "user_menu": {
+    "profile": "My Profile",
+    "account_settings": "Account Settings", 
+    "preferences": "Preferences",
+    "help_support": "Help & Support",
+    "logout": "Logout"
+  },
+  "user_menu": {
+    "profile": "My Profile",
+    "account_settings": "Account Settings", 
+    "preferences": "Preferences",
+    "help_support": "Help & Support",
+    "logout": "Logout"
+  },
+  "login": {
+    "title": "Login",
+    "email": "Email",
+    "password": "Password",
+    "button": "Login",
+    "error": "Invalid email or password"
+  },
+  "materials": {
+    "create": "Create Material",
+    "empty": "No materials found",
+    "title": "Title",
+    "description": "Description",
+    "stage": "Stage",
+    "status": "Status",
+    "created": "Created",
+    "actions": "Actions",
+    "view": "View",
+    "edit": "Edit",
+    "delete": "Delete",
+    "stages": {
+      "idea": "Idea",
+      "refinement": "Refinement",
+      "finalization": "Finalization"
+    },
+    "status": {
+      "draft": "Draft",
+      "in_progress": "In Progress",
+      "ready_for_review": "Ready for Review",
+      "completed": "Completed",
+      "archived": "Archived"
+    }
+  },
+  "material": {
+    "details": "Material Details",
+    "target_audience": "Target Audience",
+    "campaign_objective": "Campaign Objective",
+    "keywords": "Keywords",
+    "generated_images": "Generated Images",
+    "feedback": "Feedback",
+    "add_feedback": "Add Feedback",
+    "submit_feedback": "Submit",
+    "no_images": "No images generated yet",
+    "select_image": "Select Image",
+    "selected_image": "Selected Image",
+    "update_stage": "Update Stage",
+    "next_stage": "Next Stage"
+  },
+  "creation": {
+    "title": "Create Marketing Material",
+    "idea": {
+      "title": "Idea Generation",
+      "description": "Start by defining your marketing material's core concept",
+      "form": {
+        "title": "Title",
+        "title_placeholder": "Enter a title for your marketing material",
+        "description": "Description",
+        "description_placeholder": "Describe your marketing material",
+        "target_audience": "Target Audience",
+        "target_audience_placeholder": "Who is this material targeted to?",
+        "campaign_objective": "Campaign Objective",
+        "campaign_objective_placeholder": "What is the goal of this campaign?",
+        "keywords": "Keywords",
+        "keywords_placeholder": "Enter keywords separated by commas",
+        "submit": "Proceed to Refinement"
+      }
+    },
+    "refinement": {
+      "title": "Content Refinement",
+      "description": "Generate and refine visual content",
+      "form": {
+        "prompt": "Generation Prompt",
+        "prompt_placeholder": "Describe the image you want to generate",
+        "ai_provider": "AI Provider",
+        "generate": "Generate Image",
+        "generating": "Generating...",
+        "submit": "Proceed to Finalization"
+      }
+    },
+    "finalization": {
+      "title": "Finalization",
+      "description": "Select the final image and complete your material",
+      "form": {
+        "select_image": "Select Final Image",
+        "feedback": "Final Feedback",
+        "feedback_placeholder": "Any final notes or feedback",
+        "submit": "Complete Material"
+      }
+    }
+  },  "settings": {
+    "title": "Settings",
+    "company": {
+      "title": "Company Settings",
+      "name": "Company Name",
+      "description": "Company Description",
+      "logo": "Company Logo",
+      "brand_colors": "Brand Colors",
+      "save": "Save Changes"
+    },
+    "ai_providers": {
+      "title": "AI Providers",
+      "add": "Add Provider",
+      "name": "Provider Name",
+      "api_key": "API Key",
+      "save": "Save Provider"
+    },
+    "api_diagnostics": {
+      "title": "API Diagnostics",
+      "status": "API Status",
+      "connection_details": "Connection Details",
+      "fix_connection": "Fix Connection"
+    }
+  },
+  "errors": {
+    "required": "This field is required",
+    "email": "Invalid email address",
+    "min_length": "Must be at least {{min}} characters",
+    "max_length": "Must be at most {{max}} characters",
+    "server_error": "Server error. Please try again later."
+  },
+  "common": {
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "submit": "Submit",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next"
+  }
+}

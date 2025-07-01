@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Connection Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+        h1 { color: #0070f3; }
+        h3 { margin-top: 24px; }
+        .card {
+            border: 1px solid #eaeaea;
+            border-radius: 5px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background-color: #f9f9f9;
+        }
+        .success { color: #16a34a; }
+        .error { color: #dc2626; }
+        .warning { color: #d97706; }
+        pre {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            overflow: auto;
+        }
+        button {
+            background-color: #0070f3;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 8px;
+            margin-right: 8px;
+        }
+        button:hover {
+            background-color: #0060df;
+        }
+        .results {
+            margin-top: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>API Connection Test Tool</h1>
+    
+    <div class="card">
+        <h3>⚠️ Important Port Configuration</h3>
+        <p><strong>The API server MUST run on port 8088</strong> for the frontend to work correctly.</p>
+        <p>If you're seeing connection errors, make sure the API server is running with:</p>
+        <pre>uvicorn app.main:app --host 127.0.0.1 --port 8088 --reload</pre>
+        
+        <h3>Current Configuration</h3>
+        <div id="configuration"></div>
+        
+        <div class="port-configuration">
+            <h4>Expected Configuration:</h4>
+            <ul>
+                <li><strong>NextJS Config:</strong> Port 8088 in next.config.js</li>
+                <li><strong>API Service:</strong> Port 8088 in services/api.ts</li>
+                <li><strong>API Server:</strong> Running on port 8088</li>
+            </ul>
+            <p>For detailed instructions, see: <a href="/PORT_CONFIGURATION.md" download>PORT_CONFIGURATION.md</a></p>
+        </div>
+        
+        <h3>Test API Connection</h3>
+        <button id="testApi">Test Base Connection</button>
+        <button id="testPort8088">Test Port 8088 (Required)</button>
+        <button id="testPort8089">Test Port 8089 (Incorrect)</button>
+        <button id="testCompanyApi">Test Company API</button>
+        <button id="testDirectCompanyApi">Test Direct Company API</button>
+        <button id="testFileUpload">Test File Upload</button>
+    </div>
+    
+    <div class="results" id="results"></div>
+    
+    <script>
+        // Display current configuration
+        document.getElementById('configuration').innerHTML = `
+            <p><strong>Browser URL:</strong> ${window.location.href}</p>
+            <p><strong>Next.js API routes:</strong> 
+                /companies-proxy/test_company, 
+                /direct-company-api/test_company, 
+                /api/v1/companies/active
+            </p>
+        `;
+        
+        // Function to add result
+        function addResult(title, content, isError = false) {
+            const resultsDiv = document.getElementById('results');
+            const resultCard = document.createElement('div');
+            resultCard.className = `card ${isError ? 'error' : 'success'}`;
+            resultCard.innerHTML = `
+                <h3>${title}</h3>
+                ${typeof content === 'string' ? content : `<pre>${JSON.stringify(content, null, 2)}</pre>`}
+            `;
+            resultsDiv.prepend(resultCard);
+        }
+        
+        // Base connection test
+        document.getElementById('testApi').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/v1/health');
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult('API Connection Success', data);
+                } else {
+                    const text = await response.text();
+                    addResult(`API Connection Failed (${response.status})`, text, true);
+                }
+            } catch (error) {
+                addResult('API Connection Error', `Error: ${error.message}`, true);
+            }
+        });
+        
+        // Company API test
+        document.getElementById('testCompanyApi').addEventListener('click', async () => {
+            try {
+                // Get token from localStorage
+                const token = localStorage.getItem('token');
+                const headers = {};
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+                
+                // Try company API through proxy
+                const response = await fetch('/companies-proxy/test_company', {
+                    headers
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult('Company API Success', data);
+                } else {
+                    const text = await response.text();
+                    addResult(`Company API Failed (${response.status})`, text, true);
+                }
+            } catch (error) {
+                addResult('Company API Error', `Error: ${error.message}`, true);
+            }
+        });
+        
+        // Direct Company API test
+        document.getElementById('testDirectCompanyApi').addEventListener('click', async () => {
+            try {
+                // Get token from localStorage
+                const token = localStorage.getItem('token');
+                const headers = {};
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+                
+                // Try direct company API
+                const response = await fetch('/direct-company-api/test_company', {
+                    headers
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult('Direct Company API Success', data);
+                } else {
+                    const text = await response.text();
+                    addResult(`Direct Company API Failed (${response.status})`, text, true);
+                }
+            } catch (error) {
+                addResult('Direct Company API Error', `Error: ${error.message}`, true);
+            }
+        });
+        
+        // File upload test
+        document.getElementById('testFileUpload').addEventListener('click', async () => {
+            try {
+                // Get token from localStorage
+                const token = localStorage.getItem('token');
+                const headers = {};
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+                
+                // Create a test file
+                const blob = new Blob(['Test file content'], { type: 'text/plain' });
+                const file = new File([blob], 'test-file.txt', { type: 'text/plain' });
+                
+                // Create FormData
+                const formData = new FormData();
+                formData.append('name', 'Test Company');
+                formData.append('description', 'File upload test');
+                formData.append('brand_colors[0]', '#3B82F6');
+                formData.append('logo_file', file);
+                
+                // Try file upload through direct API
+                const response = await fetch('/direct-company-api/test_company', {
+                    method: 'PUT',
+                    headers,
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult('File Upload Success', data);
+                } else {
+                    const text = await response.text();
+                    addResult(`File Upload Failed (${response.status})`, text, true);
+                }
+            } catch (error) {
+                addResult('File Upload Error', `Error: ${error.message}`, true);
+            }
+        });
+        
+        // Run an initial test when the page loads
+        // Test port 8088 (correct port)
+        document.getElementById('testPort8088').addEventListener('click', async () => {
+            try {
+                const response = await fetch('http://127.0.0.1:8088/api/v1/diagnostic/health');
+                
+                if (response.ok) {
+                    const data = await response.text();
+                    addResult('✅ Port 8088 Test (CORRECT)', 'Connection successful. API is running on the correct port.');
+                } else {
+                    addResult('❌ Port 8088 Test (CORRECT)', `Failed: Status ${response.status}. API is not responding on port 8088.`, true);
+                }
+            } catch (error) {
+                addResult('❌ Port 8088 Test (CORRECT)', `Error: ${error.message}. This indicates the API server is not running on port 8088.`, true);
+            }
+        });
+
+        // Test port 8089 (incorrect port)
+        document.getElementById('testPort8089').addEventListener('click', async () => {
+            try {
+                const response = await fetch('http://127.0.0.1:8089/api/v1/diagnostic/health');
+                
+                if (response.ok) {
+                    addResult('⚠️ Port 8089 Test (INCORRECT)', 'Connection successful BUT this is the WRONG port. The API should NOT be running on port 8089.', true);
+                } else {
+                    addResult('✅ Port 8089 Test (INCORRECT)', 'Connection failed, which is expected. This is the incorrect port.'); 
+                }
+            } catch (error) {
+                addResult('✅ Port 8089 Test (INCORRECT)', 'Error connecting to port 8089. This is expected and correct.');
+            }
+        });
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    addResult('Auth Token', 'No authentication token found. Tests may fail if endpoints require auth.', true);
+                } else {
+                    addResult('Auth Token', `Token found: ${token.substring(0, 20)}...`);
+                }
+
+                // Automatically test port 8088 on load
+                try {
+                    const response = await fetch('http://127.0.0.1:8088/api/v1/diagnostic/health');
+                    if (response.ok) {
+                        addResult('✅ Port Check', 'API is correctly running on port 8088');
+                    } else {
+                        addResult('❌ Port Check', `API on port 8088 returned status ${response.status}`, true);
+                    }
+                } catch (error) {
+                    addResult('❌ Port Check', 'API is NOT running on port 8088. Please start the API server on the correct port.', true);
+                }
+            } catch (error) {
+                addResult('Auth Check Error', `Error: ${error.message}`, true);
+            }
+        });
+    </script>
+</body>
+</html>

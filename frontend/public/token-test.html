@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Token Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        button { background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        pre { background: #f8f9fa; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Token Testing Page</h1>
+    
+    <div class="section">
+        <h3>Current Token Status</h3>
+        <button onclick="checkCurrentToken()">Check Current Token</button>
+        <div id="currentTokenResult"></div>
+    </div>
+    
+    <div class="section">
+        <h3>Set Working Token</h3>
+        <button onclick="setWorkingToken()">Set Working Token</button>
+        <div id="setTokenResult"></div>
+    </div>
+    
+    <div class="section">
+        <h3>Test Token Decoding</h3>
+        <button onclick="testTokenDecoding()">Test JWT Decoding</button>
+        <div id="decodingResult"></div>
+    </div>
+    
+    <div class="section">
+        <h3>User Info Functions</h3>
+        <button onclick="testUserInfoFunctions()">Test User Info Functions</button>
+        <div id="userInfoResult"></div>
+    </div>
+
+    <script>
+        // The working token from auth_token.json
+        const workingToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwibmFtZSI6IlRlc3QgVXNlciIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc0ODYxNjIwNiwiZXhwIjoxNzUxMjA4MjA2fQ.5tet1p59rOC6bsn7hnyr-i3O-C42IyVJ1qevxLDwfYw";
+        
+        function checkCurrentToken() {
+            const token = localStorage.getItem('token');
+            const result = document.getElementById('currentTokenResult');
+            
+            if (token) {
+                result.innerHTML = `
+                    <div class="success">✅ Token found in localStorage</div>
+                    <p>Token preview: ${token.substring(0, 30)}...</p>
+                    <p>Token length: ${token.length} characters</p>
+                `;
+            } else {
+                result.innerHTML = `<div class="error">❌ No token found in localStorage</div>`;
+            }
+        }
+        
+        function setWorkingToken() {
+            localStorage.setItem('token', workingToken);
+            const result = document.getElementById('setTokenResult');
+            result.innerHTML = `
+                <div class="success">✅ Working token set in localStorage</div>
+                <p>You can now refresh the page to see the changes</p>
+            `;
+        }
+        
+        function testTokenDecoding() {
+            const token = localStorage.getItem('token') || workingToken;
+            const result = document.getElementById('decodingResult');
+            
+            try {
+                // Manual JWT decoding
+                const parts = token.split('.');
+                if (parts.length !== 3) {
+                    throw new Error('Invalid JWT format');
+                }
+                
+                const payload = parts[1];
+                const paddedPayload = payload + '='.repeat((4 - payload.length % 4) % 4);
+                const decodedPayload = atob(paddedPayload);
+                const userInfo = JSON.parse(decodedPayload);
+                
+                result.innerHTML = `
+                    <div class="success">✅ Token decoded successfully</div>
+                    <pre>${JSON.stringify(userInfo, null, 2)}</pre>
+                `;
+            } catch (error) {
+                result.innerHTML = `
+                    <div class="error">❌ Error decoding token: ${error.message}</div>
+                `;
+            }
+        }
+        
+        function testUserInfoFunctions() {
+            const token = localStorage.getItem('token') || workingToken;
+            const result = document.getElementById('userInfoResult');
+            
+            try {
+                // This mimics the frontend logic
+                const parts = token.split('.');
+                const payload = parts[1];
+                const paddedPayload = payload + '='.repeat((4 - payload.length % 4) % 4);
+                const decodedPayload = atob(paddedPayload);
+                const userInfo = JSON.parse(decodedPayload);
+                
+                // Test the display name logic
+                const displayName = userInfo.name || 
+                                  userInfo.full_name || 
+                                  userInfo.display_name || 
+                                  userInfo.email?.split('@')[0] || 
+                                  "User";
+                
+                const email = userInfo.email || userInfo.sub || "";
+                
+                result.innerHTML = `
+                    <div class="success">✅ User info functions test</div>
+                    <p><strong>Display Name:</strong> ${displayName}</p>
+                    <p><strong>Email:</strong> ${email}</p>
+                    <p><strong>Raw userInfo.name:</strong> ${userInfo.name}</p>
+                    <p><strong>Raw userInfo.email:</strong> ${userInfo.email}</p>
+                    <pre>Full userInfo: ${JSON.stringify(userInfo, null, 2)}</pre>
+                `;
+            } catch (error) {
+                result.innerHTML = `
+                    <div class="error">❌ Error testing user info functions: ${error.message}</div>
+                `;
+            }
+        }
+        
+        // Auto-check token on page load
+        document.addEventListener('DOMContentLoaded', checkCurrentToken);
+    </script>
+</body>
+</html>

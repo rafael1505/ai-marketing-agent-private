@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; }
+        .test-section { margin: 20px 0; padding: 20px; background: #f8f9fa; border-left: 4px solid #007bff; }
+        .ai-providers-card { border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin: 20px 0; }
+        .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+        .card-title { font-size: 24px; font-weight: 600; margin: 0 0 5px 0; }
+        .card-description { color: #666; margin: 0; }
+        .add-btn { 
+            background: #f8f9fa; 
+            border: 1px solid #ddd; 
+            border-radius: 4px; 
+            width: 32px; 
+            height: 32px; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .add-btn:hover { background: #e9ecef; border-color: #007bff; }
+        .add-btn svg { width: 16px; height: 16px; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        .status { padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🛠️ Settings Page Debug Test</h1>
+        
+        <div class="test-section">
+            <h3>Test 1: Icon Rendering</h3>
+            <p>Testing if the SVG "+" icon renders correctly:</p>
+            
+            <div class="ai-providers-card">
+                <div class="card-header">
+                    <div>
+                        <h2 class="card-title">AI Providers</h2>
+                        <p class="card-description">Configure AI image generation providers</p>
+                    </div>
+                    <button class="add-btn" onclick="testIconClick()" title="Add Provider">
+                        <svg
+                            style="width: 16px; height: 16px;"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            xmlns="http://www.w3.org/2000/svg"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                            />
+                        </svg>
+                    </button>
+                </div>
+                <div id="iconTestResult" class="status info">
+                    Click the "+" icon above to test if it works.
+                </div>
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Test 2: Modal Positioning</h3>
+            <p>Testing if the modal appears centered:</p>
+            <button onclick="openTestModal()">Open Test Modal</button>
+            <div id="modalTestResult" class="status info">
+                Click the button above to test modal positioning.
+            </div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Test 3: Real Settings Page</h3>
+            <p>Test the actual implementation:</p>
+            <div class="status info">
+                <strong>Steps:</strong>
+                <ol>
+                    <li>Clear your browser cache first</li>
+                    <li>Open the settings page</li>
+                    <li>Scroll down to find the AI Providers section</li>
+                    <li>Look for the "+" icon in the top right of that section</li>
+                    <li>Click it and verify the modal appears centered</li>
+                </ol>
+            </div>
+            <button onclick="clearCache()">Clear Cache</button>
+            <a href="/en/settings" target="_blank">
+                <button>Open Settings Page</button>
+            </a>
+            <div id="realTestResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Test 4: Frontend/Backend Status</h3>
+            <button onclick="checkBackend()">Check Backend API</button>
+            <button onclick="checkFrontend()">Check Frontend</button>
+            <div id="statusResult" class="status info">
+                Click buttons above to check if frontend and backend are running.
+            </div>
+        </div>
+    </div>
+    
+    <!-- Test Modal -->
+    <div id="testModal" style="
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1000;
+        justify-content: center;
+        align-items: center;
+        padding: 20px;
+    ">
+        <div style="
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 400px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        ">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0;">Add Provider</h3>
+                <button onclick="closeTestModal()" style="background: none; border: none; font-size: 24px; cursor: pointer;">&times;</button>
+            </div>
+            
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 500;">Provider Name</label>
+                <input type="text" placeholder="Stability AI" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+            </div>
+            
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 500;">Provider ID</label>
+                <input type="text" placeholder="stability" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+            </div>
+            
+            <div style="margin-bottom: 24px;">
+                <label style="display: block; margin-bottom: 8px; font-weight: 500;">API Key (Optional)</label>
+                <input type="password" placeholder="Enter API key (optional)" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;">
+            </div>
+            
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button onclick="closeTestModal()" style="background: #6c757d;">Cancel</button>
+                <button onclick="closeTestModal(); alert('In real app, this would open provider config dialog.');">Add Provider</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function testIconClick() {
+            const result = document.getElementById('iconTestResult');
+            result.className = 'status success';
+            result.innerHTML = '✅ Icon click detected! The SVG icon is working correctly.';
+        }
+        
+        function openTestModal() {
+            const modal = document.getElementById('testModal');
+            modal.style.display = 'flex';
+            
+            const result = document.getElementById('modalTestResult');
+            result.className = 'status success';
+            result.innerHTML = '✅ Modal opened! Check if it appears centered on your screen.';
+        }
+        
+        function closeTestModal() {
+            const modal = document.getElementById('testModal');
+            modal.style.display = 'none';
+        }
+        
+        function clearCache() {
+            localStorage.clear();
+            sessionStorage.clear();
+            
+            if ('caches' in window) {
+                caches.keys().then(names => {
+                    names.forEach(name => caches.delete(name));
+                });
+            }
+            
+            const result = document.getElementById('realTestResult');
+            result.className = 'status success';
+            result.innerHTML = '✅ Cache cleared! Now open the settings page to test.';
+        }
+        
+        async function checkBackend() {
+            const result = document.getElementById('statusResult');
+            result.innerHTML = 'Checking backend API...';
+            
+            try {
+                const response = await fetch('http://localhost:8088/api/v1/ai-providers');
+                if (response.ok) {
+                    const data = await response.json();
+                    result.className = 'status success';
+                    result.innerHTML = `✅ Backend API is running! Found ${data.length} providers.`;
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                result.className = 'status error';
+                result.innerHTML = `❌ Backend API error: ${error.message}`;
+            }
+        }
+        
+        async function checkFrontend() {
+            const result = document.getElementById('statusResult');
+            
+            try {
+                const response = await fetch('/');
+                if (response.ok) {
+                    result.className = 'status success';
+                    result.innerHTML = '✅ Frontend is running on port 3001!';
+                } else {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+            } catch (error) {
+                result.className = 'status error';
+                result.innerHTML = `❌ Frontend error: ${error.message}`;
+            }
+        }
+        
+        // Close modal on backdrop click
+        document.getElementById('testModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeTestModal();
+            }
+        });
+        
+        // Close modal on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeTestModal();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Test Page</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], 
+        input[type="password"],
+        input[type="email"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .debug-buttons {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #ddd;
+        }
+        .debug-button {
+            background-color: #f0ad4e;
+            margin-right: 10px;
+            margin-bottom: 10px;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            background-color: #f9f9f9;
+        }
+        #response {
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+    <h1>Login Test Page</h1>
+    
+    <p>This page tests the login functionality using different methods:</p>
+    
+    <div id="login-form">
+        <div class="form-group">
+            <label for="email">Email:</label>
+            <input type="email" id="email" value="test@example.com">
+        </div>
+        
+        <div class="form-group">
+            <label for="password">Password:</label>
+            <input type="password" id="password" value="password">
+        </div>
+        
+        <button onclick="testLogin()">Test Standard Login</button>
+    </div>
+    
+    <div class="debug-buttons">
+        <h3>Debug Methods</h3>
+        <button class="debug-button" onclick="testDirectLogin()">Test Direct Login</button>
+        <button class="debug-button" onclick="testLocalLogin()">Test Local Auth API</button>
+        <button class="debug-button" onclick="testProxyLogin()">Test Auth Proxy</button>
+        <button class="debug-button" onclick="testDebugLogin()">Emergency Debug Login</button>
+    </div>
+    
+    <div class="result">
+        <h3>Response:</h3>
+        <div id="response"></div>
+    </div>
+
+    <script>
+        // Show current token 
+        const currentToken = localStorage.getItem('token');
+        document.getElementById('response').textContent = 
+            `Current token in localStorage: ${currentToken ? currentToken.substring(0, 20) + '...' : 'None'}\n`;
+
+        // Standard login function
+        async function testLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const formData = new URLSearchParams();
+                formData.append('username', email);
+                formData.append('password', password);
+                
+                const response = await fetch('http://127.0.0.1:8088/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                document.getElementById('response').textContent = 
+                    `Standard Login Result: ${JSON.stringify(result, null, 2)}`;
+                
+                if (result.access_token) {
+                    localStorage.setItem('token', result.access_token);
+                }
+            } catch (error) {
+                document.getElementById('response').textContent = 
+                    `Standard Login Error: ${error.message}`;
+            }
+        }
+        
+        // Direct login without proxy
+        async function testDirectLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const formData = new URLSearchParams();
+                formData.append('username', email);
+                formData.append('password', password);
+                
+                // Create a special fetch that bypasses proxy settings
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000);
+                
+                const response = await fetch('http://localhost:8088/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: formData,
+                    signal: controller.signal,
+                    mode: 'cors',
+                    cache: 'no-cache',
+                    credentials: 'same-origin'
+                });
+                
+                clearTimeout(timeoutId);
+                
+                const result = await response.json();
+                
+                document.getElementById('response').textContent = 
+                    `Direct Login Result: ${JSON.stringify(result, null, 2)}`;
+                
+                if (result.access_token) {
+                    localStorage.setItem('token', result.access_token);
+                }
+            } catch (error) {
+                document.getElementById('response').textContent = 
+                    `Direct Login Error: ${error.message}`;
+            }
+        }
+        
+        // Test local auth API
+        async function testLocalLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username: email, password })
+                });
+                
+                const result = await response.json();
+                
+                document.getElementById('response').textContent = 
+                    `Local API Login Result: ${JSON.stringify(result, null, 2)}`;
+                
+                if (result.access_token) {
+                    localStorage.setItem('token', result.access_token);
+                }
+            } catch (error) {
+                document.getElementById('response').textContent = 
+                    `Local API Login Error: ${error.message}`;
+            }
+        }
+        
+        // Test proxy login
+        async function testProxyLogin() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const formData = new URLSearchParams();
+                formData.append('username', email);
+                formData.append('password', password);
+                
+                const response = await fetch('/auth-proxy/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: formData
+                });
+                
+                const result = await response.json();
+                
+                document.getElementById('response').textContent = 
+                    `Proxy Login Result: ${JSON.stringify(result, null, 2)}`;
+                
+                if (result.access_token) {
+                    localStorage.setItem('token', result.access_token);
+                }
+            } catch (error) {
+                document.getElementById('response').textContent = 
+                    `Proxy Login Error: ${error.message}`;
+            }
+        }
+        
+        // Emergency debug login
+        function testDebugLogin() {
+            try {
+                if (typeof window.__debugAuthLogin === 'function') {
+                    window.__debugAuthLogin();
+                    document.getElementById('response').textContent = 
+                        'Debug login executed. Check localStorage for token.';
+                } else {
+                    // Create a mock token
+                    const token = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwibmFtZSI6IlRlc3QgVXNlciIsImlhdCI6MTY5NDYxMjMxMCwiZXhwIjo0ODQ4MzcyMzEwfQ.EMERGENCY_DEBUG_TOKEN";
+                    localStorage.setItem('token', token);
+                    document.getElementById('response').textContent = 
+                        `Emergency debug token set: ${token.substring(0, 20)}...`;
+                }
+            } catch (error) {
+                document.getElementById('response').textContent = 
+                    `Debug Login Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>

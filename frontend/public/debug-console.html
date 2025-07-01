@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Console</title>
+</head>
+<body>
+    <h1>Debug Console</h1>
+    <div id="logs"></div>
+    
+    <script>
+    // Override console methods to capture logs
+    const originalLog = console.log;
+    const originalWarn = console.warn;
+    const originalError = console.error;
+    
+    const logs = document.getElementById('logs');
+    
+    function addLog(type, message) {
+        const div = document.createElement('div');
+        div.style.color = type === 'error' ? 'red' : type === 'warn' ? 'orange' : 'black';
+        div.textContent = `[${type.toUpperCase()}] ${new Date().toLocaleTimeString()}: ${message}`;
+        logs.appendChild(div);
+    }
+    
+    console.log = function(...args) {
+        addLog('log', args.join(' '));
+        originalLog.apply(console, args);
+    };
+    
+    console.warn = function(...args) {
+        addLog('warn', args.join(' '));
+        originalWarn.apply(console, args);
+    };
+    
+    console.error = function(...args) {
+        addLog('error', args.join(' '));
+        originalError.apply(console, args);
+    };
+    
+    // Navigate to the component showcase page
+    setTimeout(() => {
+        window.location.href = '/component-showcase';
+    }, 1000);
+    </script>
+</body>
+</html>

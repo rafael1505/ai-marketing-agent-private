@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test User Menu Component</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+            line-height: 1.5;
+        }
+        .step {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        .success {
+            background: #d1fae5;
+            border-color: #10b981;
+        }
+        .error {
+            background: #fee2e2;
+            border-color: #ef4444;
+        }
+        button {
+            margin: 5px;
+            padding: 10px 15px;
+            background: #3B82F6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #2563EB;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 User Menu Component Test</h1>
+    <p>This page helps you test the UserMenu component implementation.</p>
+
+    <div class="step">
+        <h3>Step 1: Login to get authentication token</h3>
+        <p>Click the button below to login and get a valid authentication token.</p>
+        <button onclick="testLogin()">🔑 Login as Test User</button>
+        <div id="loginStatus"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 2: Verify Authentication Status</h3>
+        <p>Check if authentication is working and token is stored.</p>
+        <button onclick="checkAuthStatus()">✅ Check Auth Status</button>
+        <div id="authStatus"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 3: Navigate to Main App</h3>
+        <p>Go to the main application where the UserMenu should appear in the top-right corner.</p>
+        <button onclick="goToMainApp()">🚀 Go to Main App</button>
+        <p><strong>Expected Result:</strong> You should see a user avatar/dropdown menu in the top-right corner instead of a "Login" button.</p>
+    </div>
+
+    <div class="step">
+        <h3>Step 4: Test UserMenu Features</h3>
+        <p>In the main app, click on the user avatar to test the dropdown menu features:</p>
+        <ul>
+            <li>✅ User avatar with initials</li>
+            <li>✅ User name and email display</li>
+            <li>✅ My Profile link</li>
+            <li>✅ Account Settings link</li>
+            <li>✅ Notifications link</li>
+            <li>✅ Preferences link</li>
+            <li>✅ Help & Support link</li>
+            <li>✅ Logout functionality</li>
+        </ul>
+    </div>
+
+    <div class="step">
+        <h3>Step 5: Test Navigation</h3>
+        <p>Test each menu item to ensure they navigate to the correct pages:</p>
+        <button onclick="testMenuLinks()">🔗 Open All Menu Pages</button>
+    </div>
+
+    <script>
+        function log(containerId, message, isSuccess = false) {
+            const container = document.getElementById(containerId);
+            const className = isSuccess ? 'success' : 'error';
+            const timestamp = new Date().toLocaleTimeString();
+            container.innerHTML = `<div class="${className}">[${timestamp}] ${message}</div>`;
+        }
+
+        async function testLogin() {
+            log('loginStatus', '🔄 Testing login...', false);
+            
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: 'test@example.com',
+                        password: 'password'
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    localStorage.setItem('token', data.access_token);
+                    log('loginStatus', `✅ Login successful! Token stored in localStorage.`, true);
+                } else {
+                    const errorData = await response.json();
+                    log('loginStatus', `❌ Login failed: ${response.status} - ${errorData.detail || 'Unknown error'}`, false);
+                }
+            } catch (error) {
+                log('loginStatus', `❌ Network error: ${error.message}`, false);
+            }
+        }
+
+        function checkAuthStatus() {
+            const token = localStorage.getItem('token');
+            if (token) {
+                log('authStatus', `✅ Token found in localStorage: ${token.substring(0, 20)}...`, true);
+                
+                // Try to decode the token to show user info
+                try {
+                    const parts = token.split('.');
+                    if (parts.length === 3) {
+                        const payload = JSON.parse(atob(parts[1] + '='.repeat((4 - parts[1].length % 4) % 4)));
+                        log('authStatus', `✅ Token decoded successfully. User: ${payload.sub || payload.email || 'Unknown'}`, true);
+                    }
+                } catch (e) {
+                    log('authStatus', `⚠️ Token found but couldn't decode: ${e.message}`, false);
+                }
+            } else {
+                log('authStatus', `❌ No token found in localStorage. Please login first.`, false);
+            }
+        }
+
+        function goToMainApp() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('⚠️ Please login first to see the UserMenu component!');
+                return;
+            }
+            
+            // Open the main app
+            window.open('/en', '_blank');
+        }
+
+        function testMenuLinks() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                alert('⚠️ Please login first!');
+                return;
+            }
+
+            const links = [
+                '/en/profile',
+                '/en/settings', 
+                '/en/notifications',
+                '/en/preferences',
+                '/en/help'
+            ];
+
+            links.forEach((link, index) => {
+                setTimeout(() => {
+                    window.open(link, '_blank');
+                }, index * 500); // Stagger the opens
+            });
+        }
+
+        // Check auth status on page load
+        window.addEventListener('load', () => {
+            checkAuthStatus();
+        });
+    </script>
+</body>
+</html>

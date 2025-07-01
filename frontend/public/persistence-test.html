@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Company Persistence Test</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .status {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-weight: bold;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+        .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        #log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 20px 0;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 2px 0;
+        }
+        .log-success { color: #28a745; }
+        .log-error { color: #dc3545; }
+        .log-info { color: #17a2b8; }
+        .log-warning { color: #ffc107; }
+    </style>
+</head>
+<body>
+    <h1>🧪 Company Persistence Test</h1>
+    <p>This test verifies that company information updates persist correctly in the AI Marketing Agent application.</p>
+    
+    <div class="status info">
+        <strong>Prerequisites:</strong>
+        <ul>
+            <li>API server running on port 8088</li>
+            <li>Frontend server running on port 3001</li>
+            <li>Authentication token set in localStorage</li>
+        </ul>
+    </div>
+    
+    <div>
+        <button id="checkToken">Check Auth Token</button>
+        <button id="setToken">Set Test Token</button>
+        <button id="runTest" disabled>Run Persistence Test</button>
+        <button id="clearLog">Clear Log</button>
+    </div>
+    
+    <div id="status" class="status info">
+        Click "Check Auth Token" to begin...
+    </div>
+    
+    <div id="log"></div>
+    
+    <script>
+        const log = document.getElementById('log');
+        const status = document.getElementById('status');
+        const runTestBtn = document.getElementById('runTest');
+        
+        function addLog(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            log.appendChild(entry);
+            log.scrollTop = log.scrollHeight;
+        }
+        
+        function updateStatus(message, type = 'info') {
+            status.textContent = message;
+            status.className = `status ${type}`;
+        }
+        
+        // Test token from auth system
+        const testToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwibmFtZSI6IlRlc3QgVXNlciIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc0ODYxMzg4OCwiZXhwIjoxNzUxMjA1ODg4fQ._mI_ZPS8TvP2CUGkWvERtqKZzjiiisGiFcVeRWQOick";
+        
+        document.getElementById('checkToken').addEventListener('click', function() {
+            const token = localStorage.getItem('token');
+            if (token) {
+                addLog(`Token found: ${token.substring(0, 20)}...`, 'success');
+                updateStatus('✅ Authentication token found - ready to test', 'success');
+                runTestBtn.disabled = false;
+            } else {
+                addLog('No token found in localStorage', 'warning');
+                updateStatus('⚠️ No authentication token found - click "Set Test Token"', 'warning');
+            }
+        });
+        
+        document.getElementById('setToken').addEventListener('click', function() {
+            localStorage.setItem('token', testToken);
+            addLog('Test authentication token set', 'success');
+            updateStatus('✅ Test token set - ready to test', 'success');
+            runTestBtn.disabled = false;
+        });
+        
+        document.getElementById('clearLog').addEventListener('click', function() {
+            log.innerHTML = '';
+        });
+        
+        document.getElementById('runTest').addEventListener('click', async function() {
+            runTestBtn.disabled = true;
+            addLog('🧪 Starting Company Persistence Test', 'info');
+            updateStatus('🧪 Running persistence test...', 'info');
+            
+            try {
+                // Step 1: Get current company
+                addLog('Step 1: Getting current company data...', 'info');
+                const currentResponse = await fetch('/api/v1/companies/active');
+                
+                if (!currentResponse.ok) {
+                    throw new Error(`Failed to get current company: ${currentResponse.status}`);
+                }
+                
+                const currentCompany = await currentResponse.json();
+                addLog(`Current company: ${currentCompany.name}`, 'info');
+                addLog(`Current colors: ${JSON.stringify(currentCompany.brand_colors)}`, 'info');
+                
+                // Step 2: Update company
+                addLog('Step 2: Updating company with authentication...', 'info');
+                
+                const timestamp = Date.now();
+                const formData = new FormData();
+                formData.append('name', `Persistence Test ${timestamp}`);
+                formData.append('description', `Updated at ${new Date().toISOString()} via persistence test`);
+                formData.append('email', 'persistence-test@example.com');
+                formData.append('phone', '+1-555-TEST-123');
+                formData.append('address', '123 Test Persistence Street');
+                formData.append('brand_colors[0]', '#FF4444'); // Red
+                formData.append('brand_colors[1]', '#44FF44'); // Green
+                formData.append('brand_colors[2]', '#4444FF'); // Blue
+                
+                const token = localStorage.getItem('token');
+                const updateResponse = await fetch('/api/v1/companies/test_company', {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+                
+                addLog(`Update response status: ${updateResponse.status}`, updateResponse.ok ? 'success' : 'error');
+                
+                if (!updateResponse.ok) {
+                    const errorText = await updateResponse.text();
+                    throw new Error(`Update failed: ${updateResponse.status} - ${errorText}`);
+                }
+                
+                const updatedCompany = await updateResponse.json();
+                addLog(`✅ Update successful!`, 'success');
+                addLog(`Updated name: ${updatedCompany.name}`, 'success');
+                addLog(`Updated colors: ${JSON.stringify(updatedCompany.brand_colors)}`, 'success');
+                
+                // Step 3: Verify persistence
+                addLog('Step 3: Verifying persistence (waiting 3 seconds)...', 'info');
+                updateStatus('⏳ Verifying persistence...', 'info');
+                
+                setTimeout(async () => {
+                    try {
+                        const finalResponse = await fetch('/api/v1/companies/active');
+                        if (!finalResponse.ok) {
+                            throw new Error(`Failed to verify persistence: ${finalResponse.status}`);
+                        }
+                        
+                        const finalCompany = await finalResponse.json();
+                        addLog(`Final name: ${finalCompany.name}`, 'info');
+                        addLog(`Final colors: ${JSON.stringify(finalCompany.brand_colors)}`, 'info');
+                        
+                        // Compare results
+                        const nameChanged = finalCompany.name !== currentCompany.name;
+                        const colorsChanged = JSON.stringify(finalCompany.brand_colors) !== JSON.stringify(currentCompany.brand_colors);
+                        const emailChanged = finalCompany.email !== currentCompany.email;
+                        
+                        addLog('📊 RESULTS:', 'info');
+                        addLog(`Name changed: ${nameChanged}`, nameChanged ? 'success' : 'error');
+                        addLog(`Colors changed: ${colorsChanged}`, colorsChanged ? 'success' : 'error');
+                        addLog(`Email changed: ${emailChanged}`, emailChanged ? 'success' : 'error');
+                        
+                        if (nameChanged && colorsChanged && emailChanged) {
+                            addLog('🎉 SUCCESS: ALL CHANGES PERSISTED!', 'success');
+                            updateStatus('🎉 SUCCESS: Company persistence is working correctly!', 'success');
+                        } else if (nameChanged || colorsChanged || emailChanged) {
+                            addLog('⚠️ PARTIAL SUCCESS: Some changes persisted', 'warning');
+                            updateStatus('⚠️ PARTIAL: Some changes persisted, some did not', 'warning');
+                        } else {
+                            addLog('❌ FAILURE: NO CHANGES PERSISTED', 'error');
+                            updateStatus('❌ FAILURE: Company persistence is not working', 'error');
+                        }
+                        
+                    } catch (error) {
+                        addLog(`❌ Verification error: ${error.message}`, 'error');
+                        updateStatus('❌ Error during verification', 'error');
+                    } finally {
+                        runTestBtn.disabled = false;
+                    }
+                }, 3000);
+                
+            } catch (error) {
+                addLog(`❌ Test failed: ${error.message}`, 'error');
+                updateStatus('❌ Test failed - check log for details', 'error');
+                runTestBtn.disabled = false;
+            }
+        });
+        
+        // Auto-check token on page load
+        document.getElementById('checkToken').click();
+    </script>
+</body>
+</html>

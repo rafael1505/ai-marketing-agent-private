@@ -1,0 +1,105 @@
+
+.gradient-text {
+  background: linear-gradient(90deg, #3B82F6, #C026D3);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  color: transparent;
+}
+
+.hover-card {
+  transition: transform 0.3s, box-shadow 0.3s !important;
+}
+
+.hover-card:hover {
+  transform: translateY(-4px) !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.03) !important;
+  border-color: #3B82F6 !important;
+}
+
+.btn-scale {
+  transition: transform 0.15s !important;
+}
+
+.btn-scale:hover {
+  transform: scale(1.03) !important;
+}
+
+.fade-in {
+  animation: fadeInAnimation 0.5s forwards;
+}
+
+/* Add the rest of the styles from the styleEl.textContent here */
+@keyframes fadeInAnimation {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-transition-enter {
+  opacity: 0;
+  transform: translateY(20px);
+}
+
+.page-transition-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 300ms, transform 300ms;
+}
+
+.page-transition-exit {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.page-transition-exit-active {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 300ms, transform 300ms;
+}
+
+/* Ensure skip-to-content is visually hidden but accessible */
+.skip-to-content {
+    position: absolute;
+    left: -10000px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+.skip-to-content:focus {
+    position: static;
+    width: auto;
+    height: auto;
+}
+
+
+/* Ensure root-container takes full height */
+#__next, #root-container, body, html {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+#root-container {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Main content area should flex grow to fill available space */
+main {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Example of a sticky footer if needed */
+/* footer {
+    flex-shrink: 0;
+} */
