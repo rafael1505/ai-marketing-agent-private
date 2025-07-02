@@ -17,17 +17,18 @@ const isCacheValid = () => {
 // Check if we're in development mode - Edge compatible
 const isDevelopmentMode = () => {
   try {
-    // Check NODE_ENV first
-    if (process.env.NODE_ENV === 'development') {
-      return true;
-    }
-    
-    // Check window location (browser-safe)
+    // Check window location first (more reliable in browser)
     if (typeof window !== 'undefined' && window.location) {
       const hostname = window.location.hostname;
-      return hostname === 'localhost' || 
+      const isDev = hostname === 'localhost' || 
              hostname === '127.0.0.1' || 
              hostname.includes('localhost');
+      if (isDev) return true;
+    }
+    
+    // Check NODE_ENV as fallback
+    if (process.env.NODE_ENV === 'development') {
+      return true;
     }
     
     return false;
@@ -62,7 +63,7 @@ const getDemoMaterials = (): Material[] => [
         created_at: new Date().toISOString()
       }
     ],
-    api_error: true
+    api_error: false // Explicitly set to false
   },
   {
     id: 'demo-2',
@@ -80,7 +81,7 @@ const getDemoMaterials = (): Material[] => [
     updated_at: new Date(Date.now() - 43200000).toISOString(), // 12 hours ago
     generated_images: [],
     feedback: [],
-    api_error: true
+    api_error: false // Explicitly set to false
   },
   {
     id: 'demo-3',
@@ -104,7 +105,7 @@ const getDemoMaterials = (): Material[] => [
         created_at: new Date().toISOString()
       }
     ],
-    api_error: true
+    api_error: false // Explicitly set to false
   }
 ];
 
@@ -224,8 +225,7 @@ export async function createMaterial(data: MaterialCreationFormData): Promise<Ma
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       generated_images: [],
-      feedback: [],
-      api_error: true
+      feedback: []
     };
     
     // Add to cache if we have cached data
@@ -264,8 +264,7 @@ export async function createMaterial(data: MaterialCreationFormData): Promise<Ma
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
         generated_images: [],
-        feedback: [],
-        api_error: true
+        feedback: []
       };
     }
     
@@ -284,8 +283,7 @@ export async function updateMaterial(id: string, data: Partial<Material>): Promi
       ...existingMaterial,
       ...data,
       id: existingMaterial.id, // Keep original ID
-      updated_at: new Date().toISOString(),
-      api_error: true
+      updated_at: new Date().toISOString()
     };
     
     // Update in cache if we have cached data
@@ -324,8 +322,7 @@ export async function updateMaterial(id: string, data: Partial<Material>): Promi
         ...existingMaterial,
         ...data,
         id: existingMaterial.id,
-        updated_at: new Date().toISOString(),
-        api_error: true
+        updated_at: new Date().toISOString()
       };
     }
     

@@ -16,7 +16,8 @@ export default function MaterialDetailPage({
   params
 }: {
   params: { locale: string; id: string }
-}) {  const locale = params.locale || "en";
+}) {
+  const locale = params.locale || "en";
   const materialId = params.id;
   const [t, setT] = useState<Record<string, any>>({});
   const [translationsLoaded, setTranslationsLoaded] = useState(false);
@@ -175,8 +176,8 @@ export default function MaterialDetailPage({
     );
   }
   
-  // Show API connection error message when api_error flag is set
-  if (material.api_error) {
+  // Only show connection error if api_error is explicitly true
+  if (material && material.api_error === true) {
     return (
       <div className="text-center py-12">
         <div className="text-red-500 mb-4">

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Material View Test</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold text-gray-900 mb-8">Material View Test Page</h1>
+        
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-6">
+            <h2 class="text-xl font-semibold mb-4">Test Material View</h2>
+            <p class="text-gray-600 mb-4">Click the links below to test viewing different materials:</p>
+            
+            <div class="space-y-3">
+                <div>
+                    <h3 class="font-medium">Test Demo Material 1:</h3>
+                    <a href="/en/materials/demo-1" class="text-blue-600 hover:text-blue-800 underline">
+                        View Demo Material 1 (demo-1)
+                    </a>
+                </div>
+                
+                <div>
+                    <h3 class="font-medium">Test Demo Material 2:</h3>
+                    <a href="/en/materials/demo-2" class="text-blue-600 hover:text-blue-800 underline">
+                        View Demo Material 2 (demo-2)
+                    </a>
+                </div>
+                
+                <div>
+                    <h3 class="font-medium">Test Demo Material 3:</h3>
+                    <a href="/en/materials/demo-3" class="text-blue-600 hover:text-blue-800 underline">
+                        View Demo Material 3 (demo-3)
+                    </a>
+                </div>
+                
+                <div>
+                    <h3 class="font-medium">Test Non-Existent Material:</h3>
+                    <a href="/en/materials/non-existent" class="text-blue-600 hover:text-blue-800 underline">
+                        View Non-Existent Material (should show fallback)
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+            <h3 class="font-semibold text-blue-900 mb-2">Expected Behavior:</h3>
+            <ul class="text-blue-800 space-y-1 text-sm">
+                <li>• Demo materials should load demo data without connection errors</li>
+                <li>• Non-existent materials should show the first demo material as fallback</li>
+                <li>• No "Connection Error" messages should appear in development mode</li>
+                <li>• All buttons and UI elements should work properly</li>
+            </ul>
+        </div>
+        
+        <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+            <h3 class="font-semibold text-yellow-900 mb-2">Development Mode Check:</h3>
+            <p class="text-yellow-800 text-sm" id="dev-mode-status">Checking development mode...</p>
+        </div>
+        
+        <div class="space-y-3">
+            <a href="/en/materials" class="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                ← Back to Materials List
+            </a>
+            <a href="/test-refinement.html" class="inline-block bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 ml-3">
+                Test Refinement Form
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // Check development mode detection
+        function checkDevelopmentMode() {
+            const isDevMode = window.location.hostname === 'localhost' || 
+                             window.location.hostname === '127.0.0.1' || 
+                             window.location.hostname.includes('localhost');
+            
+            const statusEl = document.getElementById('dev-mode-status');
+            if (isDevMode) {
+                statusEl.textContent = `✅ Development mode detected (${window.location.hostname}). Demo materials should load without API calls.`;
+                statusEl.className = statusEl.className.replace('text-yellow-800', 'text-green-800');
+                statusEl.parentElement.className = statusEl.parentElement.className.replace('bg-yellow-50 border-yellow-200', 'bg-green-50 border-green-200');
+                statusEl.parentElement.querySelector('h3').className = statusEl.parentElement.querySelector('h3').className.replace('text-yellow-900', 'text-green-900');
+            } else {
+                statusEl.textContent = `⚠️ Production mode detected (${window.location.hostname}). API calls will be made.`;
+                statusEl.className = statusEl.className.replace('text-yellow-800', 'text-red-800');
+                statusEl.parentElement.className = statusEl.parentElement.className.replace('bg-yellow-50 border-yellow-200', 'bg-red-50 border-red-200');
+                statusEl.parentElement.querySelector('h3').className = statusEl.parentElement.querySelector('h3').className.replace('text-yellow-900', 'text-red-900');
+            }
+        }
+        
+        // Run the check when page loads
+        checkDevelopmentMode();
+    </script>
+</body>
+</html>
