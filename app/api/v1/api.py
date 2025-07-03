@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1 import auth, companies, users, materials, diagnostic, auth_test, ai_providers
+from app.api.v1 import auth, companies, users, materials, diagnostic, auth_test, ai_providers, ai_generation
 
 api_router = APIRouter()
 api_router.include_router(auth.router, prefix="/auth", tags=["authentication"])
@@ -10,3 +10,4 @@ api_router.include_router(materials.router, prefix="/materials", tags=["material
 api_router.include_router(diagnostic.router, prefix="/diagnostic", tags=["diagnostic"])
 api_router.include_router(auth_test.router, prefix="/auth-test", tags=["testing"])
 api_router.include_router(ai_providers.router, prefix="/ai-providers", tags=["ai-providers"])
+api_router.include_router(ai_generation.router, prefix="/ai", tags=["ai-generation"])

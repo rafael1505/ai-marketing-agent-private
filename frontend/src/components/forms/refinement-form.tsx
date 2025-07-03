@@ -7,8 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { RefinementFormData, AIProviderConfig, GeneratedImage } from "@/types";
 import { Loader } from "@/components/ui/loader";
+import { AIProviderSelector } from "@/components/ai-provider-selector";
+import { MARKETING_AI_PROVIDERS, getConfiguredProviders } from "@/constants/marketing-ai-providers";
 
 interface RefinementFormProps {
   onSubmit: (data: RefinementFormData) => void;

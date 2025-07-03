@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fix Auth Token</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 600px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .success { color: #22c55e; background: #dcfce7; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        .error { color: #ef4444; background: #fef2f2; padding: 10px; border-radius: 4px; margin: 10px 0; }
+        button { background: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin: 5px; }
+        button:hover { background: #2563eb; }
+        .code { background: #f3f4f6; padding: 10px; border-radius: 4px; font-family: monospace; word-break: break-all; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Authentication Token Fix</h1>
+        <p>This tool will fix the authentication token issue for local development.</p>
+        
+        <div>
+            <h3>Current Token Status:</h3>
+            <div id="current-status"></div>
+        </div>
+        
+        <div>
+            <button onclick="fixToken()">Fix Authentication Token</button>
+            <button onclick="clearToken()">Clear Token</button>
+            <button onclick="testToken()">Test Token</button>
+        </div>
+        
+        <div id="result"></div>
+        
+        <div>
+            <h3>Instructions:</h3>
+            <ol>
+                <li>Click "Fix Authentication Token" to set the correct JWT token</li>
+                <li>Refresh your main application</li>
+                <li>Try creating a material again</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        const validDevToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwibmFtZSI6IlRlc3QgVXNlciIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc0ODYxNjIwNiwiZXhwIjoxNzUxMjA4MjA2fQ.5tet1p59rOC6bsn7hnyr-i3O-C42IyVJ1qevxLDwfYw';
+        
+        function showStatus() {
+            const currentToken = localStorage.getItem('token');
+            const statusEl = document.getElementById('current-status');
+            
+            if (!currentToken) {
+                statusEl.innerHTML = '<div class="error">❌ No token found</div>';
+            } else if (currentToken.startsWith('mock_test_token')) {
+                statusEl.innerHTML = '<div class="error">❌ Invalid mock token: ' + currentToken + '</div>';
+            } else if (currentToken === validDevToken) {
+                statusEl.innerHTML = '<div class="success">✅ Correct development token is set</div>';
+            } else {
+                statusEl.innerHTML = '<div class="code">Current token: ' + currentToken.substring(0, 50) + '...</div>';
+            }
+        }
+        
+        function fixToken() {
+            localStorage.setItem('token', validDevToken);
+            document.getElementById('result').innerHTML = '<div class="success">✅ Token fixed! Please refresh your main application.</div>';
+            showStatus();
+        }
+        
+        function clearToken() {
+            localStorage.removeItem('token');
+            document.getElementById('result').innerHTML = '<div class="success">✅ Token cleared!</div>';
+            showStatus();
+        }
+        
+        async function testToken() {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                document.getElementById('result').innerHTML = '<div class="error">❌ No token to test</div>';
+                return;
+            }
+            
+            try {
+                const response = await fetch('http://127.0.0.1:8088/api/v1/diagnostic/ping', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    document.getElementById('result').innerHTML = '<div class="success">✅ Token test successful!</div>';
+                } else {
+                    document.getElementById('result').innerHTML = '<div class="error">❌ Token test failed: ' + response.status + ' ' + response.statusText + '</div>';
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = '<div class="error">❌ Token test error: ' + error.message + '</div>';
+            }
+        }
+        
+        // Show status on load
+        showStatus();
+    </script>
+</body>
+</html>

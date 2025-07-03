@@ -5,11 +5,12 @@ import { useRouter } from "next/navigation";
 import { getTranslations } from "@/i18n";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { IdeaGenerationForm } from "@/components/forms/idea-generation-form";
-import { RefinementForm } from "@/components/forms/refinement-form";
+import { EnhancedRefinementForm } from "@/components/forms/enhanced-refinement-form";
 import { FinalizationForm } from "@/components/forms/finalization-form";
 import { MaterialStage, MaterialStatus, IdeaGenerationFormData, RefinementFormData, FinalizationFormData, GeneratedImage, Material } from "@/types";
 import { createMaterial, addGeneratedImage, selectImage, addFeedback, updateStage } from "@/services/materials";
-import { DEFAULT_AI_PROVIDERS, MATERIAL_CREATION_STEPS } from "@/constants";
+import { MATERIAL_CREATION_STEPS } from "@/constants";
+import { MARKETING_AI_PROVIDERS } from "@/constants/marketing-ai-providers";
 
 export default function CreateMaterialPage({
   params
@@ -28,6 +29,14 @@ export default function CreateMaterialPage({
       try {
         const translations = await getTranslations(locale === "pt" ? "pt" : "en");
         setT(translations);
+        
+        // Set a development token if none exists
+        if (typeof window !== 'undefined' && !localStorage.getItem('token')) {
+          // Use a fresh mock token for development - valid for 24 hours
+          const devToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwiZW1haWwiOiJ0ZXN0QGV4YW1wbGUuY29tIiwibmFtZSI6IlRlc3QgVXNlciIsInJvbGUiOiJhZG1pbiIsImlzX2FkbWluIjp0cnVlLCJpYXQiOjE3NTE0OTY4NjUsImV4cCI6MTc1NDA4ODg2NX0.1QglhuJU3ipmB1qt74lIRvhU-xk3-UkiwFBuzVvcYWc';
+          localStorage.setItem('token', devToken);
+          console.log('Development token set for testing');
+        }
       } catch (error) {
         console.error("Error loading translations:", error);
       } finally {
@@ -69,21 +78,39 @@ export default function CreateMaterialPage({
     console.log("Generating image with:", { materialId: material.id, prompt, aiProvider });
     
     try {
-      // In a real implementation, you would integrate with the chosen AI provider here
-      // For now, we'll use a placeholder image URL
+      // Step 1: Generate the image using the AI provider
+      console.log("Calling AI generation API...");
+      const generateResponse = await fetch(`/api/v1/ai/generate-image?prompt=${encodeURIComponent(prompt)}&ai_provider=${encodeURIComponent(aiProvider)}&size=1024x1024&style=photorealistic`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!generateResponse.ok) {
+        throw new Error(`Generation failed: ${generateResponse.status} ${generateResponse.statusText}`);
+      }
+      
+      const generationResult = await generateResponse.json();
+      console.log("Generation result:", generationResult);
+      
+      if (!generationResult.success) {
+        throw new Error(generationResult.error || "Image generation failed");
+      }
+      
+      // Step 2: Add the generated image to the material
       const generationParams = {
-        width: 512,
-        height: 512,
-        steps: 30,
-        seed: Math.floor(Math.random() * 100000),
+        width: 1024,
+        height: 1024,
+        provider: aiProvider,
+        style: 'photorealistic'
       };
       
-      const placeholderImageUrl = `https://picsum.photos/seed/${generationParams.seed}/512/512`;
-      console.log("Generated placeholder image URL:", placeholderImageUrl);
-      
+      console.log("Adding generated image to material...");
       const updatedMaterial = await addGeneratedImage(
         material.id,
-        placeholderImageUrl,
+        generationResult.image_url,
         prompt,
         aiProvider,
         generationParams
@@ -220,10 +247,10 @@ export default function CreateMaterialPage({
         )}
         
         {currentStep === 1 && (
-          <RefinementForm
+          <EnhancedRefinementForm
             onSubmit={handleRefinementSubmit}
             onGenerateImage={handleGenerateImage}
-            aiProviders={DEFAULT_AI_PROVIDERS}
+            aiProviders={MARKETING_AI_PROVIDERS}
             generatedImages={generatedImages}
             locale={locale}
           />

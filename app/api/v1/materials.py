@@ -1,6 +1,6 @@
 from typing import Any, List, Optional, Annotated
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Request
+from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Request, Query
 from motor.motor_asyncio import AsyncIOMotorClient
 
 from app.core.config import settings
@@ -106,10 +106,10 @@ async def update_material(
 @router.post("/{material_id}/images")
 async def add_generated_image(
     material_id: str,
-    url: str,
-    prompt: str,
-    ai_provider: str,
-    generation_params: dict,
+    url: Annotated[str, Query()],
+    prompt: Annotated[str, Query()],
+    ai_provider: Annotated[str, Query()],
+    generation_params: Annotated[str, Query()],  # Will be JSON string from query param
     current_user: Annotated[dict, Depends(get_current_active_user)],
     request: Request
 ) -> Any:
@@ -122,12 +122,34 @@ async def add_generated_image(
     if current_material["company_id"] != current_user["company_id"]:
         raise HTTPException(status_code=403, detail="Not enough permissions")
     
+    # Parse the generation_params JSON string
+    import json
+    try:
+        parsed_params = json.loads(generation_params)
+    except json.JSONDecodeError:
+        parsed_params = {}
+    
+    # If using the free test provider, generate the image
+    if ai_provider == "free-test-provider":
+        try:
+            from app.ai_providers.free_provider import free_provider
+            generated_image = free_provider.generate_image(
+                prompt=prompt,
+                size=parsed_params.get('size', '1024x1024'),
+                style=parsed_params.get('style', 'photorealistic')
+            )
+            # Use the generated URL instead of the provided URL
+            url = generated_image['url']
+        except Exception as e:
+            # Fall back to the provided URL if generation fails
+            pass
+    
     updated_material = await material_db.add_generated_image(
         material_id,
         url,
         prompt,
         ai_provider,
-        generation_params
+        parsed_params
     )
     if not updated_material:
         raise HTTPException(status_code=404, detail="Material not found")
@@ -200,3 +222,4 @@ async def update_stage(
     if not updated_material:
         raise HTTPException(status_code=404, detail="Material not found")
     return updated_material
+

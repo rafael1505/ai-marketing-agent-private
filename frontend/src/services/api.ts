@@ -1,8 +1,8 @@
 import axios from 'axios';
 
-// Always use localhost for development to avoid CORS issues
-// Fallback to port 8088 but allow override via environment variable
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8088/api/v1';
+// Use relative URL to leverage Next.js proxy in development
+// This will use the proxy rules defined in next.config.js
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 console.log('API_URL configured as:', API_URL);
 
 // Add a flag to track API availability
@@ -189,5 +189,27 @@ export const apiRequest = async (
     throw error;
   }
 };
+
+// Initialize development token for local development
+const initializeDevelopmentAuth = () => {
+  if (typeof window === 'undefined') return; // Skip on server-side
+  
+  const isLocalhost = window.location.hostname === 'localhost' || 
+                      window.location.hostname === '127.0.0.1';
+  
+  if (!isLocalhost) return;
+  
+  const currentToken = localStorage.getItem('token');
+  const validDevToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ0ZXN0QGV4YW1wbGUuY29tIiwibmFtZSI6IlRlc3QgVXNlciIsInJvbGUiOiJhZG1pbiIsImlhdCI6MTc0ODYxNjIwNiwiZXhwIjoxNzUxMjA4MjA2fQ.5tet1p59rOC6bsn7hnyr-i3O-C42IyVJ1qevxLDwfYw';
+  
+  // Replace invalid tokens with valid development token
+  if (!currentToken || currentToken.startsWith('mock_test_token')) {
+    console.log('API service: Setting valid development JWT token');
+    localStorage.setItem('token', validDevToken);
+  }
+};
+
+// Initialize development auth
+initializeDevelopmentAuth();
 
 export default api;

@@ -198,9 +198,20 @@ class MockCollection:
             return MockUpdateResult(0, 0)
         
         existing_data = json.loads(row[0])
+        
+        # Handle $set operations
         if "$set" in update_data:
             for key, value in update_data["$set"].items():
                 existing_data[key] = value
+        
+        # Handle $push operations (add to array)
+        if "$push" in update_data:
+            for key, value in update_data["$push"].items():
+                if key not in existing_data:
+                    existing_data[key] = []
+                elif not isinstance(existing_data[key], list):
+                    existing_data[key] = [existing_data[key]]
+                existing_data[key].append(value)
         
         existing_data["updated_at"] = datetime.utcnow().isoformat()
         updated_json = json.dumps(existing_data)
