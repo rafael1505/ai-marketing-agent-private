@@ -75,53 +75,84 @@ export default function CreateMaterialPage({
       return;
     }
     
-    console.log("Generating image with:", { materialId: material.id, prompt, aiProvider });
+    console.log("Generating multiple images with:", { materialId: material.id, prompt, aiProvider });
     
     try {
-      // Step 1: Generate the image using the AI provider
-      console.log("Calling AI generation API...");
-      const generateResponse = await fetch(`/api/v1/ai/generate-image?prompt=${encodeURIComponent(prompt)}&ai_provider=${encodeURIComponent(aiProvider)}&size=1024x1024&style=photorealistic`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json'
+      // Generate 5 images as per SRS requirements
+      const numberOfImages = 5;
+      const generatedImages: any[] = [];
+      
+      for (let i = 0; i < numberOfImages; i++) {
+        console.log(`Generating image ${i + 1} of ${numberOfImages}...`);
+        
+        // Add slight variation to each request to get different images
+        const variationPrompt = i === 0 ? prompt : `${prompt} (style ${i + 1})`;
+        
+        try {
+          const response = await fetch(`/api/v1/ai/generate-image?prompt=${encodeURIComponent(variationPrompt)}&ai_provider=${encodeURIComponent(aiProvider)}&size=1024x1024&style=photorealistic`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          if (!response.ok) {
+            throw new Error(`Generation failed: ${response.status} ${response.statusText}`);
+          }
+          
+          const result = await response.json();
+          if (!result.success) {
+            throw new Error(result.error || "Image generation failed");
+          }
+          
+          generatedImages.push({
+            ...result,
+            prompt: variationPrompt,
+            index: i + 1
+          });
+          
+          console.log(`Successfully generated image ${i + 1}`);
+        } catch (imageError) {
+          console.error(`Failed to generate image ${i + 1}:`, imageError);
+          // Continue with other images even if one fails
         }
-      });
-      
-      if (!generateResponse.ok) {
-        throw new Error(`Generation failed: ${generateResponse.status} ${generateResponse.statusText}`);
       }
       
-      const generationResult = await generateResponse.json();
-      console.log("Generation result:", generationResult);
+      console.log(`Generated ${generatedImages.length} images successfully`);
       
-      if (!generationResult.success) {
-        throw new Error(generationResult.error || "Image generation failed");
+      if (generatedImages.length === 0) {
+        throw new Error("Failed to generate any images");
       }
       
-      // Step 2: Add the generated image to the material
-      const generationParams = {
-        width: 1024,
-        height: 1024,
-        provider: aiProvider,
-        style: 'photorealistic'
-      };
+      // Add all generated images to the material
+      let updatedMaterial = material;
       
-      console.log("Adding generated image to material...");
-      const updatedMaterial = await addGeneratedImage(
-        material.id,
-        generationResult.image_url,
-        prompt,
-        aiProvider,
-        generationParams
-      );
+      for (const result of generatedImages) {
+        const generationParams = {
+          width: 1024,
+          height: 1024,
+          provider: aiProvider,
+          style: 'photorealistic',
+          variation: result.index
+        };
+        
+        console.log(`Adding generated image ${result.index} to material...`);
+        updatedMaterial = await addGeneratedImage(
+          updatedMaterial.id,
+          result.image_url,
+          result.prompt,
+          aiProvider,
+          generationParams
+        );
+      }
       
-      console.log("Updated material with new image:", updatedMaterial);
+      console.log("Updated material with all new images:", updatedMaterial);
       setMaterial(updatedMaterial);
-      setGeneratedImages(updatedMaterial.generated_images);
+      setGeneratedImages(updatedMaterial.generated_images || []);
     } catch (error) {
-      console.error("Error generating image:", error);
-      alert(`Failed to generate image: ${error.message || "Unknown error"}`);
+      console.error("Error generating images:", error);
+      alert(`Failed to generate images: ${error.message || "Unknown error"}`);
     }
   };
 

@@ -41,6 +41,7 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [selectedProvider, setSelectedProvider] = React.useState<AIProviderConfig | null>(null);
   const [providerError, setProviderError] = React.useState<string>("");
+  const [selectedImageIndex, setSelectedImageIndex] = React.useState<number | null>(null);
 
   React.useEffect(() => {
     const loadTranslations = async () => {
@@ -103,6 +104,34 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
       setSelectedProvider(defaultProvider);
     }
   }, [configuredProviders, selectedProvider]);
+
+  // Keyboard navigation for image modal
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (selectedImageIndex === null) return;
+
+      switch (event.key) {
+        case 'Escape':
+          setSelectedImageIndex(null);
+          break;
+        case 'ArrowLeft':
+          event.preventDefault();
+          setSelectedImageIndex(
+            selectedImageIndex > 0 ? selectedImageIndex - 1 : generatedImages.length - 1
+          );
+          break;
+        case 'ArrowRight':
+          event.preventDefault();
+          setSelectedImageIndex(
+            selectedImageIndex < generatedImages.length - 1 ? selectedImageIndex + 1 : 0
+          );
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedImageIndex, generatedImages.length]);
 
   const handleProviderSelect = (providerId: string) => {
     const provider = MARKETING_AI_PROVIDERS.find(p => p.id === providerId);
@@ -347,26 +376,123 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
             {/* Generated Images Display */}
             {generatedImages.length > 0 && (
               <div className="space-y-3">
-                <Label className="text-sm font-medium">{t.creation.refinement.form.generated_images}</Label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Label className="text-sm font-medium">{t.creation.refinement.form.generated_images || "Generated Images"}</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
                   {generatedImages.map((image, index) => (
                     <div 
                       key={index} 
-                      className="relative border rounded-md overflow-hidden hover:shadow-lg transition-shadow duration-200"
+                      className="relative aspect-square border rounded-lg overflow-hidden cursor-pointer hover:shadow-lg hover:scale-105 transition-all duration-200 group"
+                      onClick={() => setSelectedImageIndex(index)}
                     >
                       <Image
                         src={image.url}
                         alt={`Generated image ${index + 1}`}
-                        width={300}
-                        height={300}
-                        className="w-full h-auto object-cover"
+                        width={150}
+                        height={150}
+                        className="w-full h-full object-cover"
                       />
-                      <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white p-2 text-xs">
-                        <p className="font-medium">{image.ai_provider}</p>
-                        <p>{image.prompt.length > 50 ? `${image.prompt.substring(0, 50)}...` : image.prompt}</p>
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
+                        <svg 
+                          className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                          xmlns="http://www.w3.org/2000/svg" 
+                          fill="none" 
+                          viewBox="0 0 24 24" 
+                          stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                        </svg>
+                      </div>
+                      <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                        <p className="text-white text-xs font-medium truncate">{image.ai_provider}</p>
                       </div>
                     </div>
                   ))}
+                </div>
+                <div className="text-center text-sm text-muted-foreground">
+                  Click on any image to view larger
+                </div>
+              </div>
+            )}
+
+            {/* Image Modal */}
+            {selectedImageIndex !== null && (
+              <div 
+                className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+                onClick={() => setSelectedImageIndex(null)}
+              >
+                <div 
+                  className="relative max-w-4xl max-h-full bg-white rounded-lg overflow-hidden shadow-2xl"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Modal Header */}
+                  <div className="flex items-center justify-between p-4 border-b">
+                    <div className="flex items-center gap-3">
+                      <Badge variant="secondary" className="text-sm">
+                        {generatedImages[selectedImageIndex].ai_provider}
+                      </Badge>
+                      <span className="text-sm text-muted-foreground">
+                        Image {selectedImageIndex + 1} of {generatedImages.length}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {/* Navigation Buttons */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedImageIndex(
+                          selectedImageIndex > 0 ? selectedImageIndex - 1 : generatedImages.length - 1
+                        )}
+                        disabled={generatedImages.length <= 1}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedImageIndex(
+                          selectedImageIndex < generatedImages.length - 1 ? selectedImageIndex + 1 : 0
+                        )}
+                        disabled={generatedImages.length <= 1}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+                        </svg>
+                      </Button>
+                      {/* Close Button */}
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedImageIndex(null)}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Modal Image */}
+                  <div className="relative">
+                    <Image
+                      src={generatedImages[selectedImageIndex].url}
+                      alt={`Generated image ${selectedImageIndex + 1}`}
+                      width={800}
+                      height={600}
+                      className="w-full h-auto max-h-[70vh] object-contain"
+                    />
+                  </div>
+
+                  {/* Modal Footer */}
+                  <div className="p-4 border-t bg-gray-50">
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-gray-700">Prompt:</p>
+                      <p className="text-sm text-gray-600 bg-white p-3 rounded border">
+                        {generatedImages[selectedImageIndex].prompt}
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
             )}
