@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fix Masked API Keys in LocalStorage</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        button {
+            background-color: #007cba;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #005a87;
+        }
+        .danger {
+            background-color: #dc3545;
+        }
+        .danger:hover {
+            background-color: #c82333;
+        }
+        .success {
+            background-color: #28a745;
+        }
+        .success:hover {
+            background-color: #218838;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 300px;
+        }
+        .provider-form {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Fix Masked API Keys Issue</h1>
+        <p>This tool will fix the problem where providers show masked API keys (••••••••••••••••) instead of real keys.</p>
+        
+        <div class="info">
+            <strong>Current Issue:</strong> LocalStorage contains masked API keys from API responses, preventing providers from being available for material creation.
+        </div>
+
+        <h3>Step 1: Check Current State</h3>
+        <button onclick="checkCurrentState()">Check Current LocalStorage</button>
+        <div id="current-state" class="result"></div>
+
+        <h3>Step 2: Clear Masked Keys</h3>
+        <button onclick="clearMaskedKeys()" class="danger">Clear All Masked API Keys</button>
+        <div id="clear-result" class="result"></div>
+
+        <h3>Step 3: Add Real API Keys</h3>
+        <p>Add your real API keys to enable providers for material creation:</p>
+        
+        <div class="provider-form">
+            <h4>OpenAI Provider</h4>
+            <input type="text" id="openai-key" placeholder="sk-..." style="width: 400px;">
+            <button onclick="addOpenAIProvider()" class="success">Add OpenAI Provider</button>
+        </div>
+
+        <div class="provider-form">
+            <h4>Stability AI Provider</h4>
+            <input type="text" id="stability-key" placeholder="sk-..." style="width: 400px;">
+            <button onclick="addStabilityProvider()" class="success">Add Stability AI Provider</button>
+        </div>
+
+        <div id="add-result" class="result"></div>
+
+        <h3>Step 4: Verify Fix</h3>
+        <button onclick="verifyFix()">Verify Providers Are Now Active</button>
+        <div id="verify-result" class="result"></div>
+
+        <h3>Step 5: Test in Application</h3>
+        <button onclick="openMaterialCreate()">Open Material Creation Page</button>
+        <div class="info">
+            After adding real API keys, go to the Material Creation page and verify that your providers now appear in the provider dropdown.
+        </div>
+    </div>
+
+    <script>
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            element.className = `result ${type}`;
+            element.textContent = `[${timestamp}] ${message}`;
+        }
+
+        function checkCurrentState() {
+            try {
+                const configs = localStorage.getItem('aiProviderConfigurations');
+                if (!configs) {
+                    log('current-state', 'No AI provider configurations found in localStorage.', 'warning');
+                    return;
+                }
+
+                const parsed = JSON.parse(configs);
+                const maskedProviders = Object.entries(parsed).filter(([name, config]) => 
+                    config.apiKey && config.apiKey.includes('•')
+                );
+
+                const realProviders = Object.entries(parsed).filter(([name, config]) => 
+                    config.apiKey && !config.apiKey.includes('•') && config.apiKey.length > 10
+                );
+
+                log('current-state', 
+                    `Current State Analysis:\n\n` +
+                    `Total Providers: ${Object.keys(parsed).length}\n` +
+                    `Providers with Masked Keys: ${maskedProviders.length}\n` +
+                    `Providers with Real Keys: ${realProviders.length}\n\n` +
+                    `Masked Providers: ${maskedProviders.map(([name]) => name).join(', ')}\n` +
+                    `Real Providers: ${realProviders.map(([name]) => name).join(', ')}\n\n` +
+                    `Full Configuration:\n${JSON.stringify(parsed, null, 2)}`,
+                    maskedProviders.length > 0 ? 'warning' : 'info'
+                );
+            } catch (error) {
+                log('current-state', `Error checking current state: ${error.message}`, 'error');
+            }
+        }
+
+        function clearMaskedKeys() {
+            try {
+                const configs = localStorage.getItem('aiProviderConfigurations');
+                if (!configs) {
+                    log('clear-result', 'No configurations to clear.', 'info');
+                    return;
+                }
+
+                const parsed = JSON.parse(configs);
+                const cleanConfigs = {};
+                let removedCount = 0;
+
+                // Keep only providers with real API keys (not masked)
+                Object.entries(parsed).forEach(([name, config]) => {
+                    if (config.apiKey && !config.apiKey.includes('•') && config.apiKey.length > 10) {
+                        cleanConfigs[name] = config;
+                    } else {
+                        removedCount++;
+                    }
+                });
+
+                localStorage.setItem('aiProviderConfigurations', JSON.stringify(cleanConfigs));
+
+                log('clear-result', 
+                    `Cleanup Complete!\n\n` +
+                    `Removed ${removedCount} providers with masked keys\n` +
+                    `Kept ${Object.keys(cleanConfigs).length} providers with real keys\n\n` +
+                    `Remaining providers: ${Object.keys(cleanConfigs).join(', ') || 'None'}`,
+                    'success'
+                );
+            } catch (error) {
+                log('clear-result', `Error clearing masked keys: ${error.message}`, 'error');
+            }
+        }
+
+        function addOpenAIProvider() {
+            const apiKey = document.getElementById('openai-key').value.trim();
+            if (!apiKey) {
+                log('add-result', 'Please enter an OpenAI API key.', 'error');
+                return;
+            }
+
+            if (!apiKey.startsWith('sk-')) {
+                log('add-result', 'OpenAI API keys should start with "sk-"', 'error');
+                return;
+            }
+
+            try {
+                const configs = JSON.parse(localStorage.getItem('aiProviderConfigurations') || '{}');
+                
+                configs['openai'] = {
+                    id: 'openai',
+                    name: 'OpenAI',
+                    type: 'openai',
+                    apiKey: apiKey,
+                    baseUrl: 'https://api.openai.com/v1',
+                    selectedModel: 'dall-e-3',
+                    quality: null,
+                    size: null,
+                    style: null,
+                    isActive: true,
+                    enabled: true,
+                    customOptions: {},
+                    models: ['dall-e-3', 'dall-e-2', 'gpt-4', 'gpt-3.5-turbo']
+                };
+
+                localStorage.setItem('aiProviderConfigurations', JSON.stringify(configs));
+                document.getElementById('openai-key').value = '';
+
+                log('add-result', 
+                    `✅ OpenAI Provider Added Successfully!\n\n` +
+                    `Provider ID: openai\n` +
+                    `API Key: ${apiKey.substring(0, 8)}...\n` +
+                    `Status: Active and Enabled\n` +
+                    `Models: dall-e-3, dall-e-2, gpt-4, gpt-3.5-turbo`,
+                    'success'
+                );
+            } catch (error) {
+                log('add-result', `Error adding OpenAI provider: ${error.message}`, 'error');
+            }
+        }
+
+        function addStabilityProvider() {
+            const apiKey = document.getElementById('stability-key').value.trim();
+            if (!apiKey) {
+                log('add-result', 'Please enter a Stability AI API key.', 'error');
+                return;
+            }
+
+            try {
+                const configs = JSON.parse(localStorage.getItem('aiProviderConfigurations') || '{}');
+                
+                configs['stability'] = {
+                    id: 'stability',
+                    name: 'Stability AI',
+                    type: 'stability',
+                    apiKey: apiKey,
+                    baseUrl: 'https://api.stability.ai',
+                    selectedModel: 'stable-diffusion-xl-1024-v1-0',
+                    maxTokens: 1000,
+                    temperature: 0.7,
+                    isActive: true,
+                    enabled: true,
+                    isConfigured: true,
+                    logo: null,
+                    modelOptions: ['stable-diffusion-xl-1024-v1-0', 'stable-diffusion-v1-6'],
+                    pricing: null
+                };
+
+                localStorage.setItem('aiProviderConfigurations', JSON.stringify(configs));
+                document.getElementById('stability-key').value = '';
+
+                log('add-result', 
+                    `✅ Stability AI Provider Added Successfully!\n\n` +
+                    `Provider ID: stability\n` +
+                    `API Key: ${apiKey.substring(0, 8)}...\n` +
+                    `Status: Active and Enabled\n` +
+                    `Models: stable-diffusion-xl-1024-v1-0, stable-diffusion-v1-6`,
+                    'success'
+                );
+            } catch (error) {
+                log('add-result', `Error adding Stability AI provider: ${error.message}`, 'error');
+            }
+        }
+
+        function verifyFix() {
+            try {
+                const configs = JSON.parse(localStorage.getItem('aiProviderConfigurations') || '{}');
+                
+                // Simulate the same logic used in getActiveProviders
+                const activeProviders = Object.entries(configs).filter(([name, config]) => {
+                    const hasApiKey = config.apiKey && 
+                                    config.apiKey.length > 0 && 
+                                    !config.apiKey.includes('•');
+                    const isActive = config.enabled === true || config.isActive === true;
+                    
+                    return hasApiKey && isActive;
+                });
+
+                log('verify-result', 
+                    `🔍 Verification Results:\n\n` +
+                    `Total Configured Providers: ${Object.keys(configs).length}\n` +
+                    `Active Providers (with real API keys): ${activeProviders.length}\n\n` +
+                    `Active Provider Details:\n` +
+                    activeProviders.map(([name, config]) => 
+                        `• ${config.name || name}: ${config.apiKey.substring(0, 8)}... (${config.selectedModel || 'default model'})`
+                    ).join('\n') +
+                    `\n\n${activeProviders.length > 0 ? 
+                        '✅ SUCCESS: Providers should now appear in Material Creation!' : 
+                        '❌ ISSUE: No active providers found. Please add API keys above.'}`,
+                    activeProviders.length > 0 ? 'success' : 'warning'
+                );
+            } catch (error) {
+                log('verify-result', `Error verifying fix: ${error.message}`, 'error');
+            }
+        }
+
+        function openMaterialCreate() {
+            window.open('http://127.0.0.1:3001/en/materials/create', '_blank');
+        }
+
+        // Auto-check current state when page loads
+        window.addEventListener('load', () => {
+            console.log('Masked API Keys Fix Tool loaded');
+            setTimeout(checkCurrentState, 500);
+        });
+    </script>
+</body>
+</html>

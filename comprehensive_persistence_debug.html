@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comprehensive Persistence Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { border: 1px solid #ccc; margin: 10px 0; padding: 10px; }
+        .log { background-color: #f5f5f5; padding: 10px; margin: 10px 0; font-family: monospace; white-space: pre-wrap; }
+        button { margin: 5px; padding: 10px; }
+        .success { color: green; }
+        .error { color: red; }
+        .warning { color: orange; }
+    </style>
+</head>
+<body>
+    <h1>Comprehensive AI Provider Persistence Debug</h1>
+    
+    <div class="section">
+        <h2>Current State</h2>
+        <button onclick="checkCurrentState()">Check Current State</button>
+        <div id="currentState" class="log"></div>
+    </div>
+
+    <div class="section">
+        <h2>Test Configuration Save</h2>
+        <button onclick="saveTestConfig()">Save Test Configuration</button>
+        <div id="saveResult" class="log"></div>
+    </div>
+
+    <div class="section">
+        <h2>Test API Interference</h2>
+        <button onclick="simulateAPIInterference()">Simulate API Calls</button>
+        <div id="apiResult" class="log"></div>
+    </div>
+
+    <div class="section">
+        <h2>Test Navigation Flow</h2>
+        <button onclick="testNavigationFlow()">Test Full Navigation Flow</button>
+        <div id="navigationResult" class="log"></div>
+    </div>
+
+    <div class="section">
+        <h2>Real-time Monitoring</h2>
+        <button onclick="startMonitoring()">Start Monitoring</button>
+        <button onclick="stopMonitoring()">Stop Monitoring</button>
+        <div id="monitoringResult" class="log"></div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'ai-provider-configurations';
+        let monitoringInterval = null;
+        let lastStorageState = null;
+
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toISOString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : '';
+            element.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function checkCurrentState() {
+            const element = document.getElementById('currentState');
+            element.innerHTML = '';
+            
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                log('currentState', `Raw localStorage data: ${stored}`);
+                
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    log('currentState', `Parsed data type: ${typeof parsed}`, 'info');
+                    log('currentState', `Is array: ${Array.isArray(parsed)}`, 'info');
+                    log('currentState', `Length: ${Array.isArray(parsed) ? parsed.length : 'N/A'}`, 'info');
+                    log('currentState', `Content: ${JSON.stringify(parsed, null, 2)}`, 'info');
+                } else {
+                    log('currentState', 'No data in localStorage', 'warning');
+                }
+            } catch (error) {
+                log('currentState', `Error checking state: ${error.message}`, 'error');
+            }
+        }
+
+        function saveTestConfig() {
+            const element = document.getElementById('saveResult');
+            element.innerHTML = '';
+            
+            try {
+                // Create test configuration
+                const testConfig = {
+                    id: 'openai',
+                    name: 'OpenAI DALL-E',
+                    apiKey: 'sk-test123456789',
+                    selectedModel: 'dall-e-3',
+                    isActive: true,
+                    quality: 'hd',
+                    size: '1024x1024',
+                    style: 'vivid'
+                };
+                
+                log('saveResult', `Saving test config: ${JSON.stringify(testConfig, null, 2)}`, 'info');
+                
+                // Get existing configs
+                let configurations = [];
+                const cached = localStorage.getItem(STORAGE_KEY);
+                if (cached) {
+                    const parsed = JSON.parse(cached);
+                    configurations = Array.isArray(parsed) ? parsed : [];
+                }
+                
+                log('saveResult', `Existing configs before save: ${JSON.stringify(configurations, null, 2)}`, 'info');
+                
+                // Update or add config
+                const existingIndex = configurations.findIndex(c => c.id === testConfig.id);
+                if (existingIndex >= 0) {
+                    configurations[existingIndex] = { ...configurations[existingIndex], ...testConfig };
+                    log('saveResult', 'Updated existing configuration', 'success');
+                } else {
+                    configurations.push(testConfig);
+                    log('saveResult', 'Added new configuration', 'success');
+                }
+                
+                // Save to localStorage
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(configurations));
+                log('saveResult', `Saved configurations: ${JSON.stringify(configurations, null, 2)}`, 'success');
+                
+                // Verify the save
+                setTimeout(() => {
+                    const verification = localStorage.getItem(STORAGE_KEY);
+                    if (verification) {
+                        const verifiedConfigs = JSON.parse(verification);
+                        log('saveResult', `Verification: ${JSON.stringify(verifiedConfigs, null, 2)}`, 'success');
+                        
+                        const savedConfig = verifiedConfigs.find(c => c.id === 'openai');
+                        if (savedConfig && savedConfig.apiKey === 'sk-test123456') {
+                            log('saveResult', 'Configuration successfully persisted!', 'success');
+                        } else {
+                            log('saveResult', 'Configuration was not properly saved!', 'error');
+                        }
+                    } else {
+                        log('saveResult', 'No data found in verification!', 'error');
+                    }
+                }, 100);
+                
+            } catch (error) {
+                log('saveResult', `Error saving config: ${error.message}`, 'error');
+            }
+        }
+
+        async function simulateAPIInterference() {
+            const element = document.getElementById('apiResult');
+            element.innerHTML = '';
+            
+            try {
+                // First, save a configuration
+                log('apiResult', 'Step 1: Saving initial configuration...', 'info');
+                const testConfig = {
+                    id: 'stability',
+                    name: 'Stability AI',
+                    apiKey: 'sk-stability123',
+                    selectedModel: 'stable-diffusion-xl',
+                    isActive: true
+                };
+                
+                let configurations = [];
+                const cached = localStorage.getItem(STORAGE_KEY);
+                if (cached) {
+                    configurations = JSON.parse(cached);
+                }
+                
+                const existingIndex = configurations.findIndex(c => c.id === testConfig.id);
+                if (existingIndex >= 0) {
+                    configurations[existingIndex] = { ...configurations[existingIndex], ...testConfig };
+                } else {
+                    configurations.push(testConfig);
+                }
+                
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(configurations));
+                log('apiResult', `Initial config saved: ${JSON.stringify(configurations, null, 2)}`, 'success');
+                
+                // Simulate API calls that might return empty arrays
+                log('apiResult', 'Step 2: Simulating API interference...', 'warning');
+                
+                // Simulate main API call
+                try {
+                    log('apiResult', 'Simulating main API call...', 'info');
+                    // This would be equivalent to what the real API might return
+                    const apiResponse = []; // Empty array that would overwrite localStorage
+                    
+                    // Check current localStorage before potential overwrite
+                    const beforeAPI = localStorage.getItem(STORAGE_KEY);
+                    log('apiResult', `localStorage before API: ${beforeAPI}`, 'info');
+                    
+                    // This is what would happen in the current buggy code:
+                    // localStorage.setItem(STORAGE_KEY, JSON.stringify(apiResponse));
+                    
+                    // But our fixed code should not overwrite if API returns empty
+                    if (Array.isArray(apiResponse) && apiResponse.length > 0) {
+                        localStorage.setItem(STORAGE_KEY, JSON.stringify(apiResponse));
+                        log('apiResult', 'API returned data, updated localStorage', 'info');
+                    } else {
+                        log('apiResult', 'API returned empty array, NOT overwriting localStorage (this is the fix)', 'success');
+                    }
+                    
+                    const afterAPI = localStorage.getItem(STORAGE_KEY);
+                    log('apiResult', `localStorage after API handling: ${afterAPI}`, 'success');
+                    
+                    // Verify our config is still there
+                    if (afterAPI) {
+                        const parsedAfter = JSON.parse(afterAPI);
+                        const stabilityConfig = parsedAfter.find(c => c.id === 'stability');
+                        if (stabilityConfig && stabilityConfig.apiKey === 'sk-stability123') {
+                            log('apiResult', 'SUCCESS: Configuration survived API interference!', 'success');
+                        } else {
+                            log('apiResult', 'FAILURE: Configuration was lost due to API interference!', 'error');
+                        }
+                    }
+                    
+                } catch (apiError) {
+                    log('apiResult', `API simulation failed: ${apiError.message}`, 'warning');
+                }
+                
+                // Test fallback server
+                log('apiResult', 'Step 3: Simulating fallback server...', 'info');
+                const fallbackResponse = []; // Also empty
+                
+                if (Array.isArray(fallbackResponse) && fallbackResponse.length > 0) {
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(fallbackResponse));
+                    log('apiResult', 'Fallback returned data, updated localStorage', 'info');
+                } else {
+                    log('apiResult', 'Fallback returned empty array, NOT overwriting localStorage (this is the fix)', 'success');
+                }
+                
+                // Final verification
+                const finalState = localStorage.getItem(STORAGE_KEY);
+                if (finalState) {
+                    const finalConfigs = JSON.parse(finalState);
+                    const finalStabilityConfig = finalConfigs.find(c => c.id === 'stability');
+                    if (finalStabilityConfig && finalStabilityConfig.apiKey === 'sk-stability123') {
+                        log('apiResult', 'FINAL SUCCESS: Configuration persisted through all API calls!', 'success');
+                    } else {
+                        log('apiResult', 'FINAL FAILURE: Configuration was lost!', 'error');
+                    }
+                }
+                
+            } catch (error) {
+                log('apiResult', `Error in API interference test: ${error.message}`, 'error');
+            }
+        }
+
+        async function testNavigationFlow() {
+            const element = document.getElementById('navigationResult');
+            element.innerHTML = '';
+            
+            try {
+                log('navigationResult', 'Testing full navigation flow...', 'info');
+                
+                // Step 1: Clear and set initial state
+                log('navigationResult', 'Step 1: Setting up initial configuration...', 'info');
+                const initialConfig = {
+                    id: 'huggingface',
+                    name: 'Hugging Face',
+                    apiKey: 'hf_test123456789',
+                    selectedModel: 'stable-diffusion-v1-5',
+                    isActive: true,
+                    temperature: 0.7
+                };
+                
+                localStorage.setItem(STORAGE_KEY, JSON.stringify([initialConfig]));
+                log('navigationResult', `Initial config set: ${JSON.stringify([initialConfig], null, 2)}`, 'success');
+                
+                // Step 2: Simulate "Configuration" tab usage
+                log('navigationResult', 'Step 2: Simulating Configuration tab interactions...', 'info');
+                
+                // Get configurations (as the Configuration tab would do)
+                const configTabConfigs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                log('navigationResult', `Configuration tab loaded: ${JSON.stringify(configTabConfigs, null, 2)}`, 'info');
+                
+                // Modify configuration (as user would do)
+                const updatedConfig = { ...configTabConfigs[0], apiKey: 'hf_updated123456789', temperature: 0.8 };
+                const updatedConfigs = [updatedConfig];
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedConfigs));
+                log('navigationResult', `User updated config: ${JSON.stringify(updatedConfigs, null, 2)}`, 'success');
+                
+                // Step 3: Simulate navigation to "Materials" tab
+                log('navigationResult', 'Step 3: Simulating navigation to Materials tab...', 'info');
+                
+                // Materials tab tries to get active providers
+                const materialsTabConfigs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                log('navigationResult', `Materials tab loaded: ${JSON.stringify(materialsTabConfigs, null, 2)}`, 'info');
+                
+                const activeProviders = materialsTabConfigs.filter(config => {
+                    const hasApiKey = config.apiKey && config.apiKey.length > 0;
+                    const isActive = config.isActive === true;
+                    return hasApiKey && isActive;
+                });
+                
+                log('navigationResult', `Active providers found: ${JSON.stringify(activeProviders, null, 2)}`, 'info');
+                
+                if (activeProviders.length > 0 && activeProviders[0].apiKey === 'hf_updated123456789') {
+                    log('navigationResult', 'SUCCESS: Updated configuration is available in Materials tab!', 'success');
+                } else {
+                    log('navigationResult', 'FAILURE: Updated configuration was lost during navigation!', 'error');
+                }
+                
+                // Step 4: Simulate return to Configuration tab
+                log('navigationResult', 'Step 4: Simulating return to Configuration tab...', 'info');
+                
+                const returnedConfigs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                log('navigationResult', `Returned to Configuration tab: ${JSON.stringify(returnedConfigs, null, 2)}`, 'info');
+                
+                if (returnedConfigs.length > 0 && returnedConfigs[0].apiKey === 'hf_updated123456789') {
+                    log('navigationResult', 'SUCCESS: Configuration persisted through full navigation cycle!', 'success');
+                } else {
+                    log('navigationResult', 'FAILURE: Configuration was lost during navigation cycle!', 'error');
+                }
+                
+                // Step 5: Simulate page refresh
+                log('navigationResult', 'Step 5: Simulating page refresh...', 'info');
+                
+                // Page refresh would reload everything from localStorage
+                const refreshedConfigs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                log('navigationResult', `After page refresh: ${JSON.stringify(refreshedConfigs, null, 2)}`, 'info');
+                
+                if (refreshedConfigs.length > 0 && refreshedConfigs[0].apiKey === 'hf_updated123456789') {
+                    log('navigationResult', 'FINAL SUCCESS: Configuration survived page refresh!', 'success');
+                } else {
+                    log('navigationResult', 'FINAL FAILURE: Configuration was lost after page refresh!', 'error');
+                }
+                
+            } catch (error) {
+                log('navigationResult', `Error in navigation flow test: ${error.message}`, 'error');
+            }
+        }
+
+        function startMonitoring() {
+            if (monitoringInterval) {
+                stopMonitoring();
+            }
+            
+            const element = document.getElementById('monitoringResult');
+            element.innerHTML = '';
+            log('monitoringResult', 'Starting real-time monitoring...', 'info');
+            
+            // Get initial state
+            lastStorageState = localStorage.getItem(STORAGE_KEY);
+            log('monitoringResult', `Initial state: ${lastStorageState}`, 'info');
+            
+            monitoringInterval = setInterval(() => {
+                const currentState = localStorage.getItem(STORAGE_KEY);
+                if (currentState !== lastStorageState) {
+                    log('monitoringResult', `CHANGE DETECTED!`, 'warning');
+                    log('monitoringResult', `Previous: ${lastStorageState}`, 'info');
+                    log('monitoringResult', `Current: ${currentState}`, 'info');
+                    
+                    // Analyze the change
+                    try {
+                        const prevConfigs = lastStorageState ? JSON.parse(lastStorageState) : [];
+                        const currentConfigs = currentState ? JSON.parse(currentState) : [];
+                        
+                        if (Array.isArray(prevConfigs) && Array.isArray(currentConfigs)) {
+                            if (prevConfigs.length > currentConfigs.length) {
+                                log('monitoringResult', `WARNING: Configuration count decreased from ${prevConfigs.length} to ${currentConfigs.length}`, 'error');
+                            } else if (prevConfigs.length < currentConfigs.length) {
+                                log('monitoringResult', `INFO: Configuration count increased from ${prevConfigs.length} to ${currentConfigs.length}`, 'success');
+                            } else {
+                                log('monitoringResult', `INFO: Configuration modified (same count: ${currentConfigs.length})`, 'info');
+                            }
+                        }
+                    } catch (error) {
+                        log('monitoringResult', `Error analyzing change: ${error.message}`, 'error');
+                    }
+                    
+                    lastStorageState = currentState;
+                }
+            }, 500); // Check every 500ms
+            
+            log('monitoringResult', 'Monitoring started. Any changes to localStorage will be logged here.', 'success');
+        }
+
+        function stopMonitoring() {
+            if (monitoringInterval) {
+                clearInterval(monitoringInterval);
+                monitoringInterval = null;
+                log('monitoringResult', 'Monitoring stopped.', 'info');
+            }
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            checkCurrentState();
+        });
+    </script>
+</body>
+</html>

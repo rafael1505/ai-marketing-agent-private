@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fix Verification Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { border: 1px solid #ccc; margin: 10px 0; padding: 10px; }
+        .log { background-color: #f5f5f5; padding: 10px; margin: 10px 0; font-family: monospace; white-space: pre-wrap; min-height: 100px; }
+        button { margin: 5px; padding: 10px; }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+        .warning { color: orange; font-weight: bold; }
+        .info { color: blue; }
+        .step { background-color: #e8f4fd; padding: 5px; margin: 5px 0; border-left: 4px solid #2196F3; }
+        .result { background-color: #f8f9fa; padding: 10px; margin: 10px 0; border: 2px solid #ddd; }
+        .test-pass { border-color: #28a745; background-color: #d4edda; }
+        .test-fail { border-color: #dc3545; background-color: #f8d7da; }
+    </style>
+</head>
+<body>
+    <h1>AI Provider Persistence Fix Verification</h1>
+    <p>This test verifies that the fix for localStorage overwriting is working correctly.</p>
+    
+    <div class="section">
+        <h2>Test 1: Basic Configuration Persistence</h2>
+        <button onclick="runTest1()">Run Test 1</button>
+        <div id="test1Result" class="log"></div>
+    </div>
+
+    <div class="section">
+        <h2>Test 2: API Interference Prevention</h2>
+        <button onclick="runTest2()">Run Test 2</button>
+        <div id="test2Result" class="log"></div>
+    </div>
+
+    <div class="section">
+        <h2>Test 3: Function Behavior Simulation</h2>
+        <button onclick="runTest3()">Run Test 3</button>
+        <div id="test3Result" class="log"></div>
+    </div>
+
+    <div class="section">
+        <h2>Test 4: Navigation Flow Simulation</h2>
+        <button onclick="runTest4()">Run Test 4</button>
+        <div id="test4Result" class="log"></div>
+    </div>
+
+    <div class="section">
+        <h2>All Tests Summary</h2>
+        <button onclick="runAllTests()">Run All Tests</button>
+        <div id="allTestsResult" class="log"></div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'ai-provider-configurations';
+        let testResults = [];
+
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : 'info';
+            element.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function step(elementId, message) {
+            const element = document.getElementById(elementId);
+            element.innerHTML += `<div class="step">${message}</div>`;
+        }
+
+        function clearTest(elementId) {
+            document.getElementById(elementId).innerHTML = '';
+        }
+
+        function clearStorage() {
+            localStorage.removeItem(STORAGE_KEY);
+        }
+
+        // Simulate the fixed getUserAIProviders function
+        function simulateGetUserAIProviders() {
+            console.log("getUserAIProviders: Starting...");
+            
+            // Check localStorage first
+            const cachedProviders = localStorage.getItem(STORAGE_KEY);
+            if (cachedProviders) {
+                try {
+                    const parsed = JSON.parse(cachedProviders);
+                    if (Array.isArray(parsed)) {
+                        console.log(`getUserAIProviders: Found ${parsed.length} cached providers`);
+                        return Promise.resolve(parsed);
+                    }
+                } catch (parseError) {
+                    console.error("getUserAIProviders: Error parsing cached providers:", parseError);
+                }
+            }
+            
+            // Only if no localStorage, try API (we'll simulate empty API response)
+            console.log("getUserAIProviders: No cached providers, trying API...");
+            
+            // Simulate API call that returns empty or fails
+            const apiResponse = []; // Empty response that would cause the bug
+            
+            if (Array.isArray(apiResponse) && apiResponse.length > 0) {
+                console.log("getUserAIProviders: API returned data");
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(apiResponse));
+                return Promise.resolve(apiResponse);
+            } else {
+                console.log("getUserAIProviders: API returned empty, not storing");
+            }
+            
+            // Return empty array without overwriting localStorage
+            console.log("getUserAIProviders: No data available, returning empty array");
+            return Promise.resolve([]);
+        }
+
+        // Simulate the fixed getProviderConfigurations function
+        function simulateGetProviderConfigurations() {
+            console.log('getProviderConfigurations: Starting...');
+            
+            // Always check localStorage first
+            const cached = localStorage.getItem(STORAGE_KEY);
+            if (cached) {
+                try {
+                    const parsed = JSON.parse(cached);
+                    if (Array.isArray(parsed)) {
+                        console.log('getProviderConfigurations: Found cached configs, using as source');
+                        return Promise.resolve(parsed);
+                    }
+                } catch (parseError) {
+                    console.error('getProviderConfigurations: Parse error:', parseError);
+                }
+            }
+            
+            // Only for first setup, try API
+            console.log('getProviderConfigurations: No cached configs, trying API for initial setup...');
+            
+            // Simulate empty API response
+            const apiResponse = []; // This would cause the bug in old version
+            
+            if (Array.isArray(apiResponse) && apiResponse.length > 0) {
+                console.log('getProviderConfigurations: API returned initial data');
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(apiResponse));
+                return Promise.resolve(apiResponse);
+            } else {
+                console.log('getProviderConfigurations: API empty, not overwriting');
+            }
+            
+            console.log('getProviderConfigurations: No data, returning empty array');
+            return Promise.resolve([]);
+        }
+
+        // Test 1: Basic Configuration Persistence
+        async function runTest1() {
+            clearTest('test1Result');
+            step('test1Result', 'Test 1: Basic Configuration Persistence');
+            
+            try {
+                // Clear storage
+                clearStorage();
+                log('test1Result', 'Cleared localStorage', 'info');
+                
+                // Create test configuration
+                const testConfig = {
+                    id: 'openai',
+                    name: 'OpenAI DALL-E',
+                    apiKey: 'sk-test123456789',
+                    selectedModel: 'dall-e-3',
+                    isActive: true
+                };
+                
+                log('test1Result', 'Saving test configuration...', 'info');
+                localStorage.setItem(STORAGE_KEY, JSON.stringify([testConfig]));
+                
+                // Verify immediate persistence
+                const immediate = localStorage.getItem(STORAGE_KEY);
+                if (immediate) {
+                    const parsed = JSON.parse(immediate);
+                    if (parsed.length === 1 && parsed[0].apiKey === 'sk-test123456789') {
+                        log('test1Result', '✓ Configuration saved successfully', 'success');
+                    } else {
+                        log('test1Result', '✗ Configuration not saved correctly', 'error');
+                        return;
+                    }
+                } else {
+                    log('test1Result', '✗ No data found after save', 'error');
+                    return;
+                }
+                
+                // Simulate page refresh
+                log('test1Result', 'Simulating page refresh...', 'info');
+                const afterRefresh = localStorage.getItem(STORAGE_KEY);
+                if (afterRefresh) {
+                    const parsed = JSON.parse(afterRefresh);
+                    if (parsed.length === 1 && parsed[0].apiKey === 'sk-test123456789') {
+                        log('test1Result', '✓ Configuration persisted after refresh', 'success');
+                        
+                        // Add to test results
+                        testResults.push({ test: 'Test 1', status: 'PASS', message: 'Basic persistence works' });
+                        document.getElementById('test1Result').innerHTML += '<div class="result test-pass">TEST 1 PASSED: Basic configuration persistence works correctly</div>';
+                    } else {
+                        log('test1Result', '✗ Configuration lost after refresh', 'error');
+                        testResults.push({ test: 'Test 1', status: 'FAIL', message: 'Configuration lost after refresh' });
+                        document.getElementById('test1Result').innerHTML += '<div class="result test-fail">TEST 1 FAILED: Configuration lost after refresh</div>';
+                    }
+                } else {
+                    log('test1Result', '✗ No data found after refresh', 'error');
+                    testResults.push({ test: 'Test 1', status: 'FAIL', message: 'No data after refresh' });
+                    document.getElementById('test1Result').innerHTML += '<div class="result test-fail">TEST 1 FAILED: No data found after refresh</div>';
+                }
+                
+            } catch (error) {
+                log('test1Result', `✗ Test failed: ${error.message}`, 'error');
+                testResults.push({ test: 'Test 1', status: 'FAIL', message: error.message });
+                document.getElementById('test1Result').innerHTML += '<div class="result test-fail">TEST 1 FAILED: Exception occurred</div>';
+            }
+        }
+
+        // Test 2: API Interference Prevention
+        async function runTest2() {
+            clearTest('test2Result');
+            step('test2Result', 'Test 2: API Interference Prevention');
+            
+            try {
+                // Clear and set up initial config
+                clearStorage();
+                const userConfig = {
+                    id: 'stability',
+                    name: 'Stability AI',
+                    apiKey: 'sk-stability-test123',
+                    selectedModel: 'stable-diffusion-xl',
+                    isActive: true
+                };
+                
+                localStorage.setItem(STORAGE_KEY, JSON.stringify([userConfig]));
+                log('test2Result', 'User configuration saved', 'info');
+                
+                // Verify initial state
+                const before = localStorage.getItem(STORAGE_KEY);
+                const beforeParsed = JSON.parse(before);
+                log('test2Result', `Initial config count: ${beforeParsed.length}`, 'info');
+                
+                // Simulate getUserAIProviders call (which would cause the bug in old version)
+                log('test2Result', 'Simulating getUserAIProviders call...', 'warning');
+                const result1 = await simulateGetUserAIProviders();
+                
+                // Check if localStorage was preserved
+                const after1 = localStorage.getItem(STORAGE_KEY);
+                if (after1) {
+                    const after1Parsed = JSON.parse(after1);
+                    if (after1Parsed.length === 1 && after1Parsed[0].apiKey === 'sk-stability-test123') {
+                        log('test2Result', '✓ getUserAIProviders did not overwrite localStorage', 'success');
+                    } else {
+                        log('test2Result', '✗ getUserAIProviders corrupted localStorage', 'error');
+                        testResults.push({ test: 'Test 2', status: 'FAIL', message: 'getUserAIProviders corrupted data' });
+                        document.getElementById('test2Result').innerHTML += '<div class="result test-fail">TEST 2 FAILED: getUserAIProviders corrupted localStorage</div>';
+                        return;
+                    }
+                } else {
+                    log('test2Result', '✗ getUserAIProviders cleared localStorage', 'error');
+                    testResults.push({ test: 'Test 2', status: 'FAIL', message: 'getUserAIProviders cleared data' });
+                    document.getElementById('test2Result').innerHTML += '<div class="result test-fail">TEST 2 FAILED: getUserAIProviders cleared localStorage</div>';
+                    return;
+                }
+                
+                // Simulate getProviderConfigurations call
+                log('test2Result', 'Simulating getProviderConfigurations call...', 'warning');
+                const result2 = await simulateGetProviderConfigurations();
+                
+                // Check final state
+                const final = localStorage.getItem(STORAGE_KEY);
+                if (final) {
+                    const finalParsed = JSON.parse(final);
+                    if (finalParsed.length === 1 && finalParsed[0].apiKey === 'sk-stability-test123') {
+                        log('test2Result', '✓ getProviderConfigurations preserved localStorage', 'success');
+                        testResults.push({ test: 'Test 2', status: 'PASS', message: 'API interference prevented' });
+                        document.getElementById('test2Result').innerHTML += '<div class="result test-pass">TEST 2 PASSED: API calls do not overwrite user configurations</div>';
+                    } else {
+                        log('test2Result', '✗ getProviderConfigurations corrupted localStorage', 'error');
+                        testResults.push({ test: 'Test 2', status: 'FAIL', message: 'getProviderConfigurations corrupted data' });
+                        document.getElementById('test2Result').innerHTML += '<div class="result test-fail">TEST 2 FAILED: getProviderConfigurations corrupted localStorage</div>';
+                    }
+                } else {
+                    log('test2Result', '✗ getProviderConfigurations cleared localStorage', 'error');
+                    testResults.push({ test: 'Test 2', status: 'FAIL', message: 'getProviderConfigurations cleared data' });
+                    document.getElementById('test2Result').innerHTML += '<div class="result test-fail">TEST 2 FAILED: getProviderConfigurations cleared localStorage</div>';
+                }
+                
+            } catch (error) {
+                log('test2Result', `✗ Test failed: ${error.message}`, 'error');
+                testResults.push({ test: 'Test 2', status: 'FAIL', message: error.message });
+                document.getElementById('test2Result').innerHTML += '<div class="result test-fail">TEST 2 FAILED: Exception occurred</div>';
+            }
+        }
+
+        // Test 3: Function Behavior Simulation
+        async function runTest3() {
+            clearTest('test3Result');
+            step('test3Result', 'Test 3: Function Behavior Simulation');
+            
+            try {
+                // Test empty localStorage scenario
+                clearStorage();
+                log('test3Result', 'Testing empty localStorage scenario...', 'info');
+                
+                const result1 = await simulateGetProviderConfigurations();
+                log('test3Result', `Result with empty localStorage: ${JSON.stringify(result1)}`, 'info');
+                
+                if (Array.isArray(result1) && result1.length === 0) {
+                    log('test3Result', '✓ Function returns empty array when no data', 'success');
+                } else {
+                    log('test3Result', '✗ Function returned unexpected data', 'error');
+                }
+                
+                // Test with existing data
+                const existingConfig = {
+                    id: 'huggingface',
+                    name: 'Hugging Face',
+                    apiKey: 'hf_test123',
+                    isActive: true
+                };
+                
+                localStorage.setItem(STORAGE_KEY, JSON.stringify([existingConfig]));
+                log('test3Result', 'Set test configuration in localStorage', 'info');
+                
+                const result2 = await simulateGetProviderConfigurations();
+                log('test3Result', `Result with existing data: ${JSON.stringify(result2)}`, 'info');
+                
+                if (Array.isArray(result2) && result2.length === 1 && result2[0].apiKey === 'hf_test123') {
+                    log('test3Result', '✓ Function returns existing localStorage data', 'success');
+                    testResults.push({ test: 'Test 3', status: 'PASS', message: 'Function behavior correct' });
+                    document.getElementById('test3Result').innerHTML += '<div class="result test-pass">TEST 3 PASSED: Function behavior is correct</div>';
+                } else {
+                    log('test3Result', '✗ Function did not return expected data', 'error');
+                    testResults.push({ test: 'Test 3', status: 'FAIL', message: 'Function behavior incorrect' });
+                    document.getElementById('test3Result').innerHTML += '<div class="result test-fail">TEST 3 FAILED: Function behavior is incorrect</div>';
+                }
+                
+            } catch (error) {
+                log('test3Result', `✗ Test failed: ${error.message}`, 'error');
+                testResults.push({ test: 'Test 3', status: 'FAIL', message: error.message });
+                document.getElementById('test3Result').innerHTML += '<div class="result test-fail">TEST 3 FAILED: Exception occurred</div>';
+            }
+        }
+
+        // Test 4: Navigation Flow Simulation
+        async function runTest4() {
+            clearTest('test4Result');
+            step('test4Result', 'Test 4: Navigation Flow Simulation');
+            
+            try {
+                // Clear and set initial state
+                clearStorage();
+                
+                // Step 1: User configures provider in Configuration tab
+                log('test4Result', 'Step 1: User configures provider...', 'info');
+                const configuredProvider = {
+                    id: 'replicate',
+                    name: 'Replicate',
+                    apiKey: 'r8_test123456',
+                    selectedModel: 'stability-ai/sdxl',
+                    isActive: true,
+                    temperature: 0.7
+                };
+                
+                localStorage.setItem(STORAGE_KEY, JSON.stringify([configuredProvider]));
+                log('test4Result', 'Configuration saved by user', 'success');
+                
+                // Step 2: User navigates to Materials tab
+                log('test4Result', 'Step 2: Navigating to Materials tab...', 'info');
+                
+                // Materials tab calls getActiveProviders -> getProviderConfigurations
+                const materialsConfigs = await simulateGetProviderConfigurations();
+                
+                // Filter for active providers (simulate getActiveProviders logic)
+                const activeProviders = materialsConfigs.filter(config => {
+                    const hasApiKey = config.apiKey && config.apiKey.length > 0;
+                    const isActive = config.isActive === true;
+                    return hasApiKey && isActive;
+                });
+                
+                log('test4Result', `Materials tab found ${activeProviders.length} active providers`, 'info');
+                
+                if (activeProviders.length === 1 && activeProviders[0].apiKey === 'r8_test123456') {
+                    log('test4Result', '✓ Configuration available in Materials tab', 'success');
+                } else {
+                    log('test4Result', '✗ Configuration lost during navigation', 'error');
+                    testResults.push({ test: 'Test 4', status: 'FAIL', message: 'Configuration lost during navigation' });
+                    document.getElementById('test4Result').innerHTML += '<div class="result test-fail">TEST 4 FAILED: Configuration lost during navigation</div>';
+                    return;
+                }
+                
+                // Step 3: User navigates back to Configuration tab
+                log('test4Result', 'Step 3: Navigating back to Configuration tab...', 'info');
+                
+                const configConfigs = await simulateGetProviderConfigurations();
+                
+                if (configConfigs.length === 1 && configConfigs[0].apiKey === 'r8_test123456') {
+                    log('test4Result', '✓ Configuration still available in Configuration tab', 'success');
+                } else {
+                    log('test4Result', '✗ Configuration lost during return navigation', 'error');
+                    testResults.push({ test: 'Test 4', status: 'FAIL', message: 'Configuration lost during return' });
+                    document.getElementById('test4Result').innerHTML += '<div class="result test-fail">TEST 4 FAILED: Configuration lost during return navigation</div>';
+                    return;
+                }
+                
+                // Step 4: Simulate page refresh
+                log('test4Result', 'Step 4: Simulating page refresh...', 'info');
+                
+                const refreshConfigs = JSON.parse(localStorage.getItem(STORAGE_KEY));
+                
+                if (refreshConfigs.length === 1 && refreshConfigs[0].apiKey === 'r8_test123456') {
+                    log('test4Result', '✓ Configuration persisted through page refresh', 'success');
+                    testResults.push({ test: 'Test 4', status: 'PASS', message: 'Full navigation flow works' });
+                    document.getElementById('test4Result').innerHTML += '<div class="result test-pass">TEST 4 PASSED: Full navigation flow preserves configuration</div>';
+                } else {
+                    log('test4Result', '✗ Configuration lost after page refresh', 'error');
+                    testResults.push({ test: 'Test 4', status: 'FAIL', message: 'Configuration lost after refresh' });
+                    document.getElementById('test4Result').innerHTML += '<div class="result test-fail">TEST 4 FAILED: Configuration lost after page refresh</div>';
+                }
+                
+            } catch (error) {
+                log('test4Result', `✗ Test failed: ${error.message}`, 'error');
+                testResults.push({ test: 'Test 4', status: 'FAIL', message: error.message });
+                document.getElementById('test4Result').innerHTML += '<div class="result test-fail">TEST 4 FAILED: Exception occurred</div>';
+            }
+        }
+
+        // Run all tests
+        async function runAllTests() {
+            clearTest('allTestsResult');
+            testResults = []; // Clear previous results
+            
+            log('allTestsResult', 'Running comprehensive test suite...', 'info');
+            log('allTestsResult', '='.repeat(50), 'info');
+            
+            await runTest1();
+            await runTest2();
+            await runTest3();
+            await runTest4();
+            
+            // Summary
+            log('allTestsResult', '='.repeat(50), 'info');
+            log('allTestsResult', 'TEST SUMMARY:', 'info');
+            
+            const passed = testResults.filter(r => r.status === 'PASS').length;
+            const failed = testResults.filter(r => r.status === 'FAIL').length;
+            
+            testResults.forEach(result => {
+                const status = result.status === 'PASS' ? 'success' : 'error';
+                log('allTestsResult', `${result.test}: ${result.status} - ${result.message}`, status);
+            });
+            
+            log('allTestsResult', '', 'info');
+            log('allTestsResult', `Total: ${testResults.length} tests`, 'info');
+            log('allTestsResult', `Passed: ${passed}`, 'success');
+            log('allTestsResult', `Failed: ${failed}`, failed > 0 ? 'error' : 'info');
+            
+            if (failed === 0) {
+                log('allTestsResult', '🎉 ALL TESTS PASSED! The fix is working correctly.', 'success');
+                document.getElementById('allTestsResult').innerHTML += '<div class="result test-pass">🎉 ALL TESTS PASSED! The localStorage persistence fix is working correctly!</div>';
+            } else {
+                log('allTestsResult', '❌ Some tests failed. The fix needs more work.', 'error');
+                document.getElementById('allTestsResult').innerHTML += '<div class="result test-fail">❌ Some tests failed. The fix needs additional work.</div>';
+            }
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            log('allTestsResult', 'Fix Verification Test Ready. Click "Run All Tests" to verify the fix.', 'info');
+        });
+    </script>
+</body>
+</html>

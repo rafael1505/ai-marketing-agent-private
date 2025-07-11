@@ -213,7 +213,7 @@ export default function MaterialDetailPage({
             asChild
           >
             <Link href={`/${locale}/materials/${material.id}/edit`}>
-              {t.materials.edit}
+              {typeof t.common?.edit === 'string' ? t.common?.edit : "Edit"}
             </Link>
           </Button>
           {material.stage !== MaterialStage.FINALIZATION || material.status !== MaterialStatus.COMPLETED ? (

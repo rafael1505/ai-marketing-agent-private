@@ -2,6 +2,7 @@ from typing import List, Optional, Dict, Any
 from fastapi import APIRouter, HTTPException, Body, Request, Depends
 from pydantic import BaseModel
 import logging
+from app.ai_providers.provider_manager import AIProviderManager
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -9,6 +10,9 @@ logger = logging.getLogger(__name__)
 
 # Create router
 router = APIRouter()
+
+# Initialize provider manager
+provider_manager = AIProviderManager()
 
 # Mock function for user ID - in a real app, this would come from authentication
 def get_current_user_id():
@@ -442,111 +446,344 @@ async def create_ai_provider(provider: AIProviderModel, request: Request):
 async def update_ai_provider(provider_id: str, request: Request, updates: Dict[str, Any] = Body(...)):
     """Update an existing AI provider configuration"""
     user_id = get_current_user_id()
+    logger.debug(f"Updating AI provider {provider_id} for user: {user_id}")
+    
     try:
-        # Check if provider exists
-        providers_collection = request.app.mongodb.ai_providers
-        provider = await providers_collection.find_one({
-            "id": provider_id,
-            "user_id": user_id
-        })
-        
-        if not provider:
-            raise HTTPException(status_code=404, detail="Provider not found")
-        
-        # Update the provider
-        await providers_collection.update_one(
-            {"id": provider_id, "user_id": user_id},
-            {"$set": updates}
-        )
-        
-        # Get the updated provider
-        updated_provider = await providers_collection.find_one({
-            "id": provider_id,
-            "user_id": user_id
-        })
-        
-        # Mask the API key
-        if "apiKey" in updated_provider:
-            updated_provider["apiKey"] = "••••••••••••••••"
-        
-        # Remove MongoDB _id
-        if "_id" in updated_provider:
-            del updated_provider["_id"]
+        # Try to use the database if it's available
+        if hasattr(request.app, "mongodb") and hasattr(request.app.mongodb, "ai_providers"):
+            logger.debug("Using database to update provider")
+            providers_collection = request.app.mongodb.ai_providers
             
-        return updated_provider
+            try:
+                # For the mock database, we need to check if the document exists
+                # The mock DB stores documents with id as the key, so we check by _id (which is the key)
+                provider = await providers_collection.find_one({"_id": provider_id})
+                
+                if not provider:
+                    # If not found by _id, try searching by user_id for the provider_id
+                    provider = await providers_collection.find_one({"user_id": user_id})
+                    if not provider or provider.get("_id") != provider_id:
+                        logger.warning(f"Provider {provider_id} not found in database")
+                        raise HTTPException(status_code=404, detail="Provider not found")
+                
+                # Verify the provider belongs to the current user
+                if provider.get("user_id") != user_id:
+                    logger.warning(f"Provider {provider_id} does not belong to user {user_id}")
+                    raise HTTPException(status_code=404, detail="Provider not found")
+                
+                # Update the provider using _id as the key (how mock DB stores it)
+                await providers_collection.update_one(
+                    {"_id": provider_id},
+                    {"$set": updates}
+                )
+                
+                # Get the updated provider
+                updated_provider = await providers_collection.find_one({"_id": provider_id})
+                
+                # Ensure the response has the correct structure
+                if updated_provider:
+                    # Add the id field back for the response
+                    updated_provider["id"] = provider_id
+                    
+                    # Mask the API key
+                    if "apiKey" in updated_provider:
+                        updated_provider["apiKey"] = "••••••••••••••••"
+                    
+                    # Remove MongoDB _id from response
+                    if "_id" in updated_provider:
+                        del updated_provider["_id"]
+                        
+                logger.debug(f"Successfully updated provider {provider_id}")
+                return updated_provider
+                
+            except Exception as db_err:
+                if isinstance(db_err, HTTPException):
+                    raise db_err
+                logger.error(f"Database error during update: {db_err}")
+                raise HTTPException(status_code=500, detail=f"Database error: {str(db_err)}")
+        else:
+            logger.warning("MongoDB collection not available, mock update")
+            # For mock mode, just return the updated data (since we don't persist it)
+            # This allows the frontend to continue working during development
+            mock_provider = {
+                "id": provider_id,
+                "user_id": user_id,
+                **updates
+            }
+            
+            # Mask the API key
+            if "apiKey" in mock_provider:
+                mock_provider["apiKey"] = "••••••••••••••••"
+                
+            return mock_provider
+            
     except Exception as e:
         if isinstance(e, HTTPException):
             raise e
+        logger.error(f"Error updating AI provider: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @router.delete("/{provider_id}")
 async def delete_ai_provider(provider_id: str, request: Request):
     """Delete an AI provider configuration"""
     user_id = get_current_user_id()
+    logger.debug(f"Deleting AI provider {provider_id} for user: {user_id}")
+    
     try:
-        # Delete from database
-        providers_collection = request.app.mongodb.ai_providers
-        result = await providers_collection.delete_one({
-            "id": provider_id,
-            "user_id": user_id
-        })
-        
-        if result.deleted_count == 0:
-            raise HTTPException(status_code=404, detail="Provider not found")
-        
-        return {"success": True}
+        # Try to use the database if it's available
+        if hasattr(request.app, "mongodb") and hasattr(request.app.mongodb, "ai_providers"):
+            logger.debug("Using database to delete provider")
+            providers_collection = request.app.mongodb.ai_providers
+            
+            try:
+                # For the mock database, we need to check if the document exists
+                # The mock DB stores documents with id as the key, so we check by _id (which is the key)
+                provider = await providers_collection.find_one({"_id": provider_id})
+                
+                if not provider:
+                    logger.warning(f"Provider {provider_id} not found for deletion")
+                    raise HTTPException(status_code=404, detail="Provider not found")
+                
+                # Verify the provider belongs to the current user
+                if provider.get("user_id") != user_id:
+                    logger.warning(f"Provider {provider_id} does not belong to user {user_id}")
+                    raise HTTPException(status_code=404, detail="Provider not found")
+                
+                # Delete from database using _id as the key (how mock DB stores it)
+                result = await providers_collection.delete_one({"_id": provider_id})
+                
+                if result.deleted_count == 0:
+                    logger.warning(f"Provider {provider_id} was not deleted")
+                    raise HTTPException(status_code=404, detail="Provider not found")
+                
+                logger.debug(f"Successfully deleted provider {provider_id}")
+                return {"success": True}
+                
+            except Exception as db_err:
+                if isinstance(db_err, HTTPException):
+                    raise db_err
+                logger.error(f"Database error during delete: {db_err}")
+                raise HTTPException(status_code=500, detail=f"Database error: {str(db_err)}")
+        else:
+            logger.warning("MongoDB collection not available, mock delete")
+            # For mock mode, just return success (since we don't persist it)
+            return {"success": True}
+            
     except Exception as e:
         if isinstance(e, HTTPException):
             raise e
+        logger.error(f"Error deleting AI provider: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @router.post("/validate")
 async def validate_api_key(validation: ValidationRequest):
     """Validate an API key for a provider"""
-    # This is a mock implementation
-    # In a real app, you would call the provider's API to validate the key
-    
-    # Simulate validation success for most keys, but fail for specific test cases
-    if validation.apiKey == "invalid_key_test":
-        return {"valid": False, "message": "Invalid API key"}
-    
-    if validation.apiKey == "connection_error_test":
-        raise HTTPException(status_code=500, detail="Connection error")
-    
-    # For stability.ai, check if key starts with "sk-" as a simple validation
-    if validation.providerId == "stability" and not validation.apiKey.startswith("sk-"):
-        return {"valid": False, "message": "Invalid Stability API key format. Should start with 'sk-'"}
-    
-    # For HuggingFace, check if key starts with "hf_" as a simple validation
-    if validation.providerId == "huggingface" and not validation.apiKey.startswith("hf_"):
-        return {"valid": False, "message": "Invalid Hugging Face API key format. Should start with 'hf_'"}
+    try:
+        provider_id = validation.providerId
+        api_key = validation.apiKey
+        config = getattr(validation, 'config', {})
         
-    return {"valid": True, "message": "API key validated successfully"}
+        # Basic validation first
+        if not api_key:
+            return {"valid": False, "message": "API key is required"}
+        
+        # Provider-specific validation
+        if provider_id == "openai":
+            # Validate OpenAI API key format
+            if not api_key.startswith("sk-"):
+                return {"valid": False, "message": "OpenAI API key should start with 'sk-'"}
+            
+            # Test API key with a simple request (you can implement actual API call here)
+            # For now, we'll do format validation
+            if len(api_key) < 20:
+                return {"valid": False, "message": "OpenAI API key appears to be too short"}
+                
+        elif provider_id == "stability":
+            if not api_key.startswith("sk-"):
+                return {"valid": False, "message": "Stability AI API key should start with 'sk-'"}
+                
+        elif provider_id == "replicate":
+            if not api_key.startswith("r8_"):
+                return {"valid": False, "message": "Replicate API token should start with 'r8_'"}
+                
+        elif provider_id == "huggingface":
+            if not api_key.startswith("hf_"):
+                return {"valid": False, "message": "HuggingFace token should start with 'hf_'"}
+        
+        # If we get here, basic validation passed
+        # In a real implementation, you would test the actual API
+        return {"valid": True, "message": "API key format is valid. Full validation requires testing with actual API."}
+        
+    except Exception as e:
+        logger.error(f"Error validating API key: {e}")
+        return {"valid": False, "message": f"Validation error: {str(e)}"}
 
-@router.get("/{provider_id}/options")
-async def get_provider_options(provider_id: str):
-    """Get available options for a provider (models, sizes, etc)"""
-    # Mock implementation returning different models based on provider ID
-    provider_models = {
-        "stability": [
-            "stable-diffusion-xl-1024-v1-0",
-            "stable-diffusion-xl-1024-v0-9",
-            "stable-diffusion-v1-5"
-        ],
-        "huggingface": [
-            "runwayml/stable-diffusion-v1-5",
-            "CompVis/stable-diffusion-v1-4",
-            "stabilityai/stable-diffusion-2-1"
-        ],
-        "replicate": [
-            "stability-ai/sdxl",
-            "stability-ai/stable-diffusion",
-            "cjwbw/dreamshaper"
-        ]
+@router.post("/validate-config")
+async def validate_provider_config(provider_id: str, config: dict = Body(...)):
+    """Validate a complete provider configuration"""
+    try:
+        if provider_id == "openai":
+            return validate_openai_config(config)
+        elif provider_id == "stability":
+            return validate_stability_config(config)
+        elif provider_id == "replicate":
+            return validate_replicate_config(config)
+        elif provider_id == "huggingface":
+            return validate_huggingface_config(config)
+        else:
+            return {"valid": False, "errors": [f"Unknown provider: {provider_id}"]}
+    except Exception as e:
+        logger.error(f"Error validating config for {provider_id}: {e}")
+        return {"valid": False, "errors": [f"Validation error: {str(e)}"]}
+
+def validate_openai_config(config: dict) -> dict:
+    """Validate OpenAI configuration based on API specifications"""
+    validation_result = {
+        "valid": True,
+        "errors": [],
+        "warnings": [],
+        "recommendations": []
     }
     
-    # Return default models if provider not found
-    default_models = ["default-model-1", "default-model-2"]
-    models = provider_models.get(provider_id, default_models)
+    models = ["dall-e-3", "dall-e-2"]
+    dall_e_3_sizes = ["1024x1024", "1024x1792", "1792x1024"]
+    dall_e_2_sizes = ["256x256", "512x512", "1024x1024"]
+    qualities = ["standard", "hd"]
+    styles = ["vivid", "natural"]
     
-    return {"models": models}
+    # Validate API key
+    api_key = config.get("apiKey", "")
+    if not api_key:
+        validation_result["errors"].append("API key is required")
+        validation_result["valid"] = False
+    elif not api_key.startswith("sk-"):
+        validation_result["errors"].append("OpenAI API key should start with 'sk-'")
+        validation_result["valid"] = False
+    
+    # Validate model
+    model = config.get("selectedModel", "dall-e-3")
+    if model not in models:
+        validation_result["errors"].append(f"Invalid model '{model}'. Supported: {models}")
+        validation_result["valid"] = False
+    
+    # Validate size based on model
+    size = config.get("size", "1024x1024")
+    if model == "dall-e-3" and size not in dall_e_3_sizes:
+        validation_result["errors"].append(f"Invalid size '{size}' for DALL-E 3. Supported: {dall_e_3_sizes}")
+        validation_result["valid"] = False
+    elif model == "dall-e-2" and size not in dall_e_2_sizes:
+        validation_result["errors"].append(f"Invalid size '{size}' for DALL-E 2. Supported: {dall_e_2_sizes}")
+        validation_result["valid"] = False
+    
+    # Validate quality
+    quality = config.get("quality", "standard")
+    if quality not in qualities:
+        validation_result["errors"].append(f"Invalid quality '{quality}'. Supported: {qualities}")
+        validation_result["valid"] = False
+    
+    # Quality HD is only for DALL-E 3
+    if quality == "hd" and model == "dall-e-2":
+        validation_result["errors"].append("HD quality is only available for DALL-E 3")
+        validation_result["valid"] = False
+    
+    # Validate style
+    style = config.get("style", "vivid")
+    if style not in styles:
+        validation_result["errors"].append(f"Invalid style '{style}'. Supported: {styles}")
+        validation_result["valid"] = False
+    
+    # Style is only for DALL-E 3
+    if style and model == "dall-e-2":
+        validation_result["warnings"].append("Style parameter is ignored for DALL-E 2")
+    
+    # Add cost warnings
+    if quality == "hd":
+        validation_result["warnings"].append("HD quality costs 2x more than standard quality")
+    
+    # Add recommendations
+    if model == "dall-e-3":
+        validation_result["recommendations"].append("DALL-E 3 provides higher quality and better instruction following")
+    if size in ["1024x1792", "1792x1024"]:
+        validation_result["recommendations"].append("Portrait/landscape formats work well for specific use cases")
+    
+    return validation_result
+
+def validate_stability_config(config: dict) -> dict:
+    """Validate Stability AI configuration"""
+    validation_result = {"valid": True, "errors": [], "warnings": [], "recommendations": []}
+    
+    # Basic validation for Stability AI
+    api_key = config.get("apiKey", "")
+    if not api_key:
+        validation_result["errors"].append("API key is required")
+        validation_result["valid"] = False
+    elif not api_key.startswith("sk-"):
+        validation_result["errors"].append("Stability AI API key should start with 'sk-'")
+        validation_result["valid"] = False
+    
+    # Validate CFG scale
+    cfg_scale = config.get("customOptions", {}).get("cfg_scale", 7)
+    if not isinstance(cfg_scale, (int, float)) or cfg_scale < 1 or cfg_scale > 35:
+        validation_result["errors"].append("CFG scale must be between 1 and 35")
+        validation_result["valid"] = False
+    
+    # Validate steps
+    steps = config.get("customOptions", {}).get("steps", 30)
+    if not isinstance(steps, int) or steps < 10 or steps > 150:
+        validation_result["errors"].append("Steps must be between 10 and 150")
+        validation_result["valid"] = False
+    
+    return validation_result
+
+def validate_replicate_config(config: dict) -> dict:
+    """Validate Replicate configuration"""
+    validation_result = {"valid": True, "errors": [], "warnings": [], "recommendations": []}
+    
+    api_key = config.get("apiKey", "")
+    if not api_key:
+        validation_result["errors"].append("API key is required")
+        validation_result["valid"] = False
+    elif not api_key.startswith("r8_"):
+        validation_result["errors"].append("Replicate API token should start with 'r8_'")
+        validation_result["valid"] = False
+    
+    return validation_result
+
+def validate_huggingface_config(config: dict) -> dict:
+    """Validate HuggingFace configuration"""
+    validation_result = {"valid": True, "errors": [], "warnings": [], "recommendations": []}
+    
+    api_key = config.get("apiKey", "")
+    if not api_key:
+        validation_result["errors"].append("API key is required")
+        validation_result["valid"] = False
+    elif not api_key.startswith("hf_"):
+        validation_result["errors"].append("HuggingFace token should start with 'hf_'")
+        validation_result["valid"] = False
+    
+    return validation_result
+
+# Duplicate routes to handle frontend API path duplication issue
+@router.get("/api/v1/ai-providers", response_model=List[AIProviderModel])
+async def get_providers_duplicated(request: Request):
+    """Handle duplicated path for getting all AI providers"""
+    logger.info("Handling duplicated path GET /api/v1/ai-providers")
+    return await get_user_ai_providers(request)
+
+@router.post("/api/v1/ai-providers", response_model=AIProviderModel)
+async def create_provider_duplicated(provider_data: AIProviderModel, request: Request):
+    """Handle duplicated path for creating AI provider"""
+    logger.info("Handling duplicated path POST /api/v1/ai-providers")
+    return await create_ai_provider(provider_data, request)
+
+@router.put("/api/v1/ai-providers/{provider_id}", response_model=AIProviderModel)
+async def update_provider_duplicated(provider_id: str, request: Request, updates: Dict[str, Any] = Body(...)):
+    """Handle duplicated path for updating AI provider"""
+    logger.info(f"Handling duplicated path PUT /api/v1/ai-providers/{provider_id}")
+    return await update_ai_provider(provider_id, request, updates)
+
+@router.post("/api/v1/ai-providers/validate")
+async def validate_provider_duplicated(validation: ValidationRequest):
+    """Handle duplicated path for validating AI provider"""
+    logger.info("Handling duplicated path POST /api/v1/ai-providers/validate")
+    return await validate_api_key(validation)

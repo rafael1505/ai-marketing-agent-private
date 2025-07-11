@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Minimal localStorage Test</title>
+</head>
+<body>
+    <h1>Minimal localStorage Persistence Test</h1>
+    <div id="output"></div>
+    
+    <script>
+        const STORAGE_KEY = 'ai-provider-configurations';
+        
+        function log(msg) {
+            document.getElementById('output').innerHTML += '<div>' + new Date().toLocaleTimeString() + ': ' + msg + '</div>';
+            console.log(msg);
+        }
+        
+        function testFlow() {
+            log('🧪 Starting test flow...');
+            
+            // Step 1: Clear localStorage
+            localStorage.removeItem(STORAGE_KEY);
+            log('1. Cleared localStorage');
+            
+            // Step 2: Save a configuration (simulate user action)
+            const config = {
+                id: 'openai',
+                name: 'OpenAI',
+                apiKey: 'sk-test123',
+                isActive: true
+            };
+            
+            // Simulate updateLocalStorageConfigurations function
+            let configurations = [];
+            const cached = localStorage.getItem(STORAGE_KEY);
+            if (cached) {
+                try {
+                    const parsed = JSON.parse(cached);
+                    configurations = Array.isArray(parsed) ? parsed : [];
+                } catch (e) {
+                    configurations = [];
+                }
+            }
+            
+            const existingIndex = configurations.findIndex(c => c.id === config.id);
+            if (existingIndex >= 0) {
+                configurations[existingIndex] = { ...configurations[existingIndex], ...config };
+            } else {
+                configurations.push(config);
+            }
+            
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(configurations));
+            log('2. Saved configuration: ' + JSON.stringify(config));
+            
+            // Step 3: Verify it was saved
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                const parsed = JSON.parse(stored);
+                log('3. ✅ Retrieved from localStorage: ' + JSON.stringify(parsed));
+                
+                // Step 4: Simulate getActiveProviders
+                const activeProviders = parsed.filter(c => {
+                    const hasApiKey = c.apiKey && c.apiKey.length > 0;
+                    const isActive = c.isActive === true;
+                    return hasApiKey && isActive;
+                });
+                
+                log('4. Active providers: ' + JSON.stringify(activeProviders));
+                
+                if (activeProviders.length > 0) {
+                    log('✅ SUCCESS: Configuration persisted and is active');
+                } else {
+                    log('❌ FAIL: No active providers found');
+                }
+                
+                // Step 5: Simulate page reload/navigation by re-reading
+                setTimeout(() => {
+                    const storedAfterDelay = localStorage.getItem(STORAGE_KEY);
+                    if (storedAfterDelay) {
+                        const parsedAfterDelay = JSON.parse(storedAfterDelay);
+                        log('5. ✅ After delay, still in localStorage: ' + JSON.stringify(parsedAfterDelay));
+                    } else {
+                        log('5. ❌ After delay, localStorage was cleared!');
+                    }
+                }, 1000);
+                
+            } else {
+                log('3. ❌ FAIL: Nothing was saved to localStorage');
+            }
+        }
+        
+        // Run test immediately
+        testFlow();
+        
+        // Also test in 2 seconds to simulate delayed access
+        setTimeout(() => {
+            log('--- Testing after 2 seconds ---');
+            const stored = localStorage.getItem(STORAGE_KEY);
+            if (stored) {
+                log('✅ Data still persists: ' + stored);
+            } else {
+                log('❌ Data was lost!');
+            }
+        }, 2000);
+    </script>
+</body>
+</html>

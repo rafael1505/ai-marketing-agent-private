@@ -374,12 +374,12 @@ export const MARKETING_AI_PROVIDERS: AIProviderConfig[] = [
 
   // 🆓 FREE/TESTING PROVIDERS
   {
-    name: "Free Test Provider",
+    name: "Basic Test Provider",
     id: "free-test-provider",
     logo: "/ai-providers/test.svg",
     isConfigured: true,  // Pre-configured for testing
     isActive: true,      // Always active
-    priority: 10,        // Lower priority but available
+    priority: 11,        // Lower priority
     supportedFeatures: ['image_generation', 'text_generation'],
     marketingCapabilities: {
       imageGeneration: true,
@@ -395,7 +395,7 @@ export const MARKETING_AI_PROVIDERS: AIProviderConfig[] = [
       {
         id: 'ready',
         title: 'Ready to Use',
-        description: 'This provider is pre-configured for testing',
+        description: 'Basic test provider with random images',
         isCompleted: true,
         isRequired: false,
         action: 'none'
@@ -405,20 +405,47 @@ export const MARKETING_AI_PROVIDERS: AIProviderConfig[] = [
       tier: 'free',
       freeQuota: {
         imagesPerMonth: 1000,
-        description: 'Unlimited free test images for development'
+        description: 'Unlimited basic test images for development'
       },
       websiteUrl: '#'
+    }
+  },
+
+  {
+    name: "Context-Aware Test Provider",
+    id: "context-aware-test-provider",
+    logo: "/ai-providers/context-aware.svg",
+    isConfigured: true,  // Pre-configured for testing
+    isActive: true,      // Always active
+    priority: 10,        // Higher priority than basic
+    supportedFeatures: ['image_generation', 'social_media', 'banner_ads'],
+    marketingCapabilities: {
+      imageGeneration: true,
+      textGeneration: false,
+      logoDesign: true,
+      socialMediaAssets: true,
+      bannerAds: true,
+      productShots: true,
+      brandConsistency: true,
     },
-    estimatedCost: 'Free',
-    qualityRating: 3,
-    speedRating: 5,
-    description: 'A free testing provider that generates placeholder images for development and testing purposes.',
-    tags: ['free', 'testing', 'development'],
-    usageInfo: {
-      dailyLimit: 1000,
-      monthlyLimit: 10000,
-      costPerImage: 0,
-      averageGenerationTime: '1-2 seconds'
+    configurationStatus: 'configured',
+    configurationSteps: [
+      {
+        id: 'ready',
+        title: 'Ready to Use',
+        description: 'Advanced test provider with brand color and context integration',
+        isCompleted: true,
+        isRequired: false,
+        action: 'connection_test'
+      }
+    ],
+    pricing: {
+      tier: 'free',
+      freeQuota: {
+        imagesPerMonth: 1000,
+        description: 'Unlimited context-aware test images with brand integration'
+      },
+      websiteUrl: '#'
     }
   }
 ];

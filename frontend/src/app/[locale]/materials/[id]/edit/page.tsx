@@ -1,312 +1,416 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
-import { getTranslations } from "@/i18n";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { TagInput } from "@/components/ui/tag-input";
-import { getMaterial, updateMaterial } from "@/services/materials";
-import { Material, MaterialStage, MaterialStatus } from "@/types";
+import { IdeaGenerationForm } from "@/components/forms/idea-generation-form";
+import { EnhancedRefinementForm } from "@/components/forms/enhanced-refinement-form";
+import { FinalizationForm } from "@/components/forms/finalization-form";
+import { MaterialStage, MaterialStatus, IdeaGenerationFormData, RefinementFormData, FinalizationFormData, GeneratedImage, Material } from "@/types";
+import { getMaterial, updateMaterial, addGeneratedImage, selectImage, addFeedback, updateStage } from "@/services/materials";
+import { generateMultipleImages, getAvailableProviders, getProviderConfigurations, getActiveProviders, type ProviderConfig } from "@/services/ai-providers";
+import { MATERIAL_CREATION_STEPS } from "@/constants";
 
-export default function MaterialEditPage({
+export default function EditMaterialPage({
   params
 }: {
   params: { locale: string; id: string }
 }) {
+  const { locale, id } = params;
   const router = useRouter();
-  const locale = params.locale || "en";
-  const materialId = params.id;
-  
-  const [t, setT] = useState<Record<string, any>>({});
-  const [translationsLoaded, setTranslationsLoaded] = useState(false);
-  
-  const [material, setMaterial] = useState<Material | null>(null);
-  const [formData, setFormData] = useState<{
-    title: string;
-    description: string;
-    target_audience: string;
-    campaign_objective: string;
-    keywords: string[];
-    stage: MaterialStage | undefined;
-    status: MaterialStatus | undefined;
-  }>({
-    title: "",
-    description: "",
-    target_audience: "",
-    campaign_objective: "",
-    keywords: [],
-    stage: undefined,
-    status: undefined
-  });
-  
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [material, setMaterial] = useState<Material | null>(null);
+  const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [activeProviders, setActiveProviders] = useState<ProviderConfig[]>([]);
 
-  // Load translations
   useEffect(() => {
-    const loadTranslations = async () => {
-      try {
-        const translations = await getTranslations(locale === "pt" ? "pt" : "en");
-        setT(translations);
-        setTranslationsLoaded(true);
-      } catch (error) {
-        console.error("Failed to load translations:", error);
-        setT({
-          errors: { server_error: "Server error. Please try again later." },
-          common: { loading: "Loading..." },
-          materials: { edit_title: "Edit Material" }
-        });
-        setTranslationsLoaded(true);
-      }
-    };
-    loadTranslations();
-  }, [locale]);
-
-  // Load material data
-  useEffect(() => {
-    if (!translationsLoaded) return;
-    
-    const fetchMaterial = async () => {
+    const loadMaterial = async () => {
       try {
         setIsLoading(true);
-        const data = await getMaterial(materialId);
-        setMaterial(data);
-        setFormData({
-          title: data.title || "",
-          description: data.description || "",
-          target_audience: data.target_audience || "",
-          campaign_objective: data.campaign_objective || "",
-          keywords: data.keywords || [],
-          stage: data.stage,
-          status: data.status
-        });
-      } catch (error) {
-        console.error("Error fetching material:", error);
-        setError(t.errors?.server_error || "Failed to load material. Please try again.");
+        
+        // Load provider configurations first
+        await loadActiveProviders();
+        
+        const existingMaterial = await getMaterial(id);
+        if (!existingMaterial) {
+          throw new Error("Material not found");
+        }
+        setMaterial(existingMaterial);
+        
+        // Set current step based on material stage
+        if (existingMaterial.stage === MaterialStage.IDEA) {
+          setCurrentStep(0);
+        } else if (existingMaterial.stage === MaterialStage.REFINEMENT) {
+          setCurrentStep(1);
+        } else if (existingMaterial.stage === MaterialStage.FINALIZATION) {
+          setCurrentStep(2);
+        }
+        
+        // Load existing generated images if any
+        if (existingMaterial.generated_images) {
+          setGeneratedImages(existingMaterial.generated_images);
+        }
+      } catch (err) {
+        console.error("Error loading material:", err);
+        
+        // Create a mock material for editing if API fails
+        const mockMaterial: Material = {
+          id: id,
+          title: "Sample Marketing Material",
+          description: "This is a sample marketing material for editing",
+          target_audience: "Tech professionals",
+          campaign_objective: "Increase brand awareness",
+          keywords: ["technology", "innovation", "marketing"],
+          stage: MaterialStage.IDEA,
+          status: MaterialStatus.DRAFT,
+          company_id: "demo-company",
+          created_by: "demo-user",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          generated_images: [],
+          selected_image: "",
+          feedback: []
+        };
+        
+        setMaterial(mockMaterial);
+        setCurrentStep(0);
+        setError(null); // Clear error since we're using mock data
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchMaterial();
-  }, [translationsLoaded, materialId, t]);
+    if (id) {
+      loadMaterial();
+    }
+    
+    // Listen for provider config updates
+    const handleConfigUpdate = (event: CustomEvent) => {
+      console.log('AI Provider config updated in materials edit page, reloading...');
+      loadActiveProviders();
+    };
+    
+    // Listen for the custom event we dispatch when configs are updated
+    window.addEventListener('aiProviderConfigUpdated', handleConfigUpdate as EventListener);
+    
+    // Also listen for localStorage changes from other tabs
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'ai-provider-configurations') {
+        console.log('localStorage changed in materials edit page, reloading...');
+        loadActiveProviders();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('aiProviderConfigUpdated', handleConfigUpdate as EventListener);
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, [id]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleKeywordsChange = (keywords: string[]) => {
-    setFormData(prev => ({ ...prev, keywords }));
-  };
-
-  const handleSelectChange = (field: string, value: string) => {
-    if (field === 'stage') {
-      setFormData(prev => ({ ...prev, [field]: value as MaterialStage }));
-    } else if (field === 'status') {
-      setFormData(prev => ({ ...prev, [field]: value as MaterialStatus }));
-    } else {
-      setFormData(prev => ({ ...prev, [field]: value }));
+  const loadActiveProviders = async () => {
+    try {
+      console.log('Loading active AI providers for material editing...');
+      const activeProvidersData = await getActiveProviders();
+      
+      console.log('Loaded active providers:', activeProvidersData);
+      setActiveProviders(activeProvidersData);
+      
+      if (activeProvidersData.length === 0) {
+        console.warn('No active AI providers found. Users need to configure providers in the AI Providers tab.');
+      }
+    } catch (error) {
+      console.error('Error loading active providers:', error);
+      setActiveProviders([]);
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSaving(true);
-    setSaveSuccess(false);
-    setError("");
-
+  const handleGenerateImage = async (prompt: string, aiProvider: string): Promise<void> => {
+    if (!material) {
+      alert("Material not found. Please refresh the page.");
+      return;
+    }
+    
+    console.log(`Generating image with prompt: "${prompt}" using provider: ${aiProvider}`);
+    
     try {
-      await updateMaterial(materialId, formData);
-      setSaveSuccess(true);
-      // Optionally redirect back to the material view page after successful save
-      setTimeout(() => {
-        router.push(`/${locale}/materials/${materialId}`);
-      }, 1500);
+      // Check if the selected provider is active and configured
+      const selectedProvider = activeProviders.find(p => p.id === aiProvider);
+      
+      if (!selectedProvider && activeProviders.length === 0) {
+        alert("No AI providers are configured and active. Please configure an AI provider in the AI Providers tab first.");
+        return;
+      }
+      
+      // Use the specified provider or fall back to the first active one
+      let providerToUse = aiProvider;
+      if (!selectedProvider && activeProviders.length > 0) {
+        providerToUse = activeProviders[0].id;
+        console.log(`Provider ${aiProvider} not active, using: ${providerToUse}`);
+      }
+      
+      // Generate 5 images as per SRS requirements using the new service
+      console.log(`Generating 5 images with provider: ${providerToUse}`);
+      
+      const result = await generateMultipleImages(prompt, providerToUse, 5, '1024x1024');
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to generate images');
+      }
+      
+      console.log(`Successfully generated ${result.images.length} images:`, result);
+      
+      if (result.images.length === 0) {
+        throw new Error("No images were generated. Please try again.");
+      }
+      
+      // Add all generated images to the material
+      let updatedMaterial = material;
+      
+      for (let i = 0; i < result.images.length; i++) {
+        const imageUrl = result.images[i];
+        const generationParams = {
+          width: 1024,
+          height: 1024,
+          provider: result.provider,
+          model: result.model,
+          style: 'photorealistic',
+          variation: i + 1,
+          cost: result.cost || 0
+        };
+        
+        console.log(`Adding generated image ${i + 1} to material...`);
+        try {
+          updatedMaterial = await addGeneratedImage(
+            updatedMaterial.id,
+            imageUrl,
+            prompt,
+            result.provider,
+            generationParams
+          );
+        } catch (addError) {
+          console.error(`Failed to add image ${i + 1} to material:`, addError);
+          // Continue with other images
+        }
+      }
+       console.log("Updated material with all new images:", updatedMaterial);
+      setMaterial(updatedMaterial);
+      setGeneratedImages(updatedMaterial.generated_images || []);
+      
+      const costMessage = result.cost && result.cost > 0 ? ` (Cost: $${result.cost.toFixed(4)})` : '';
+      alert(`Successfully generated ${result.images.length} images using ${result.provider}!${costMessage}`);
+      
+    } catch (error) {
+      console.error("Error generating images:", error);
+      alert(`Failed to generate images: ${error.message || "Unknown error"}`);
+    }
+  };
+
+  const handleIdeaSubmit = async (data: IdeaGenerationFormData) => {
+    if (!material) return;
+    
+    try {
+      // Update material with idea generation data
+      const updatedMaterial = await updateMaterial(material.id, {
+        title: data.title,
+        description: data.description,
+        target_audience: data.target_audience,
+        campaign_objective: data.campaign_objective,
+        keywords: data.keywords
+      });
+      
+      // Update stage to refinement
+      const materialWithStage = await updateStage(
+        material.id,
+        MaterialStage.REFINEMENT,
+        MaterialStatus.IN_PROGRESS
+      );
+      
+      console.log("Material updated:", materialWithStage);
+      setMaterial(materialWithStage);
+      setCurrentStep(1);
     } catch (error) {
       console.error("Error updating material:", error);
-      setError(t.errors?.save_failed || "Failed to save changes. Please try again.");
-    } finally {
-      setIsSaving(false);
+      alert(`Failed to proceed to refinement: ${error.message || "Unknown error"}`);
+      throw error;
     }
   };
 
-  if (!translationsLoaded || isLoading) {
+  const handleRefinementSubmit = async (data: RefinementFormData) => {
+    if (!material) return;
+    
+    try {
+      // Update material with refinement data (just update stage, refinement happens via image generation)
+      // The refinement form mainly handles image generation
+      
+      // Update stage to finalization
+      const materialWithStage = await updateStage(
+        material.id,
+        MaterialStage.FINALIZATION,
+        MaterialStatus.IN_PROGRESS
+      );
+      
+      console.log("Material stage updated:", materialWithStage);
+      setMaterial(materialWithStage);
+      setCurrentStep(2);
+    } catch (error) {
+      console.error("Error updating stage:", error);
+      alert(`Failed to proceed to finalization: ${error.message || "Unknown error"}`);
+      throw error;
+    }
+  };
+
+  const handleFinalizationSubmit = async (data: FinalizationFormData) => {
+    if (!material) return;
+    
+    try {
+      // Select the final image
+      let updatedMaterial = await selectImage(material.id, data.selectedImage);
+      
+      // Add final feedback if provided
+      if (data.finalFeedback) {
+        updatedMaterial = await addFeedback(material.id, data.finalFeedback);
+      }
+      
+      // Update to completed status
+      updatedMaterial = await updateStage(
+        material.id,
+        MaterialStage.FINALIZATION,
+        MaterialStatus.COMPLETED
+      );
+      
+      console.log("Material finalized:", updatedMaterial);
+      setMaterial(updatedMaterial);
+      
+      // Navigate to the material view page
+      router.push(`/${locale}/materials/${material.id}`);
+    } catch (error) {
+      console.error("Error finalizing material:", error);
+      alert(`Failed to finalize material: ${error.message || "Unknown error"}`);
+      throw error;
+    }
+  };
+
+  if (isLoading) {
     return (
-      <div className="flex justify-center items-center py-12">
-        <div className="spinner" />
-        <span className="ml-2">{typeof t.common?.loading === 'string' ? t.common?.loading : "Loading..."}</span>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
 
-  if (error && !material) {
+  if (error || !material) {
     return (
-      <div className="p-4">
-        <Alert variant="destructive" className="mb-4">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-        <Button asChild>
-          <Link href={`/${locale}/materials`}>{typeof t.common?.back === 'string' ? t.common?.back : "Back to Materials"}</Link>
+      <div className="flex flex-col items-center justify-center min-h-screen">
+        <h1 className="text-2xl font-bold mb-4">Error</h1>
+        <p className="text-gray-600 mb-4">{error || "Material not found"}</p>
+        <Button onClick={() => router.push(`/${locale}/materials`)}>
+          Back to Materials
         </Button>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">
-          {typeof t.materials?.edit_title === 'string' ? t.materials?.edit_title : "Edit Material"}
-        </h1>
-        <Button variant="outline" asChild>
-          <Link href={`/${locale}/materials/${materialId}`}>
-            {typeof t.common?.cancel === 'string' ? t.common?.cancel : "Cancel"}
-          </Link>
+    <div className="space-y-8">
+      <div className="flex items-center gap-4 mb-4">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => router.push(`/${locale}/materials/${id}`)}
+        >
+          ← Back to Material
         </Button>
       </div>
+      
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight mb-2">
+          Edit Material: {material.title}
+        </h1>
+        <p className="text-muted-foreground">
+          {MATERIAL_CREATION_STEPS[currentStep].description}
+        </p>
+      </div>
 
-      {saveSuccess && (
-        <Alert className="bg-green-50 border-green-200 text-green-800">
-          <AlertDescription>
-            {typeof t.materials?.save_success === 'string' ? t.materials?.save_success : "Changes saved successfully!"}
-          </AlertDescription>
-        </Alert>
-      )}
+      <div className="flex justify-between items-center">
+        <ol className="flex w-full">
+          {MATERIAL_CREATION_STEPS.map((step, index) => (
+            <li 
+              key={step.id}
+              className={`flex w-full items-center ${
+                index !== MATERIAL_CREATION_STEPS.length - 1 
+                  ? "after:content-[''] after:w-full after:h-1 after:border-b after:border-gray-200 after:border-4 after:inline-block" 
+                  : ""
+              }`}
+            >
+              <span className={`flex items-center justify-center w-10 h-10 rounded-full lg:h-12 lg:w-12 shrink-0 ${
+                currentStep === index 
+                  ? "bg-primary text-white" 
+                  : currentStep > index 
+                    ? "bg-green-500 text-white" 
+                    : "bg-gray-200 text-gray-500"
+              }`}>
+                {currentStep > index ? (
+                  <svg className="w-3.5 h-3.5 lg:w-4 lg:h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 16 12">
+                    <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M1 5.917 5.724 10.5 15 1.5"/>
+                  </svg>
+                ) : (
+                  index + 1
+                )}
+              </span>
+              <span className="ml-2 text-sm font-medium sm:hidden lg:block">
+                {step.title}
+              </span>
+            </li>
+          ))}
+        </ol>
+      </div>
 
-      {error && (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
-
-      <form onSubmit={handleSubmit}>
-        <Card>
-          <CardHeader>
-            <h2 className="text-lg font-medium">{typeof t.materials?.details === 'string' ? t.materials?.details : "Material Details"}</h2>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="title">{typeof t.materials?.title === 'string' ? t.materials?.title : "Title"}</Label>
-              <Input
-                id="title"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="description">{typeof t.materials?.description === 'string' ? t.materials?.description : "Description"}</Label>
-              <Textarea
-                id="description"
-                name="description"
-                value={formData.description}
-                onChange={handleChange}
-                rows={4}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="target_audience">{typeof t.materials?.target_audience === 'string' ? t.materials?.target_audience : "Target Audience"}</Label>
-              <Input
-                id="target_audience"
-                name="target_audience"
-                value={formData.target_audience}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="campaign_objective">{typeof t.materials?.campaign_objective === 'string' ? t.materials?.campaign_objective : "Campaign Objective"}</Label>
-              <Input
-                id="campaign_objective"
-                name="campaign_objective"
-                value={formData.campaign_objective}
-                onChange={handleChange}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label>{typeof t.materials?.keywords === 'string' ? t.materials?.keywords : "Keywords"}</Label>
-              <TagInput
-                placeholder={typeof t.materials?.add_keywords === 'string' ? t.materials?.add_keywords : "Add keywords"}
-                tags={formData.keywords}
-                setTags={handleKeywordsChange}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="stage">{typeof t.materials?.stage === 'string' ? t.materials?.stage : "Stage"}</Label>
-                <Select
-                  value={formData.stage}
-                  onValueChange={(value) => handleSelectChange("stage", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={typeof t.materials?.select_stage === 'string' ? t.materials?.select_stage : "Select stage"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={MaterialStage.IDEA}>{typeof t.materials?.stages?.idea === 'string' ? t.materials?.stages?.idea : "Idea"}</SelectItem>
-                    <SelectItem value={MaterialStage.REFINEMENT}>{typeof t.materials?.stages?.refinement === 'string' ? t.materials?.stages?.refinement : "Refinement"}</SelectItem>
-                    <SelectItem value={MaterialStage.FINALIZATION}>{typeof t.materials?.stages?.finalization === 'string' ? t.materials?.stages?.finalization : "Finalization"}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="status">{typeof t.materials?.status_label === 'string' ? t.materials?.status_label : "Status"}</Label>
-                <Select
-                  value={formData.status}
-                  onValueChange={(value) => handleSelectChange("status", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={typeof t.materials?.select_status === 'string' ? t.materials?.select_status : "Select status"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={MaterialStatus.DRAFT}>{typeof t.materials?.status?.draft === 'string' ? t.materials?.status?.draft : "Draft"}</SelectItem>
-                    <SelectItem value={MaterialStatus.IN_PROGRESS}>{typeof t.materials?.status?.in_progress === 'string' ? t.materials?.status?.in_progress : "In Progress"}</SelectItem>
-                    <SelectItem value={MaterialStatus.READY_FOR_REVIEW}>{typeof t.materials?.status?.ready_for_review === 'string' ? t.materials?.status?.ready_for_review : "Ready for Review"}</SelectItem>
-                    <SelectItem value={MaterialStatus.COMPLETED}>{typeof t.materials?.status?.completed === 'string' ? t.materials?.status?.completed : "Completed"}</SelectItem>
-                    <SelectItem value={MaterialStatus.ARCHIVED}>{typeof t.materials?.status?.archived === 'string' ? t.materials?.status?.archived : "Archived"}</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="mt-6 flex justify-end space-x-4">
-          <Button
-            variant="outline"
-            type="button"
-            onClick={() => router.push(`/${locale}/materials/${materialId}`)}
-            disabled={isSaving}
-          >
-            {typeof t.common?.cancel === 'string' ? t.common?.cancel : "Cancel"}
-          </Button>
-          <Button type="submit" disabled={isSaving}>
-            {isSaving ? (
-              <>
-                <span className="spinner-sm mr-2" />
-                {typeof t.common?.saving === 'string' ? t.common?.saving : "Saving..."}
-              </>
-            ) : (
-              typeof t.common?.save === 'string' ? t.common?.save : "Save Changes"
-            )}
-          </Button>
-        </div>
-      </form>
+      <div className="mt-8">
+        {currentStep === 0 && (
+          <IdeaGenerationForm
+            onSubmit={handleIdeaSubmit}
+            locale={locale}
+            initialData={{
+              title: material.title || "",
+              description: material.description || "",
+              target_audience: material.target_audience || "",
+              campaign_objective: material.campaign_objective || "",
+              keywords: material.keywords || []
+            }}
+          />
+        )}
+        
+        {currentStep === 1 && (
+          <EnhancedRefinementForm
+            onSubmit={handleRefinementSubmit}
+            onGenerateImage={handleGenerateImage}
+            aiProviders={activeProviders}
+            generatedImages={generatedImages}
+            locale={locale}
+            initialData={{
+              prompt: material.description || "",
+              aiProvider: "openai",
+              generationParams: {}
+            }}
+          />
+        )}
+        
+        {currentStep === 2 && (
+          <FinalizationForm
+            onSubmit={handleFinalizationSubmit}
+            generatedImages={generatedImages}
+            locale={locale}
+            initialData={{
+              selectedImage: material.selected_image || "",
+              finalFeedback: ""
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }

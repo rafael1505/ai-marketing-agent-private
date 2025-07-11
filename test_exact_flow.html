@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Provider Configuration Live Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        button.red {
+            background: #dc3545;
+        }
+        button.red:hover {
+            background: #c82333;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+            max-height: 300px;
+        }
+        input, select {
+            margin: 5px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 200px;
+        }
+        .test-steps {
+            background: #e7f3ff;
+            padding: 15px;
+            border-left: 4px solid #007bff;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 AI Provider Configuration Live Test</h1>
+        <p>This tool replicates the exact user flow to test persistence issues.</p>
+        
+        <div class="test-steps">
+            <h3>Test Steps (User Flow)</h3>
+            <ol>
+                <li>Clear all localStorage</li>
+                <li>Configure OpenAI provider with API key</li>
+                <li>Enable the provider</li>
+                <li>Save configuration</li>
+                <li>Check Materials page for provider availability</li>
+                <li>Return to Configuration tab</li>
+                <li>Verify settings are still there</li>
+            </ol>
+        </div>
+        
+        <div class="test-section">
+            <h2>Step 1: Clear All Data</h2>
+            <button onclick="clearAllData()" class="red">🗑️ Clear All localStorage</button>
+            <button onclick="showCurrentState()">📊 Show Current State</button>
+            <div id="currentState"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Step 2: Configure Provider (Simulate AI Providers Tab)</h2>
+            <div>
+                <label>Provider:</label>
+                <select id="providerId">
+                    <option value="openai">OpenAI</option>
+                    <option value="stability">Stability AI</option>
+                    <option value="huggingface">Hugging Face</option>
+                </select>
+            </div>
+            <div>
+                <label>API Key:</label>
+                <input type="text" id="apiKey" placeholder="sk-..." value="sk-proj-test123456789abcdef">
+            </div>
+            <div>
+                <label>Enabled:</label>
+                <input type="checkbox" id="isActive" checked>
+            </div>
+            <button onclick="saveProviderConfig()">💾 Save Configuration</button>
+            <div id="saveResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Step 3: Check Materials Page (Simulate Navigation)</h2>
+            <button onclick="simulateMaterialsPageLoad()">🎨 Load Materials Page</button>
+            <div id="materialsResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Step 4: Return to Configuration (Simulate Navigation Back)</h2>
+            <button onclick="simulateConfigPageLoad()">⚙️ Return to Configuration</button>
+            <div id="configResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Live Console Output</h2>
+            <div id="console" style="height: 200px; overflow-y: auto; background: #f8f9fa; padding: 10px; border: 1px solid #ddd;"></div>
+            <button onclick="clearConsole()">Clear Console</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>🔗 Quick Links</h2>
+            <button onclick="window.open('http://localhost:3001/en/ai-providers', '_blank')">Open AI Providers Tab</button>
+            <button onclick="window.open('http://localhost:3001/en/materials/create', '_blank')">Open Materials Create Tab</button>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'ai-provider-configurations';
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : '#007bff';
+            const consoleDiv = document.getElementById('console');
+            consoleDiv.innerHTML += `<div style="color: ${color}; margin: 2px 0;">[${timestamp}] ${message}</div>`;
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+            console.log(`[${timestamp}] ${message}`);
+        }
+        
+        function clearConsole() {
+            document.getElementById('console').innerHTML = '';
+        }
+        
+        function clearAllData() {
+            try {
+                localStorage.removeItem(STORAGE_KEY);
+                localStorage.removeItem('userAIProviders');
+                localStorage.removeItem('ai-providers-config');
+                localStorage.removeItem('ai-provider-configurations');
+                log('✅ Cleared all AI provider localStorage keys', 'success');
+                showCurrentState();
+            } catch (error) {
+                log(`❌ Error clearing data: ${error.message}`, 'error');
+            }
+        }
+        
+        function showCurrentState() {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                const stateDiv = document.getElementById('currentState');
+                
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    const count = Array.isArray(parsed) ? parsed.length : 'non-array';
+                    stateDiv.innerHTML = `
+                        <div class="success">✅ Found ${count} configurations</div>
+                        <pre>${JSON.stringify(parsed, null, 2)}</pre>
+                    `;
+                    log(`📊 Current state: ${count} configurations`, 'info');
+                } else {
+                    stateDiv.innerHTML = '<div class="error">❌ No configurations found in localStorage</div>';
+                    log('📊 Current state: No configurations found', 'info');
+                }
+            } catch (error) {
+                document.getElementById('currentState').innerHTML = 
+                    `<div class="error">❌ Error reading localStorage: ${error.message}</div>`;
+                log(`❌ Error reading state: ${error.message}`, 'error');
+            }
+        }
+        
+        function saveProviderConfig() {
+            try {
+                const providerId = document.getElementById('providerId').value;
+                const apiKey = document.getElementById('apiKey').value;
+                const isActive = document.getElementById('isActive').checked;
+                
+                log(`💾 Saving provider configuration: ${providerId}`, 'info');
+                
+                // Get existing configurations
+                let configurations = [];
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    configurations = Array.isArray(parsed) ? parsed : [];
+                }
+                
+                // Create new config (matching the structure from ai-providers.ts)
+                const newConfig = {
+                    id: providerId,
+                    name: providerId.charAt(0).toUpperCase() + providerId.slice(1),
+                    apiKey: apiKey,
+                    isActive: isActive,
+                    selectedModel: providerId === 'openai' ? 'dall-e-3' : 'default',
+                    updatedAt: new Date().toISOString()
+                };
+                
+                // Update or add configuration
+                const existingIndex = configurations.findIndex(c => c.id === providerId);
+                if (existingIndex >= 0) {
+                    configurations[existingIndex] = { ...configurations[existingIndex], ...newConfig };
+                    log(`🔄 Updated existing configuration for ${providerId}`, 'success');
+                } else {
+                    configurations.push(newConfig);
+                    log(`➕ Added new configuration for ${providerId}`, 'success');
+                }
+                
+                // Save to localStorage
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(configurations));
+                log(`💾 Saved to localStorage: ${configurations.length} configurations`, 'success');
+                
+                // Dispatch custom event (like the real app does)
+                window.dispatchEvent(new CustomEvent('aiProviderConfigUpdated', { 
+                    detail: { providerId, configurations } 
+                }));
+                
+                document.getElementById('saveResult').innerHTML = 
+                    `<div class="success">✅ Configuration saved for ${providerId}</div>`;
+                
+                // Update state display
+                showCurrentState();
+                
+            } catch (error) {
+                log(`❌ Error saving configuration: ${error.message}`, 'error');
+                document.getElementById('saveResult').innerHTML = 
+                    `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        function simulateMaterialsPageLoad() {
+            try {
+                log('🎨 Simulating Materials page load...', 'info');
+                
+                // Simulate the getActiveProviders function from ai-providers.ts
+                const stored = localStorage.getItem(STORAGE_KEY);
+                let allConfigs = [];
+                
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    allConfigs = Array.isArray(parsed) ? parsed : [];
+                    log(`📋 Loaded ${allConfigs.length} configurations from localStorage`, 'info');
+                } else {
+                    log('📋 No configurations found in localStorage', 'error');
+                }
+                
+                // Filter for active providers (matching the real logic)
+                const activeProviders = allConfigs.filter(config => {
+                    if (!config || typeof config !== 'object') {
+                        return false;
+                    }
+                    
+                    const hasApiKey = config.apiKey && 
+                                     typeof config.apiKey === 'string' && 
+                                     config.apiKey.length > 0 && 
+                                     !config.apiKey.includes('••••');
+                    const isActive = config.isActive === true;
+                    
+                    log(`🔍 Provider ${config.id}: hasApiKey=${hasApiKey}, isActive=${isActive}`, 'info');
+                    return hasApiKey && isActive;
+                });
+                
+                const resultDiv = document.getElementById('materialsResult');
+                if (activeProviders.length > 0) {
+                    resultDiv.innerHTML = `
+                        <div class="success">✅ Found ${activeProviders.length} active provider(s)</div>
+                        <pre>${JSON.stringify(activeProviders, null, 2)}</pre>
+                    `;
+                    log(`✅ Materials page would show ${activeProviders.length} providers in dropdown`, 'success');
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">❌ No active providers found</div>
+                        <p>Check that providers have API keys and are enabled</p>
+                    `;
+                    log('❌ Materials page would show no providers in dropdown', 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ Error simulating materials page: ${error.message}`, 'error');
+                document.getElementById('materialsResult').innerHTML = 
+                    `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        function simulateConfigPageLoad() {
+            try {
+                log('⚙️ Simulating return to Configuration page...', 'info');
+                
+                // Simulate loading configurations when returning to config page
+                const stored = localStorage.getItem(STORAGE_KEY);
+                let configurations = [];
+                
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    configurations = Array.isArray(parsed) ? parsed : [];
+                    log(`📋 Loaded ${configurations.length} configurations from localStorage`, 'info');
+                } else {
+                    log('📋 No configurations found - data lost!', 'error');
+                }
+                
+                const resultDiv = document.getElementById('configResult');
+                if (configurations.length > 0) {
+                    resultDiv.innerHTML = `
+                        <div class="success">✅ Configuration data persisted correctly</div>
+                        <pre>${JSON.stringify(configurations, null, 2)}</pre>
+                    `;
+                    log('✅ Configuration page would show saved settings', 'success');
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">❌ Configuration data was lost!</div>
+                        <p>This indicates a persistence problem</p>
+                    `;
+                    log('❌ Configuration page would show empty forms - data lost!', 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ Error simulating config page load: ${error.message}`, 'error');
+                document.getElementById('configResult').innerHTML = 
+                    `<div class="error">❌ Error: ${error.message}</div>`;
+            }
+        }
+        
+        // Listen for storage events from other tabs
+        window.addEventListener('storage', (event) => {
+            if (event.key === STORAGE_KEY) {
+                log('📡 Storage event detected from another tab', 'info');
+                showCurrentState();
+            }
+        });
+        
+        // Listen for custom events
+        window.addEventListener('aiProviderConfigUpdated', (event) => {
+            log('📡 Custom aiProviderConfigUpdated event detected', 'info');
+            showCurrentState();
+        });
+        
+        // Initialize
+        log('🚀 Test tool initialized', 'success');
+        showCurrentState();
+    </script>
+</body>
+</html>

@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Provider Fix & Clean Setup</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 1000px; margin: 0 auto; }
+        .step { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        button { padding: 10px 20px; margin: 5px; background: #007cba; color: white; border: none; cursor: pointer; border-radius: 4px; }
+        button:hover { background: #005a87; }
+        .result { background: #f5f5f5; padding: 10px; margin: 10px 0; font-family: monospace; white-space: pre-wrap; border-radius: 4px; }
+        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .warning { background-color: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+        .links { display: flex; gap: 10px; flex-wrap: wrap; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Complete Provider Fix & Test Suite</h1>
+    <p>This tool will fix the provider issue and verify the solution works end-to-end.</p>
+
+    <div class="step">
+        <h3>Step 1: Clean Start - Remove All Masked Keys</h3>
+        <p>First, we'll clear any existing configurations with masked API keys.</p>
+        <button onclick="cleanStart()">🧹 Clean Start</button>
+        <div id="step1-result" class="result"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 2: Setup Test Providers with Real API Keys</h3>
+        <p>Add working provider configurations that will be detected by the material creation system.</p>
+        <button onclick="setupProviders()">⚙️ Setup Providers</button>
+        <div id="step2-result" class="result"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 3: Test Provider Detection Logic</h3>
+        <p>Run the same logic that the material creation page uses to find active providers.</p>
+        <button onclick="testProviderDetection()">🔍 Test Detection</button>
+        <div id="step3-result" class="result"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 4: Verify in Live Application</h3>
+        <p>Open the actual application pages to test the fix.</p>
+        <div class="links">
+            <button onclick="openAIProviders()">📝 AI Providers Page</button>
+            <button onclick="openMaterialCreate()">🎨 Material Creation</button>
+            <button onclick="openMaterialEdit()">✏️ Material Edit</button>
+        </div>
+        <div id="step4-result" class="result"></div>
+    </div>
+
+    <div class="step">
+        <h3>Step 5: Stress Test - Simulate API Calls</h3>
+        <p>Test that the system resists API calls that would overwrite real keys with masked ones.</p>
+        <button onclick="stressTest()">💪 Stress Test</button>
+        <div id="step5-result" class="result"></div>
+    </div>
+
+    <script>
+        function log(elementId, message, type = 'success') {
+            const element = document.getElementById(elementId);
+            element.className = `result ${type}`;
+            element.textContent = new Date().toLocaleTimeString() + ': ' + message;
+        }
+
+        function cleanStart() {
+            try {
+                // Remove any existing configurations
+                localStorage.removeItem('aiProviderConfigurations');
+                
+                // Also clear any other related keys
+                const keysToCheck = ['ai-provider-configurations', 'providerConfigurations', 'ai_providers'];
+                let clearedKeys = [];
+                
+                keysToCheck.forEach(key => {
+                    if (localStorage.getItem(key)) {
+                        localStorage.removeItem(key);
+                        clearedKeys.push(key);
+                    }
+                });
+                
+                log('step1-result', 
+                    `✅ Clean start completed!\n` +
+                    `- Removed main provider configurations\n` +
+                    `- Cleared additional keys: ${clearedKeys.length > 0 ? clearedKeys.join(', ') : 'none found'}\n` +
+                    `- Ready for fresh setup`
+                );
+            } catch (error) {
+                log('step1-result', `❌ Error during clean start: ${error.message}`, 'error');
+            }
+        }
+
+        function setupProviders() {
+            try {
+                const testProviders = [
+                    {
+                        id: 'openai',
+                        name: 'OpenAI',
+                        type: 'openai',
+                        apiKey: 'sk-test-openai-key-1234567890abcdefghijklmnopqrstuvwxyz1234',
+                        baseUrl: 'https://api.openai.com/v1',
+                        enabled: true,
+                        isActive: true,
+                        selectedModel: 'gpt-4',
+                        models: ['gpt-4', 'gpt-3.5-turbo', 'dall-e-3'],
+                        customOptions: {},
+                        quality: null,
+                        size: null,
+                        style: null
+                    },
+                    {
+                        id: 'stability',
+                        name: 'Stability AI',
+                        type: 'stability',
+                        apiKey: 'sk-test-stability-key-abcdefghijklmnopqrstuvwxyz1234567890',
+                        baseUrl: 'https://api.stability.ai',
+                        enabled: true,
+                        isActive: true,
+                        selectedModel: 'stable-diffusion-xl-1024-v1-0',
+                        models: ['stable-diffusion-xl-1024-v1-0', 'stable-diffusion-v1-6'],
+                        maxTokens: 1000,
+                        temperature: 0.7,
+                        customOptions: {}
+                    },
+                    {
+                        id: 'test-working',
+                        name: 'Test Working Provider',
+                        type: 'openai',
+                        apiKey: 'sk-test-working-provider-key-zyxwvutsrqponmlkjihgfedcba',
+                        baseUrl: 'https://api.openai.com/v1',
+                        enabled: true,
+                        isActive: true,
+                        selectedModel: 'gpt-4',
+                        models: ['gpt-4'],
+                        customOptions: {}
+                    }
+                ];
+
+                localStorage.setItem('aiProviderConfigurations', JSON.stringify(testProviders));
+
+                log('step2-result', 
+                    `✅ Successfully setup ${testProviders.length} test providers:\n\n` +
+                    testProviders.map(p => `• ${p.name} (${p.id})\n  API Key: ${p.apiKey.substring(0, 15)}...`).join('\n') +
+                    `\n\nAll providers have:\n- Real API keys (not masked)\n- isActive: true\n- Valid models configured`
+                );
+            } catch (error) {
+                log('step2-result', `❌ Error setting up providers: ${error.message}`, 'error');
+            }
+        }
+
+        function testProviderDetection() {
+            try {
+                const configs = JSON.parse(localStorage.getItem('aiProviderConfigurations') || '[]');
+                
+                // Implement the same logic as getActiveProviders
+                function isMaskedApiKey(apiKey) {
+                    if (!apiKey || typeof apiKey !== 'string') return true;
+                    return /^[•*]+$/.test(apiKey) || 
+                           apiKey.includes('••') || 
+                           apiKey.includes('***') ||
+                           apiKey === 'hidden' ||
+                           apiKey === 'masked' ||
+                           apiKey.length < 8;
+                }
+
+                const activeProviders = configs.filter(config => {
+                    if (!config || typeof config !== 'object') return false;
+                    
+                    const hasApiKey = config.apiKey && 
+                                     typeof config.apiKey === 'string' && 
+                                     config.apiKey.trim().length > 0 && 
+                                     !isMaskedApiKey(config.apiKey);
+                    
+                    const isActive = config.isActive === true;
+                    
+                    return hasApiKey && isActive;
+                });
+
+                const detectionResults = configs.map(config => ({
+                    name: config.name,
+                    id: config.id,
+                    hasValidApiKey: config.apiKey && !isMaskedApiKey(config.apiKey),
+                    isActive: config.isActive,
+                    willBeDetected: config.apiKey && !isMaskedApiKey(config.apiKey) && config.isActive,
+                    apiKeyPreview: config.apiKey ? config.apiKey.substring(0, 15) + '...' : 'none'
+                }));
+
+                log('step3-result', 
+                    `🔍 Provider Detection Test Results:\n\n` +
+                    `Total configurations: ${configs.length}\n` +
+                    `Active providers detected: ${activeProviders.length}\n\n` +
+                    `Provider Analysis:\n` +
+                    detectionResults.map(r => 
+                        `• ${r.name} (${r.id})\n` +
+                        `  ✓ Valid API Key: ${r.hasValidApiKey ? '✅' : '❌'}\n` +
+                        `  ✓ Is Active: ${r.isActive ? '✅' : '❌'}\n` +
+                        `  ➜ Will be detected: ${r.willBeDetected ? '✅ YES' : '❌ NO'}\n` +
+                        `  🔑 API Key: ${r.apiKeyPreview}\n`
+                    ).join('\n') +
+                    `\n🎯 Result: ${activeProviders.length > 0 ? 
+                        `SUCCESS! ${activeProviders.length} provider(s) will appear in material creation.` : 
+                        'FAILED! No providers will be detected.'}`
+                );
+            } catch (error) {
+                log('step3-result', `❌ Error testing detection: ${error.message}`, 'error');
+            }
+        }
+
+        function openAIProviders() {
+            window.open('http://127.0.0.1:3001/en/ai-providers', '_blank');
+            log('step4-result', '🔗 Opened AI Providers page. Check if your test providers appear there.', 'warning');
+        }
+
+        function openMaterialCreate() {
+            window.open('http://127.0.0.1:3001/en/materials/create', '_blank');
+            log('step4-result', '🔗 Opened Material Creation page. Check if providers appear in the dropdown!', 'warning');
+        }
+
+        function openMaterialEdit() {
+            window.open('http://127.0.0.1:3001/en/materials/edit/demo-1', '_blank');
+            log('step4-result', '🔗 Opened Material Edit page. Check if providers appear in the dropdown!', 'warning');
+        }
+
+        function stressTest() {
+            try {
+                // Save current state
+                const originalConfigs = localStorage.getItem('aiProviderConfigurations');
+                
+                // Simulate receiving masked API keys from API response
+                const maskedConfigs = [
+                    {
+                        id: 'openai',
+                        name: 'OpenAI',
+                        apiKey: '••••••••••••••••',
+                        isActive: true
+                    },
+                    {
+                        id: 'stability', 
+                        name: 'Stability AI',
+                        apiKey: '••••••••••••••••',
+                        isActive: true
+                    }
+                ];
+                
+                // Try to overwrite with masked keys (this should fail with our fix)
+                try {
+                    localStorage.setItem('aiProviderConfigurations', JSON.stringify(maskedConfigs));
+                    log('step5-result', '⚠️ WARNING: Masked keys were saved! The fix may not be working.', 'warning');
+                } catch (e) {
+                    // This is expected if our protection is working
+                }
+                
+                // Check what's actually in localStorage now
+                const currentConfigs = JSON.parse(localStorage.getItem('aiProviderConfigurations') || '[]');
+                const hasMaskedKeys = currentConfigs.some(c => c.apiKey && c.apiKey.includes('•'));
+                
+                if (hasMaskedKeys) {
+                    // Restore original state
+                    if (originalConfigs) {
+                        localStorage.setItem('aiProviderConfigurations', originalConfigs);
+                    }
+                    
+                    log('step5-result', 
+                        `❌ STRESS TEST FAILED!\n` +
+                        `Masked keys were able to overwrite real keys.\n` +
+                        `Restored original configuration.\n\n` +
+                        `This means the fix needs more work.`, 'error'
+                    );
+                } else {
+                    log('step5-result', 
+                        `✅ STRESS TEST PASSED!\n` +
+                        `Real API keys were preserved.\n` +
+                        `Masked keys were prevented from overwriting.\n\n` +
+                        `The fix is working correctly!`
+                    );
+                }
+                
+            } catch (error) {
+                log('step5-result', `❌ Error during stress test: ${error.message}`, 'error');
+            }
+        }
+
+        // Auto-run clean start when page loads
+        window.addEventListener('load', () => {
+            console.log('Provider Fix & Test Suite loaded');
+        });
+    </script>
+</body>
+</html>

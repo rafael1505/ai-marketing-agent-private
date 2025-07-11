@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Material Provider Issue</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border-color: #ffeaa7;
+            color: #856404;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Debug Material Provider Issue</h1>
+        <p>This tool debugs why providers aren't appearing in material creation/editing pages.</p>
+        
+        <div class="test-section">
+            <h3>Storage Analysis</h3>
+            <button onclick="analyzeLocalStorage()">🔍 Analyze LocalStorage</button>
+            <button onclick="createTestProvider()">➕ Create Test Provider</button>
+            <button onclick="testActiveProviders()">⚡ Test Active Providers Function</button>
+            <button onclick="clearAllStorage()">🧹 Clear All Storage</button>
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function analyzeLocalStorage() {
+            const resultsDiv = document.getElementById('results');
+            let html = '<div class="test-section"><h4>LocalStorage Analysis</h4><div class="log">';
+            
+            // Check all storage keys
+            const keys = Object.keys(localStorage);
+            html += `Total localStorage keys: ${keys.length}\n\n`;
+            
+            keys.forEach(key => {
+                const value = localStorage.getItem(key);
+                html += `Key: "${key}"\n`;
+                html += `Value length: ${value ? value.length : 0}\n`;
+                
+                if (key.includes('provider') || key.includes('ai')) {
+                    html += `Value: ${value}\n`;
+                    
+                    if (value) {
+                        try {
+                            const parsed = JSON.parse(value);
+                            html += `Parsed type: ${Array.isArray(parsed) ? 'array' : typeof parsed}\n`;
+                            if (Array.isArray(parsed)) {
+                                html += `Array length: ${parsed.length}\n`;
+                                parsed.forEach((item, index) => {
+                                    html += `  [${index}] ${JSON.stringify(item, null, 2)}\n`;
+                                });
+                            }
+                        } catch (e) {
+                            html += `Parse error: ${e.message}\n`;
+                        }
+                    }
+                }
+                html += '\n';
+            });
+            
+            html += '</div></div>';
+            resultsDiv.innerHTML = html;
+        }
+        
+        function createTestProvider() {
+            const testProvider = {
+                id: "debug-openai-test",
+                name: "Debug OpenAI Test",
+                type: "openai",
+                apiKey: "sk-test123456789",
+                isActive: true,
+                config: {
+                    model: "gpt-4",
+                    temperature: 0.7
+                },
+                pricing: {
+                    tier: "premium",
+                    cost_per_token: 0.002
+                }
+            };
+            
+            // Store in the correct key
+            const storageKey = 'ai-provider-configurations';
+            let existingProviders = [];
+            
+            try {
+                const existing = localStorage.getItem(storageKey);
+                if (existing) {
+                    existingProviders = JSON.parse(existing);
+                }
+            } catch (e) {
+                console.error('Error parsing existing providers:', e);
+            }
+            
+            // Remove any existing test provider
+            existingProviders = existingProviders.filter(p => p.id !== testProvider.id);
+            
+            // Add new test provider
+            existingProviders.push(testProvider);
+            
+            localStorage.setItem(storageKey, JSON.stringify(existingProviders));
+            
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `
+                <div class="test-section success">
+                    <h4>Test Provider Created</h4>
+                    <div class="log">
+Created test provider: ${testProvider.name}
+Storage key: ${storageKey}
+Total providers: ${existingProviders.length}
+Provider details: ${JSON.stringify(testProvider, null, 2)}
+                    </div>
+                </div>
+            `;
+        }
+        
+        function testActiveProviders() {
+            const resultsDiv = document.getElementById('results');
+            let html = '<div class="test-section"><h4>Active Providers Test</h4><div class="log">';
+            
+            try {
+                // Simulate the getActiveProviders logic
+                const storageKey = 'ai-provider-configurations';
+                const cached = localStorage.getItem(storageKey);
+                
+                html += `Storage key: ${storageKey}\n`;
+                html += `Cached data exists: ${!!cached}\n`;
+                
+                if (cached) {
+                    const allConfigs = JSON.parse(cached);
+                    html += `All configurations: ${Array.isArray(allConfigs) ? allConfigs.length : 'not array'}\n\n`;
+                    
+                    if (Array.isArray(allConfigs)) {
+                        allConfigs.forEach((config, index) => {
+                            html += `Provider ${index + 1}: ${config.id || 'no-id'}\n`;
+                            html += `  Name: ${config.name || 'no-name'}\n`;
+                            html += `  Type: ${config.type || 'no-type'}\n`;
+                            html += `  API Key: ${config.apiKey ? (config.apiKey.length > 0 ? 'has key' : 'empty key') : 'no key'}\n`;
+                            html += `  Is Active: ${config.isActive}\n`;
+                            html += `  API Key masked: ${config.apiKey ? isMaskedApiKey(config.apiKey) : 'n/a'}\n`;
+                            
+                            const hasApiKey = config.apiKey && 
+                                           typeof config.apiKey === 'string' && 
+                                           config.apiKey.length > 0 && 
+                                           !isMaskedApiKey(config.apiKey);
+                            const isActive = config.isActive === true;
+                            
+                            html += `  Would be active: ${hasApiKey && isActive ? 'YES' : 'NO'}\n`;
+                            html += `    - Has valid API key: ${hasApiKey}\n`;
+                            html += `    - Is active: ${isActive}\n\n`;
+                        });
+                        
+                        const activeProviders = allConfigs.filter(config => {
+                            const hasApiKey = config.apiKey && 
+                                           typeof config.apiKey === 'string' && 
+                                           config.apiKey.length > 0 && 
+                                           !isMaskedApiKey(config.apiKey);
+                            const isActive = config.isActive === true;
+                            return hasApiKey && isActive;
+                        });
+                        
+                        html += `RESULT: ${activeProviders.length} active providers found\n`;
+                        activeProviders.forEach(provider => {
+                            html += `  - ${provider.name} (${provider.type})\n`;
+                        });
+                    }
+                } else {
+                    html += 'No cached data found\n';
+                }
+                
+            } catch (error) {
+                html += `Error: ${error.message}\n`;
+            }
+            
+            html += '</div></div>';
+            resultsDiv.innerHTML = html;
+        }
+        
+        function isMaskedApiKey(apiKey) {
+            if (!apiKey || typeof apiKey !== 'string') return false;
+            return apiKey.includes('***') || apiKey.includes('...') || /^\*+$/.test(apiKey);
+        }
+        
+        function clearAllStorage() {
+            localStorage.clear();
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `
+                <div class="test-section warning">
+                    <h4>Storage Cleared</h4>
+                    <div class="log">All localStorage data has been cleared.</div>
+                </div>
+            `;
+        }
+        
+        // Auto-run analysis on page load
+        window.addEventListener('load', () => {
+            setTimeout(analyzeLocalStorage, 500);
+        });
+    </script>
+</body>
+</html>

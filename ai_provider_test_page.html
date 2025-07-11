@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Provider Configuration & Testing</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .provider-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .provider-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            background: #f9f9f9;
+        }
+        
+        .provider-card.available {
+            border-color: #4caf50;
+            background: #f1f8e9;
+        }
+        
+        .provider-card.unavailable {
+            border-color: #f44336;
+            background: #ffebee;
+        }
+        
+        .provider-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .provider-name {
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+        
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+        
+        .status-available {
+            background: #4caf50;
+            color: white;
+        }
+        
+        .status-unavailable {
+            background: #f44336;
+            color: white;
+        }
+        
+        .provider-details {
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .provider-details div {
+            margin-bottom: 5px;
+        }
+        
+        .test-section {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .input-group input, .input-group select, .input-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .input-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: transform 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .results {
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+        }
+        
+        .results.hidden {
+            display: none;
+        }
+        
+        .results h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .image-item {
+            text-align: center;
+        }
+        
+        .image-item img {
+            max-width: 100%;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .image-info {
+            margin-top: 10px;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #ffcdd2;
+            margin-top: 15px;
+        }
+        
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 4px;
+            border: 1px solid #c8e6c9;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎨 AI Provider Configuration</h1>
+            <p>Configure and test AI image generation providers</p>
+        </div>
+        
+        <div class="content">
+            <!-- Provider Status Section -->
+            <div class="section">
+                <h2>📊 Provider Status</h2>
+                <div id="provider-status" class="provider-grid">
+                    <div class="loading">Loading provider status...</div>
+                </div>
+            </div>
+            
+            <!-- Image Generation Testing -->
+            <div class="section">
+                <h2>🧪 Test Image Generation</h2>
+                <div class="test-section">
+                    <form id="generation-form">
+                        <div class="input-group">
+                            <label for="prompt">Image Prompt</label>
+                            <textarea id="prompt" placeholder="Describe the image you want to generate..." required>A modern office building with solar panels and green technology</textarea>
+                        </div>
+                        
+                        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                            <div class="input-group">
+                                <label for="provider">AI Provider</label>
+                                <select id="provider" required>
+                                    <option value="">Select a provider...</option>
+                                </select>
+                            </div>
+                            
+                            <div class="input-group">
+                                <label for="size">Image Size</label>
+                                <select id="size">
+                                    <option value="512x512">512x512</option>
+                                    <option value="1024x1024" selected>1024x1024</option>
+                                    <option value="1024x1792">1024x1792 (Portrait)</option>
+                                    <option value="1792x1024">1792x1024 (Landscape)</option>
+                                </select>
+                            </div>
+                            
+                            <div class="input-group">
+                                <label for="variations">Variations</label>
+                                <select id="variations">
+                                    <option value="1">1 Image</option>
+                                    <option value="2" selected>2 Images</option>
+                                    <option value="3">3 Images</option>
+                                    <option value="4">4 Images</option>
+                                    <option value="5">5 Images</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <button type="submit" class="btn" id="generate-btn">
+                            🎨 Generate Images
+                        </button>
+                    </form>
+                    
+                    <div id="generation-results" class="results hidden">
+                        <!-- Results will be populated here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:8089';
+        
+        // Load provider status
+        async function loadProviderStatus() {
+            try {
+                const response = await fetch(`${API_BASE}/providers`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayProviderStatus(data.providers);
+                    populateProviderSelect(data.providers);
+                } else {
+                    throw new Error('Failed to load provider status');
+                }
+            } catch (error) {
+                document.getElementById('provider-status').innerHTML = 
+                    `<div class="error">Failed to load provider status: ${error.message}</div>`;
+            }
+        }
+        
+        function displayProviderStatus(providers) {
+            const container = document.getElementById('provider-status');
+            container.innerHTML = '';
+            
+            providers.forEach(provider => {
+                const card = document.createElement('div');
+                card.className = `provider-card ${provider.available ? 'available' : 'unavailable'}`;
+                
+                card.innerHTML = `
+                    <div class="provider-header">
+                        <div class="provider-name">${provider.name}</div>
+                        <div class="status-badge ${provider.available ? 'status-available' : 'status-unavailable'}">
+                            ${provider.available ? 'Available' : 'Unavailable'}
+                        </div>
+                    </div>
+                    <div class="provider-details">
+                        <div><strong>ID:</strong> ${provider.id}</div>
+                        <div><strong>Model:</strong> ${provider.model}</div>
+                        <div><strong>Max Variations:</strong> ${provider.max_variations}</div>
+                        <div><strong>Configured:</strong> ${provider.configured ? 'Yes' : 'No'}</div>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+            });
+        }
+        
+        function populateProviderSelect(providers) {
+            const select = document.getElementById('provider');
+            select.innerHTML = '<option value="">Select a provider...</option>';
+            
+            providers.forEach(provider => {
+                if (provider.available) {
+                    const option = document.createElement('option');
+                    option.value = provider.id;
+                    option.textContent = `${provider.name} (${provider.model})`;
+                    select.appendChild(option);
+                }
+            });
+            
+            // Select the first available provider by default
+            const firstAvailable = providers.find(p => p.available);
+            if (firstAvailable) {
+                select.value = firstAvailable.id;
+            }
+        }
+        
+        // Handle form submission
+        document.getElementById('generation-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const prompt = document.getElementById('prompt').value;
+            const provider = document.getElementById('provider').value;
+            const size = document.getElementById('size').value;
+            const variations = parseInt(document.getElementById('variations').value);
+            
+            const submitBtn = document.getElementById('generate-btn');
+            const resultsDiv = document.getElementById('generation-results');
+            
+            // Show loading state
+            submitBtn.disabled = true;
+            submitBtn.textContent = '🔄 Generating...';
+            resultsDiv.className = 'results';
+            resultsDiv.innerHTML = '<div class="loading">Generating images, please wait...</div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/generate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        prompt,
+                        provider,
+                        size,
+                        variations
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayGenerationResults(data);
+                } else {
+                    throw new Error(data.detail || 'Generation failed');
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">Generation failed: ${error.message}</div>`;
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🎨 Generate Images';
+            }
+        });
+        
+        function displayGenerationResults(data) {
+            const resultsDiv = document.getElementById('generation-results');
+            
+            let imagesHtml = '';
+            data.images.forEach((imageUrl, index) => {
+                imagesHtml += `
+                    <div class="image-item">
+                        <img src="${imageUrl}" alt="Generated image ${index + 1}" onclick="openImageInNewTab('${imageUrl}')">
+                        <div class="image-info">
+                            Variation ${index + 1}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            resultsDiv.innerHTML = `
+                <h3>✅ Generation Results</h3>
+                <div class="success">
+                    Generated ${data.images.length} images using <strong>${data.provider}</strong> (${data.model})
+                    ${data.cost > 0 ? `<br>Cost: $${data.cost.toFixed(4)}` : ''}
+                </div>
+                <div class="image-grid">
+                    ${imagesHtml}
+                </div>
+            `;
+        }
+        
+        function openImageInNewTab(imageUrl) {
+            window.open(imageUrl, '_blank');
+        }
+        
+        // Initialize the page
+        loadProviderStatus();
+    </script>
+</body>
+</html>

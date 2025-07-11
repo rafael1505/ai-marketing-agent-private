@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Provider Configuration Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        input, select {
+            margin: 5px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AI Provider Configuration Test Tool</h1>
+        <p>This tool tests localStorage persistence for AI provider configurations.</p>
+        
+        <div class="test-section">
+            <h2>Current localStorage State</h2>
+            <button onclick="showCurrentState()">Refresh Current State</button>
+            <div id="currentState"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Test Provider Configuration</h2>
+            <div>
+                <label>Provider ID:</label>
+                <select id="providerId">
+                    <option value="openai">OpenAI</option>
+                    <option value="stability">Stability AI</option>
+                    <option value="huggingface">Hugging Face</option>
+                    <option value="dall-e">DALL-E</option>
+                </select>
+            </div>
+            <div>
+                <label>API Key:</label>
+                <input type="text" id="apiKey" placeholder="sk-..." value="sk-test123456789">
+            </div>
+            <div>
+                <label>Enabled:</label>
+                <input type="checkbox" id="isActive" checked>
+            </div>
+            <button onclick="saveTestConfig()">Save Test Configuration</button>
+            <button onclick="clearAllConfigs()">Clear All Configurations</button>
+        </div>
+        
+        <div class="test-section">
+            <h2>Auto-refresh Test</h2>
+            <button onclick="startAutoRefresh()">Start Auto-refresh (every 2s)</button>
+            <button onclick="stopAutoRefresh()">Stop Auto-refresh</button>
+            <div id="autoRefreshStatus"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Cross-tab Test</h2>
+            <p>Open this page in another tab and save configurations to test cross-tab sync.</p>
+            <div id="crossTabEvents"></div>
+        </div>
+        
+        <div class="test-section">
+            <h2>Application Test</h2>
+            <button onclick="openAIProvidersTab()">Open AI Providers Tab</button>
+            <button onclick="openMaterialsCreateTab()">Open Materials Create Tab</button>
+            <p>Use these buttons to test configuration persistence across the actual application tabs.</p>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'ai-provider-configurations';
+        let autoRefreshInterval = null;
+        
+        function log(message, type = 'info') {
+            console.log(message);
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? 'red' : type === 'success' ? 'green' : 'blue';
+            document.getElementById('autoRefreshStatus').innerHTML += 
+                `<div style="color: ${color}">[${timestamp}] ${message}</div>`;
+        }
+        
+        function showCurrentState() {
+            try {
+                const stored = localStorage.getItem(STORAGE_KEY);
+                const stateDiv = document.getElementById('currentState');
+                
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    stateDiv.innerHTML = `
+                        <div class="success">✓ Found ${Array.isArray(parsed) ? parsed.length : 'non-array'} configurations</div>
+                        <pre>${JSON.stringify(parsed, null, 2)}</pre>
+                    `;
+                } else {
+                    stateDiv.innerHTML = '<div class="error">✗ No configurations found in localStorage</div>';
+                }
+            } catch (error) {
+                document.getElementById('currentState').innerHTML = 
+                    `<div class="error">✗ Error reading localStorage: ${error.message}</div>`;
+            }
+        }
+        
+        function saveTestConfig() {
+            try {
+                const providerId = document.getElementById('providerId').value;
+                const apiKey = document.getElementById('apiKey').value;
+                const isActive = document.getElementById('isActive').checked;
+                
+                // Get existing configurations
+                let configurations = [];
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    configurations = Array.isArray(parsed) ? parsed : [];
+                }
+                
+                // Create new config
+                const newConfig = {
+                    id: providerId,
+                    name: providerId.charAt(0).toUpperCase() + providerId.slice(1),
+                    apiKey: apiKey,
+                    isActive: isActive,
+                    updatedAt: new Date().toISOString()
+                };
+                
+                // Update or add configuration
+                const existingIndex = configurations.findIndex(c => c.id === providerId);
+                if (existingIndex >= 0) {
+                    configurations[existingIndex] = { ...configurations[existingIndex], ...newConfig };
+                } else {
+                    configurations.push(newConfig);
+                }
+                
+                // Save to localStorage
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(configurations));
+                
+                log(`Saved configuration for ${providerId}`, 'success');
+                showCurrentState();
+                
+                // Dispatch custom event
+                window.dispatchEvent(new CustomEvent('aiProviderConfigUpdated', { 
+                    detail: { providerId, configurations } 
+                }));
+                
+            } catch (error) {
+                log(`Error saving configuration: ${error.message}`, 'error');
+            }
+        }
+        
+        function clearAllConfigs() {
+            localStorage.removeItem(STORAGE_KEY);
+            log('Cleared all configurations', 'success');
+            showCurrentState();
+        }
+        
+        function startAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+            }
+            
+            autoRefreshInterval = setInterval(() => {
+                showCurrentState();
+                log('Auto-refreshed state');
+            }, 2000);
+            
+            log('Started auto-refresh (every 2 seconds)', 'success');
+        }
+        
+        function stopAutoRefresh() {
+            if (autoRefreshInterval) {
+                clearInterval(autoRefreshInterval);
+                autoRefreshInterval = null;
+                log('Stopped auto-refresh', 'success');
+            }
+        }
+        
+        function openAIProvidersTab() {
+            window.open('http://localhost:3000/en/ai-providers', '_blank');
+        }
+        
+        function openMaterialsCreateTab() {
+            window.open('http://localhost:3000/en/materials/create', '_blank');
+        }
+        
+        // Listen for storage events from other tabs
+        window.addEventListener('storage', (event) => {
+            if (event.key === STORAGE_KEY) {
+                log('Storage event detected from another tab', 'info');
+                showCurrentState();
+            }
+        });
+        
+        // Listen for custom events
+        window.addEventListener('aiProviderConfigUpdated', (event) => {
+            log('Custom aiProviderConfigUpdated event detected', 'info');
+            showCurrentState();
+        });
+        
+        // Show initial state
+        showCurrentState();
+    </script>
+</body>
+</html>

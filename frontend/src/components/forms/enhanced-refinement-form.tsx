@@ -9,14 +9,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { RefinementFormData, AIProviderConfig, GeneratedImage } from "@/types";
+import { RefinementFormData, GeneratedImage } from "@/types";
 import { Loader } from "@/components/ui/loader";
-import { MARKETING_AI_PROVIDERS, getConfiguredProviders } from "@/constants/marketing-ai-providers";
 
 interface RefinementFormProps {
   onSubmit: (data: RefinementFormData) => void;
   onGenerateImage: (prompt: string, provider: string) => Promise<void>;
-  aiProviders: AIProviderConfig[];
+  aiProviders: any[]; // Updated to use the new AI provider format
   generatedImages: GeneratedImage[];
   initialData?: Partial<RefinementFormData>;
   locale?: string;
@@ -39,7 +38,7 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
   
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [selectedProvider, setSelectedProvider] = React.useState<AIProviderConfig | null>(null);
+  const [selectedProvider, setSelectedProvider] = React.useState<any | null>(null);
   const [providerError, setProviderError] = React.useState<string>("");
   const [selectedImageIndex, setSelectedImageIndex] = React.useState<number | null>(null);
 
@@ -85,22 +84,15 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
   }, [selectedProvider]);
 
   const configuredProviders = React.useMemo(() => {
-    return MARKETING_AI_PROVIDERS.filter(provider => 
-      provider.configurationStatus === 'configured' || 
-      provider.pricing?.tier === 'free' ||
-      provider.isConfigured === true ||
-      provider.id === 'dalle3' // Always include DALL-E for demo
-    );
-  }, []);
+    // Use the providers passed from parent (which are already filtered for active/configured)
+    return aiProviders.length > 0 ? aiProviders : [];
+  }, [aiProviders]);
 
-  // Auto-select the free provider if no provider is selected
+  // Auto-select the first provider if no provider is selected
   React.useEffect(() => {
     if (configuredProviders.length > 0 && !selectedProvider) {
-      // Prefer the free provider
-      const freeProvider = configuredProviders.find(p => 
-        p.pricing?.tier === 'free' || p.id === 'free-test-provider'
-      );
-      const defaultProvider = freeProvider || configuredProviders[0];
+      // Select the first available provider
+      const defaultProvider = configuredProviders[0];
       setSelectedProvider(defaultProvider);
     }
   }, [configuredProviders, selectedProvider]);
@@ -134,7 +126,7 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
   }, [selectedImageIndex, generatedImages.length]);
 
   const handleProviderSelect = (providerId: string) => {
-    const provider = MARKETING_AI_PROVIDERS.find(p => p.id === providerId);
+    const provider = configuredProviders.find(p => p.id === providerId);
     if (provider) {
       setSelectedProvider(provider);
       setProviderError("");
@@ -174,10 +166,16 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
     setProviderError("");
     
     try {
+      console.log("Starting image generation with:", { prompt: formData.prompt, provider: formData.aiProvider });
       await onGenerateImage(formData.prompt, formData.aiProvider);
+      console.log("Image generation completed successfully");
     } catch (error) {
       console.error("Error generating image:", error);
-      setProviderError("Failed to generate image. Please try again.");
+      const errorMessage = error instanceof Error ? error.message : "Failed to generate image. Please try again.";
+      setProviderError(errorMessage);
+      
+      // Also show an alert for better user feedback
+      alert(`Image generation failed: ${errorMessage}`);
     } finally {
       setIsGenerating(false);
     }
@@ -233,10 +231,10 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
                     <div className="flex items-center justify-between">
                       <CardTitle className="text-base">{provider.name}</CardTitle>
                       <Badge 
-                        variant={provider.pricing.tier === 'free' ? 'default' : 'secondary'}
+                        variant={provider.pricing?.tier === 'free' ? 'default' : 'secondary'}
                         className="capitalize"
                       >
-                        {provider.pricing.tier}
+                        {provider.pricing?.tier || 'free'}
                       </Badge>
                     </div>
                   </CardHeader>
@@ -249,7 +247,8 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
                         <Badge variant="outline" className="text-xs">Logo Design</Badge>
                       )}
                       
-                      {provider.pricing.freeQuota && (
+                      {/* Safe null check for pricing and freeQuota */}
+                      {provider.pricing && provider.pricing.freeQuota && (
                         <p className="text-xs text-muted-foreground">
                           {provider.pricing.freeQuota.description}
                         </p>
@@ -300,7 +299,7 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
                     </p>
                   </div>
                   <Badge variant="default" className="bg-blue-500">
-                    {selectedProvider.pricing.tier}
+                    {selectedProvider.pricing?.tier || 'free'}
                   </Badge>
                 </div>
               </div>

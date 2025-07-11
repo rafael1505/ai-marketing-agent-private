@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Image Selection & Zoom Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #2d3748;
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #718096;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+        
+        .form-section {
+            background: #f7fafc;
+            padding: 25px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            border-left: 4px solid #4299e1;
+        }
+        
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: #4299e1;
+            box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+        }
+        
+        textarea {
+            height: 80px;
+            resize: vertical;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #4299e1, #3182ce);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            width: 100%;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(66, 153, 225, 0.3);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 40px;
+            color: #4299e1;
+            font-size: 18px;
+        }
+        
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e8f0;
+            border-radius: 50%;
+            border-top-color: #4299e1;
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .results {
+            display: none;
+            margin-top: 30px;
+        }
+        
+        .section-header {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e2e8f0;
+        }
+        
+        /* Image Gallery Styles */
+        .image-gallery {
+            margin-bottom: 40px;
+        }
+        
+        .image-options {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        
+        .image-option {
+            position: relative;
+            border: 3px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            aspect-ratio: 1;
+        }
+        
+        .image-option:hover {
+            border-color: #4299e1;
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(66, 153, 225, 0.3);
+        }
+        
+        .image-option.selected {
+            border-color: #3182ce;
+            border-width: 4px;
+            box-shadow: 0 0 0 4px rgba(66, 153, 225, 0.2);
+        }
+        
+        .image-option img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: opacity 0.3s;
+        }
+        
+        .image-option .variation-label {
+            position: absolute;
+            top: 5px;
+            left: 5px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .image-option .select-badge {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #3182ce;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .image-option.selected .select-badge {
+            display: flex;
+        }
+        
+        /* Zoomed Image Display */
+        .zoomed-display {
+            background: #f7fafc;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border: 2px solid #e2e8f0;
+        }
+        
+        .zoomed-image-container {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .zoomed-image {
+            max-width: 100%;
+            max-height: 500px;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .zoomed-info {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #4299e1;
+        }
+        
+        .zoomed-info h4 {
+            margin: 0 0 10px 0;
+            color: #2d3748;
+        }
+        
+        .zoomed-info p {
+            margin: 5px 0;
+            color: #4a5568;
+        }
+        
+        /* Company Info */
+        .company-info {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            border-left: 4px solid #48bb78;
+        }
+        
+        .color-swatch {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-right: 5px;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .metadata {
+            background: #f7fafc;
+            padding: 15px;
+            border-radius: 6px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        
+        .alert {
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        
+        .alert.success {
+            background: #f0fff4;
+            border: 1px solid #9ae6b4;
+            color: #276749;
+        }
+        
+        .alert.error {
+            background: #fed7d7;
+            border: 1px solid #feb2b2;
+            color: #c53030;
+        }
+        
+        @media (max-width: 768px) {
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .image-options {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Multi-Image Selection & Zoom Test</h1>
+        <p class="subtitle">Generate 5 context-aware image variations and select one to zoom in</p>
+        
+        <div class="form-section">
+            <h3>🖼️ Image Generation Settings</h3>
+            
+            <div class="form-group">
+                <label for="prompt">Image Description:</label>
+                <textarea id="prompt" placeholder="Describe the marketing image you want to generate...">A professional healthcare device showcasing modern technology</textarea>
+            </div>
+            
+            <div class="form-grid">
+                <div class="form-group">
+                    <label for="company">Company:</label>
+                    <select id="company">
+                        <option value="philips">Philips (Healthcare Tech)</option>
+                        <option value="nike">Nike (Sports & Athletic)</option>
+                        <option value="apple">Apple (Technology)</option>
+                        <option value="default">Default Company</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="materialType">Material Type:</label>
+                    <select id="materialType">
+                        <option value="">Select material type</option>
+                        <option value="brochure">Brochure</option>
+                        <option value="poster">Poster</option>
+                        <option value="social-media">Social Media</option>
+                        <option value="email">Email Campaign</option>
+                        <option value="presentation">Presentation</option>
+                        <option value="website-banner">Website Banner</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="targetAudience">Target Audience:</label>
+                    <input type="text" id="targetAudience" placeholder="e.g., Healthcare professionals, Athletes">
+                </div>
+                
+                <div class="form-group">
+                    <label for="campaignTheme">Campaign Theme:</label>
+                    <input type="text" id="campaignTheme" placeholder="e.g., Innovation, Performance">
+                </div>
+                
+                <div class="form-group">
+                    <label for="size">Image Size:</label>
+                    <select id="size">
+                        <option value="1024x1024">1024x1024 (Square)</option>
+                        <option value="1024x768">1024x768 (Landscape)</option>
+                        <option value="768x1024">768x1024 (Portrait)</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="provider">AI Provider:</label>
+                    <select id="provider">
+                        <option value="context-aware-test-provider">Context-Aware Test Provider</option>
+                        <option value="free-test-provider">Free Test Provider</option>
+                    </select>
+                </div>
+            </div>
+            
+            <button class="btn" onclick="generateImages()" id="generateBtn">
+                🎨 Generate 5 Image Variations
+            </button>
+        </div>
+        
+        <div class="alert success" id="success"></div>
+        <div class="alert error" id="error"></div>
+        <div class="loading" id="loading">Generating 5 context-aware image variations...</div>
+        
+        <div class="results" id="results">
+            <div class="section-header">🖼️ Image Gallery - Select Your Favorite</div>
+            
+            <div class="image-gallery">
+                <div class="image-options" id="imageOptions">
+                    <!-- Image options will be populated here -->
+                </div>
+                
+                <div class="zoomed-display" id="zoomedDisplay" style="display: none;">
+                    <div class="zoomed-image-container">
+                        <img id="zoomedImage" class="zoomed-image" alt="Selected image">
+                    </div>
+                    <div class="zoomed-info">
+                        <h4 id="selectedVariationTitle">Selected Variation</h4>
+                        <p id="selectedVariationDescription"></p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="section-header">📊 Generation Details</div>
+            <div id="generationDetails">
+                <!-- Generation details will be populated here -->
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentResults = null;
+        let selectedVariation = null;
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => { errorDiv.style.display = 'none'; }, 5000);
+        }
+        
+        function showSuccess(message) {
+            const successDiv = document.getElementById('success');
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
+            setTimeout(() => { successDiv.style.display = 'none'; }, 5000);
+        }
+        
+        async function generateImages() {
+            // Get form values
+            const prompt = document.getElementById('prompt').value;
+            const company = document.getElementById('company').value;
+            const materialType = document.getElementById('materialType').value;
+            const targetAudience = document.getElementById('targetAudience').value;
+            const campaignTheme = document.getElementById('campaignTheme').value;
+            const size = document.getElementById('size').value;
+            const provider = document.getElementById('provider').value;
+            
+            if (!prompt.trim()) {
+                showError('Please enter an image description');
+                return;
+            }
+            
+            // Show loading state
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('success').style.display = 'none';
+            document.getElementById('generateBtn').disabled = true;
+            
+            try {
+                // Build query parameters for 5 variations
+                const params = new URLSearchParams({
+                    prompt: prompt,
+                    ai_provider: provider,
+                    size: size,
+                    variations: '5'  // Request 5 variations
+                });
+                
+                if (company) params.append('company_id', company);
+                if (materialType) params.append('material_type', materialType);
+                if (targetAudience) params.append('target_audience', targetAudience);
+                if (campaignTheme) params.append('campaign_theme', campaignTheme);
+                
+                const url = `/api/v1/ai/generate-image?${params}`;
+                console.log('Generating 5 image variations with URL:', url);
+                
+                const response = await fetch(url, { method: 'POST' });
+                const data = await response.json();
+                
+                if (data.success && data.variations) {
+                    currentResults = data;
+                    displayImageGallery(data);
+                    showSuccess(`Successfully generated ${data.variations.length} image variations!`);
+                } else if (data.success && data.image_url) {
+                    // Fallback for single image
+                    currentResults = data;
+                    displaySingleImage(data);
+                    showSuccess('Generated single image (fallback mode)');
+                } else {
+                    showError(data.detail || 'Failed to generate images');
+                }
+                
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Network error: ' + error.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('generateBtn').disabled = false;
+            }
+        }
+        
+        function displayImageGallery(data) {
+            const imageOptions = document.getElementById('imageOptions');
+            const generationDetails = document.getElementById('generationDetails');
+            
+            // Clear previous results
+            imageOptions.innerHTML = '';
+            selectedVariation = null;
+            document.getElementById('zoomedDisplay').style.display = 'none';
+            
+            // Display image options
+            data.variations.forEach((variation, index) => {
+                const optionDiv = document.createElement('div');
+                optionDiv.className = 'image-option';
+                optionDiv.onclick = () => selectVariation(variation, index);
+                
+                optionDiv.innerHTML = `
+                    <img src="${variation.image_url}" alt="Variation ${variation.variation_id}" 
+                         onload="this.style.opacity=1" style="opacity:0;transition:opacity 0.3s">
+                    <div class="variation-label">Option ${variation.variation_id}</div>
+                    <div class="select-badge">✓</div>
+                `;
+                
+                imageOptions.appendChild(optionDiv);
+            });
+            
+            // Display generation details
+            const metadata = data.metadata || {};
+            const company = metadata.company || {};
+            
+            generationDetails.innerHTML = `
+                <div class="company-info">
+                    <strong>${company.name || 'Unknown Company'}</strong>
+                    <div style="margin-top: 8px;">
+                        <strong>Brand Colors:</strong> 
+                        ${(company.brand_colors || []).map(color => 
+                            `<div class="color-swatch" style="background-color: ${color}" title="${color}"></div>`
+                        ).join('')}
+                    </div>
+                    <p><strong>Industry:</strong> ${company.industry || 'N/A'}</p>
+                    <p><strong>Style:</strong> ${company.style || 'N/A'}</p>
+                </div>
+                
+                <div class="metadata">
+                    <strong>Enhanced Prompt:</strong><br>
+                    ${data.enhanced_prompt || data.prompt}<br><br>
+                    
+                    <strong>Generation Settings:</strong><br>
+                    Total Variations: ${metadata.total_variations || 'N/A'}<br>
+                    Size: ${metadata.size || 'N/A'}<br>
+                    Material Type: ${metadata.material_type || 'N/A'}<br>
+                    Service: ${metadata.service || 'N/A'}<br><br>
+                    
+                    <strong>Context Applied:</strong><br>
+                    ${Object.entries(metadata.context_applied || {}).map(([key, value]) => 
+                        `${key.replace(/_/g, ' ')}: ${value ? '✅' : '❌'}`
+                    ).join('<br>')}
+                </div>
+            `;
+            
+            document.getElementById('results').style.display = 'block';
+        }
+        
+        function selectVariation(variation, index) {
+            // Remove previous selection
+            document.querySelectorAll('.image-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            // Select current option
+            document.querySelectorAll('.image-option')[index].classList.add('selected');
+            selectedVariation = variation;
+            
+            // Display zoomed version
+            const zoomedDisplay = document.getElementById('zoomedDisplay');
+            const zoomedImage = document.getElementById('zoomedImage');
+            const selectedTitle = document.getElementById('selectedVariationTitle');
+            const selectedDescription = document.getElementById('selectedVariationDescription');
+            
+            zoomedImage.src = variation.image_url;
+            selectedTitle.textContent = `Selected: Variation ${variation.variation_id}`;
+            selectedDescription.textContent = `Image ID: ${variation.image_id} | Enhanced with company branding and context`;
+            
+            zoomedDisplay.style.display = 'block';
+            
+            // Smooth scroll to zoomed image
+            zoomedDisplay.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+        
+        function displaySingleImage(data) {
+            // Fallback for single image display
+            const imageOptions = document.getElementById('imageOptions');
+            imageOptions.innerHTML = `
+                <div class="image-option selected" onclick="selectSingleImage('${data.image_url}')">
+                    <img src="${data.image_url}" alt="Generated image" 
+                         onload="this.style.opacity=1" style="opacity:0;transition:opacity 0.3s">
+                    <div class="variation-label">Single</div>
+                    <div class="select-badge">✓</div>
+                </div>
+            `;
+            
+            selectSingleImage(data.image_url);
+            document.getElementById('results').style.display = 'block';
+        }
+        
+        function selectSingleImage(imageUrl) {
+            const zoomedDisplay = document.getElementById('zoomedDisplay');
+            const zoomedImage = document.getElementById('zoomedImage');
+            const selectedTitle = document.getElementById('selectedVariationTitle');
+            const selectedDescription = document.getElementById('selectedVariationDescription');
+            
+            zoomedImage.src = imageUrl;
+            selectedTitle.textContent = 'Single Generated Image';
+            selectedDescription.textContent = 'Context-aware image with company branding';
+            
+            zoomedDisplay.style.display = 'block';
+        }
+        
+        // Add some sample prompts for testing
+        const samplePrompts = [
+            "A professional healthcare device showcasing modern technology",
+            "An athletic shoe designed for peak performance", 
+            "A sleek smartphone with innovative features",
+            "A modern office building representing corporate excellence",
+            "A medical professional using advanced equipment"
+        ];
+        
+        // Auto-fill with random sample on page load
+        window.addEventListener('load', () => {
+            const randomPrompt = samplePrompts[Math.floor(Math.random() * samplePrompts.length)];
+            document.getElementById('prompt').value = randomPrompt;
+        });
+    </script>
+</body>
+</html>

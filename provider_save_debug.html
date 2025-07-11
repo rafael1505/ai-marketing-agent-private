@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Provider Save Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug-section { border: 1px solid #ddd; padding: 15px; margin: 10px 0; }
+        .button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+        .error { color: red; }
+        .success { color: green; }
+    </style>
+</head>
+<body>
+    <h1>Provider Configuration Save Debug</h1>
+    
+    <div class="debug-section">
+        <h3>Test Real Provider Configuration Save</h3>
+        <button class="button" onclick="testProviderSave()">Test Provider Save with Real API Key</button>
+        <button class="button" onclick="checkLocalStorage()">Check Current localStorage</button>
+        <button class="button" onclick="clearLocalStorage()">Clear localStorage</button>
+        <pre id="saveResult"></pre>
+    </div>
+
+    <div class="debug-section">
+        <h3>Current localStorage State</h3>
+        <pre id="localStorageState"></pre>
+    </div>
+
+    <script>
+        const PROVIDER_CONFIGS_STORAGE_KEY = 'ai-provider-configurations';
+        const log = document.getElementById('saveResult');
+        const localStorageEl = document.getElementById('localStorageState');
+
+        function updateLog(message, isError = false) {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = isError ? 'error' : 'success';
+            log.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function updateLocalStorageDisplay() {
+            try {
+                const data = localStorage.getItem(PROVIDER_CONFIGS_STORAGE_KEY);
+                if (data) {
+                    const parsed = JSON.parse(data);
+                    localStorageEl.textContent = JSON.stringify(parsed, null, 2);
+                } else {
+                    localStorageEl.textContent = 'No data in localStorage';
+                }
+            } catch (error) {
+                localStorageEl.textContent = `Error reading localStorage: ${error.message}`;
+            }
+        }
+
+        function isMaskedApiKey(apiKey) {
+            if (!apiKey || typeof apiKey !== 'string') return false;
+            // Enhanced detection for various masking patterns
+            const maskingPatterns = [
+                /^[•*]+$/,                    // All dots or asterisks
+                /^[•*]{8,}$/,                 // 8+ dots/asterisks
+                /••••/,                       // Contains 4+ bullet chars
+                /\*{4,}/,                     // Contains 4+ asterisks
+                /^[•*\-]{6,}$/,               // 6+ masking chars
+                /^sk-[•*]{10,}$/,             // OpenAI pattern with masking
+                /^r8_[•*]{10,}$/,             // Replicate pattern with masking
+                /^hf_[•*]{10,}$/,             // HuggingFace pattern with masking
+            ];
+            
+            return maskingPatterns.some(pattern => pattern.test(apiKey));
+        }
+
+        async function testProviderSave() {
+            updateLog('=== Testing Provider Configuration Save ===');
+            updateLog('Creating test configuration with real API key...');
+            
+            // Create a test configuration with a real-looking API key
+            const testConfig = {
+                id: 'openai',
+                name: 'OpenAI',
+                apiKey: 'sk-test123456789abcdef',  // Real-looking API key
+                selectedModel: 'dall-e-3',
+                maxTokens: 1024,
+                temperature: 0.7,
+                isActive: true
+            };
+            
+            updateLog(`Original config API key: "${testConfig.apiKey}"`);
+            updateLog(`Is masked: ${isMaskedApiKey(testConfig.apiKey)}`);
+            
+            // Simulate the save process
+            try {
+                // 1. First, let's see what happens when we save to localStorage directly
+                updateLog('--- Step 1: Direct localStorage save ---');
+                
+                const cached = localStorage.getItem(PROVIDER_CONFIGS_STORAGE_KEY);
+                let configurations = [];
+                
+                if (cached) {
+                    try {
+                        const parsed = JSON.parse(cached);
+                        configurations = Array.isArray(parsed) ? parsed : [];
+                        updateLog(`Found ${configurations.length} existing configurations`);
+                    } catch (parseError) {
+                        updateLog(`Parse error: ${parseError.message}`, true);
+                        configurations = [];
+                    }
+                }
+                
+                // Find if the provider already exists
+                const existingIndex = configurations.findIndex(c => c.id === testConfig.id);
+                
+                if (existingIndex >= 0) {
+                    updateLog(`Updating existing config at index ${existingIndex}`);
+                    configurations[existingIndex] = {
+                        ...configurations[existingIndex],
+                        ...testConfig
+                    };
+                } else {
+                    updateLog('Adding new configuration');
+                    configurations.push(testConfig);
+                }
+                
+                // Save to localStorage
+                localStorage.setItem(PROVIDER_CONFIGS_STORAGE_KEY, JSON.stringify(configurations));
+                updateLog('Saved to localStorage successfully');
+                
+                // 2. Now read it back and check
+                updateLog('--- Step 2: Reading back from localStorage ---');
+                const savedData = localStorage.getItem(PROVIDER_CONFIGS_STORAGE_KEY);
+                if (savedData) {
+                    const savedConfigs = JSON.parse(savedData);
+                    const savedConfig = savedConfigs.find(c => c.id === 'openai');
+                    if (savedConfig) {
+                        updateLog(`Retrieved API key: "${savedConfig.apiKey}"`);
+                        updateLog(`Is retrieved API key masked: ${isMaskedApiKey(savedConfig.apiKey)}`);
+                        
+                        if (savedConfig.apiKey === testConfig.apiKey) {
+                            updateLog('✓ API key matches original - localStorage save/retrieve working correctly', false);
+                        } else {
+                            updateLog(`✗ API key mismatch! Original: "${testConfig.apiKey}", Retrieved: "${savedConfig.apiKey}"`, true);
+                        }
+                    } else {
+                        updateLog('✗ Could not find saved config', true);
+                    }
+                } else {
+                    updateLog('✗ No data found in localStorage after save', true);
+                }
+                
+                updateLocalStorageDisplay();
+                
+            } catch (error) {
+                updateLog(`Error during test: ${error.message}`, true);
+            }
+        }
+
+        function checkLocalStorage() {
+            updateLog('=== Checking Current localStorage ===');
+            try {
+                const data = localStorage.getItem(PROVIDER_CONFIGS_STORAGE_KEY);
+                if (data) {
+                    const parsed = JSON.parse(data);
+                    updateLog(`Found ${Array.isArray(parsed) ? parsed.length : 'non-array'} configurations`);
+                    
+                    if (Array.isArray(parsed)) {
+                        parsed.forEach((config, index) => {
+                            updateLog(`Config ${index}: ${config.id || 'no-id'}`);
+                            if (config.apiKey) {
+                                updateLog(`  API Key: "${config.apiKey}"`);
+                                updateLog(`  Is Masked: ${isMaskedApiKey(config.apiKey)}`);
+                            } else {
+                                updateLog(`  No API Key`);
+                            }
+                        });
+                    }
+                } else {
+                    updateLog('No data in localStorage');
+                }
+                updateLocalStorageDisplay();
+            } catch (error) {
+                updateLog(`Error: ${error.message}`, true);
+            }
+        }
+
+        function clearLocalStorage() {
+            localStorage.removeItem(PROVIDER_CONFIGS_STORAGE_KEY);
+            updateLog('Cleared localStorage');
+            updateLocalStorageDisplay();
+        }
+
+        // Initial load
+        updateLocalStorageDisplay();
+    </script>
+</body>
+</html>

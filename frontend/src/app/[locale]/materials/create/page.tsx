@@ -9,8 +9,8 @@ import { EnhancedRefinementForm } from "@/components/forms/enhanced-refinement-f
 import { FinalizationForm } from "@/components/forms/finalization-form";
 import { MaterialStage, MaterialStatus, IdeaGenerationFormData, RefinementFormData, FinalizationFormData, GeneratedImage, Material } from "@/types";
 import { createMaterial, addGeneratedImage, selectImage, addFeedback, updateStage } from "@/services/materials";
+import { generateMultipleImages, getAvailableProviders, getRecommendedProvider, getProviderConfigurations, getActiveProviders, type ProviderConfig } from "@/services/ai-providers";
 import { MATERIAL_CREATION_STEPS } from "@/constants";
-import { MARKETING_AI_PROVIDERS } from "@/constants/marketing-ai-providers";
 
 export default function CreateMaterialPage({
   params
@@ -23,6 +23,7 @@ export default function CreateMaterialPage({
   const [currentStep, setCurrentStep] = useState(0);
   const [material, setMaterial] = useState<Material | null>(null);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
+  const [activeProviders, setActiveProviders] = useState<ProviderConfig[]>([]);
   useEffect(() => {
     const loadTranslations = async () => {
       setIsLoading(true);
@@ -37,6 +38,9 @@ export default function CreateMaterialPage({
           localStorage.setItem('token', devToken);
           console.log('Development token set for testing');
         }
+
+        // Load AI provider configurations
+        await loadActiveProviders();
       } catch (error) {
         console.error("Error loading translations:", error);
       } finally {
@@ -44,7 +48,48 @@ export default function CreateMaterialPage({
       }
     };
     loadTranslations();
+    
+    // Listen for provider config updates
+    const handleConfigUpdate = (event: CustomEvent) => {
+      console.log('AI Provider config updated in materials page, reloading...');
+      loadActiveProviders();
+    };
+    
+    // Listen for the custom event we dispatch when configs are updated
+    window.addEventListener('aiProviderConfigUpdated', handleConfigUpdate as EventListener);
+    
+    // Also listen for localStorage changes from other tabs
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'ai-provider-configurations') {
+        console.log('localStorage changed in materials page, reloading...');
+        loadActiveProviders();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    return () => {
+      window.removeEventListener('aiProviderConfigUpdated', handleConfigUpdate as EventListener);
+      window.removeEventListener('storage', handleStorageChange);
+    };
   }, [locale]);
+
+  const loadActiveProviders = async () => {
+    try {
+      console.log('Loading active AI providers for material creation...');
+      const activeProvidersData = await getActiveProviders();
+      
+      console.log('Loaded active providers:', activeProvidersData);
+      setActiveProviders(activeProvidersData);
+      
+      if (activeProvidersData.length === 0) {
+        console.warn('No active AI providers found. Users need to configure providers in the AI Providers tab.');
+      }
+    } catch (error) {
+      console.error('Error loading active providers:', error);
+      setActiveProviders([]);
+    }
+  };
   const handleIdeaSubmit = async (data: IdeaGenerationFormData) => {
     try {
       const createdMaterial = await createMaterial({
@@ -72,84 +117,80 @@ export default function CreateMaterialPage({
   const handleGenerateImage = async (prompt: string, aiProvider: string) => {
     if (!material) {
       console.error("Cannot generate image: no material found");
+      alert("Material not found. Please refresh the page.");
       return;
     }
     
-    console.log("Generating multiple images with:", { materialId: material.id, prompt, aiProvider });
+    console.log("Generating multiple images with new AI provider service:", { materialId: material.id, prompt, aiProvider });
     
     try {
-      // Generate 5 images as per SRS requirements
-      const numberOfImages = 5;
-      const generatedImages: any[] = [];
+      // Check if the selected provider is active and configured
+      const selectedProvider = activeProviders.find(p => p.id === aiProvider);
       
-      for (let i = 0; i < numberOfImages; i++) {
-        console.log(`Generating image ${i + 1} of ${numberOfImages}...`);
-        
-        // Add slight variation to each request to get different images
-        const variationPrompt = i === 0 ? prompt : `${prompt} (style ${i + 1})`;
-        
-        try {
-          const response = await fetch(`/api/v1/ai/generate-image?prompt=${encodeURIComponent(variationPrompt)}&ai_provider=${encodeURIComponent(aiProvider)}&size=1024x1024&style=photorealistic`, {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${localStorage.getItem('token')}`,
-              'Content-Type': 'application/json'
-            }
-          });
-          
-          if (!response.ok) {
-            throw new Error(`Generation failed: ${response.status} ${response.statusText}`);
-          }
-          
-          const result = await response.json();
-          if (!result.success) {
-            throw new Error(result.error || "Image generation failed");
-          }
-          
-          generatedImages.push({
-            ...result,
-            prompt: variationPrompt,
-            index: i + 1
-          });
-          
-          console.log(`Successfully generated image ${i + 1}`);
-        } catch (imageError) {
-          console.error(`Failed to generate image ${i + 1}:`, imageError);
-          // Continue with other images even if one fails
-        }
+      if (!selectedProvider && activeProviders.length === 0) {
+        alert("No AI providers are configured and active. Please configure an AI provider in the AI Providers tab first.");
+        return;
       }
       
-      console.log(`Generated ${generatedImages.length} images successfully`);
+      // Use the specified provider or fall back to the first active one
+      let providerToUse = aiProvider;
+      if (!selectedProvider && activeProviders.length > 0) {
+        providerToUse = activeProviders[0].id;
+        console.log(`Provider ${aiProvider} not active, using: ${providerToUse}`);
+      }
       
-      if (generatedImages.length === 0) {
-        throw new Error("Failed to generate any images");
+      // Generate 5 images as per SRS requirements using the new service
+      console.log(`Generating 5 images with provider: ${providerToUse}`);
+      
+      const result = await generateMultipleImages(prompt, providerToUse, 5, '1024x1024');
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to generate images');
+      }
+      
+      console.log(`Successfully generated ${result.images.length} images:`, result);
+      
+      if (result.images.length === 0) {
+        throw new Error("No images were generated. Please try again.");
       }
       
       // Add all generated images to the material
       let updatedMaterial = material;
       
-      for (const result of generatedImages) {
+      for (let i = 0; i < result.images.length; i++) {
+        const imageUrl = result.images[i];
         const generationParams = {
           width: 1024,
           height: 1024,
-          provider: aiProvider,
+          provider: result.provider,
+          model: result.model,
           style: 'photorealistic',
-          variation: result.index
+          variation: i + 1,
+          cost: result.cost || 0
         };
         
-        console.log(`Adding generated image ${result.index} to material...`);
-        updatedMaterial = await addGeneratedImage(
-          updatedMaterial.id,
-          result.image_url,
-          result.prompt,
-          aiProvider,
-          generationParams
-        );
+        console.log(`Adding generated image ${i + 1} to material...`);
+        try {
+          updatedMaterial = await addGeneratedImage(
+            updatedMaterial.id,
+            imageUrl,
+            prompt,
+            result.provider,
+            generationParams
+          );
+        } catch (addError) {
+          console.error(`Failed to add image ${i + 1} to material:`, addError);
+          // Continue with other images
+        }
       }
       
       console.log("Updated material with all new images:", updatedMaterial);
       setMaterial(updatedMaterial);
       setGeneratedImages(updatedMaterial.generated_images || []);
+      
+      const costMessage = result.cost && result.cost > 0 ? ` (Cost: $${result.cost.toFixed(4)})` : '';
+      alert(`Successfully generated ${result.images.length} images using ${result.provider}!${costMessage}`);
+      
     } catch (error) {
       console.error("Error generating images:", error);
       alert(`Failed to generate images: ${error.message || "Unknown error"}`);
@@ -281,7 +322,7 @@ export default function CreateMaterialPage({
           <EnhancedRefinementForm
             onSubmit={handleRefinementSubmit}
             onGenerateImage={handleGenerateImage}
-            aiProviders={MARKETING_AI_PROVIDERS}
+            aiProviders={activeProviders}
             generatedImages={generatedImages}
             locale={locale}
           />

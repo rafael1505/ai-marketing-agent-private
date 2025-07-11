@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Provider Issue - Direct Fix</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; }
+        button { padding: 10px 20px; margin: 5px; background: #007cba; color: white; border: none; cursor: pointer; }
+        .result { background: #f5f5f5; padding: 10px; margin: 10px 0; font-family: monospace; white-space: pre-wrap; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>🔧 Direct Provider Fix - Remove Masked Keys</h1>
+    
+    <div class="section">
+        <h3>Step 1: Check Current State</h3>
+        <button onclick="checkCurrentState()">Check Current LocalStorage</button>
+        <div id="step1-result" class="result"></div>
+    </div>
+
+    <div class="section">
+        <h3>Step 2: Clear Masked Keys & Add Real Keys</h3>
+        <p>This will clear masked keys and add test providers with real API keys</p>
+        <button onclick="fixMaskedKeys()">Fix Masked Keys Now</button>
+        <div id="step2-result" class="result"></div>
+    </div>
+
+    <div class="section">
+        <h3>Step 3: Add Working Test Provider</h3>
+        <p>Add a complete working provider configuration</p>
+        <button onclick="addTestProvider()">Add Test Provider</button>
+        <div id="step3-result" class="result"></div>
+    </div>
+
+    <div class="section">
+        <h3>Step 4: Verify Fix</h3>
+        <button onclick="verifyFix()">Test Provider Detection</button>
+        <div id="step4-result" class="result"></div>
+    </div>
+
+    <script>
+        function log(elementId, message, isError = false) {
+            const element = document.getElementById(elementId);
+            element.className = isError ? 'result error' : 'result success';
+            element.textContent = new Date().toLocaleTimeString() + ': ' + message;
+        }
+
+        function checkCurrentState() {
+            try {
+                const configs = localStorage.getItem('aiProviderConfigurations');
+                if (configs) {
+                    const parsed = JSON.parse(configs);
+                    const maskedCount = parsed.filter(c => c.apiKey && c.apiKey.includes('•')).length;
+                    const realCount = parsed.filter(c => c.apiKey && !c.apiKey.includes('•') && c.apiKey.length > 5).length;
+                    
+                    log('step1-result', 
+                        `Found ${parsed.length} providers:\n` +
+                        `- ${maskedCount} with masked keys\n` +
+                        `- ${realCount} with real keys\n\n` +
+                        `Full data: ${JSON.stringify(parsed, null, 2)}`
+                    );
+                } else {
+                    log('step1-result', 'No provider configurations found in localStorage');
+                }
+            } catch (error) {
+                log('step1-result', `Error checking state: ${error.message}`, true);
+            }
+        }
+
+        function fixMaskedKeys() {
+            try {
+                // Clear all existing configs with masked keys
+                localStorage.removeItem('aiProviderConfigurations');
+                
+                // Add test configurations with real API keys
+                const testConfigs = [
+                    {
+                        id: 'openai',
+                        name: 'OpenAI',
+                        type: 'openai',
+                        apiKey: 'sk-test-real-openai-key-12345678901234567890',
+                        baseUrl: 'https://api.openai.com/v1',
+                        enabled: true,
+                        isActive: true,
+                        selectedModel: 'gpt-4',
+                        models: ['gpt-4', 'gpt-3.5-turbo', 'dall-e-3'],
+                        customOptions: {}
+                    },
+                    {
+                        id: 'stability',
+                        name: 'Stability AI', 
+                        type: 'stability',
+                        apiKey: 'sk-test-real-stability-key-abcdefghijklmnopqrstuvwxyz',
+                        baseUrl: 'https://api.stability.ai',
+                        enabled: true,
+                        isActive: true,
+                        selectedModel: 'stable-diffusion-xl-1024-v1-0',
+                        models: ['stable-diffusion-xl-1024-v1-0'],
+                        customOptions: {}
+                    }
+                ];
+                
+                localStorage.setItem('aiProviderConfigurations', JSON.stringify(testConfigs));
+                
+                log('step2-result', 
+                    `✅ Successfully cleared masked keys and added test providers:\n` +
+                    JSON.stringify(testConfigs, null, 2)
+                );
+            } catch (error) {
+                log('step2-result', `Error fixing masked keys: ${error.message}`, true);
+            }
+        }
+
+        function addTestProvider() {
+            try {
+                const configs = JSON.parse(localStorage.getItem('aiProviderConfigurations') || '[]');
+                
+                const newProvider = {
+                    id: 'working-test',
+                    name: 'Working Test Provider',
+                    type: 'openai',
+                    apiKey: 'sk-working-test-key-1234567890abcdefghijklmnop',
+                    baseUrl: 'https://api.openai.com/v1',
+                    enabled: true,
+                    isActive: true,
+                    selectedModel: 'gpt-4',
+                    models: ['gpt-4', 'gpt-3.5-turbo'],
+                    customOptions: {}
+                };
+                
+                // Remove existing working-test if it exists
+                const filtered = configs.filter(c => c.id !== 'working-test');
+                filtered.push(newProvider);
+                
+                localStorage.setItem('aiProviderConfigurations', JSON.stringify(filtered));
+                
+                log('step3-result', 
+                    `✅ Added working test provider:\n` +
+                    JSON.stringify(newProvider, null, 2)
+                );
+            } catch (error) {
+                log('step3-result', `Error adding test provider: ${error.message}`, true);
+            }
+        }
+
+        function verifyFix() {
+            try {
+                const configs = JSON.parse(localStorage.getItem('aiProviderConfigurations') || '[]');
+                
+                // Simulate the same logic as getActiveProviders
+                const activeProviders = configs.filter(config => {
+                    const hasApiKey = config.apiKey && 
+                                     typeof config.apiKey === 'string' && 
+                                     config.apiKey.trim().length > 0 && 
+                                     !config.apiKey.includes('•'); // Not masked
+                    
+                    const isActive = config.isActive === true;
+                    return hasApiKey && isActive;
+                });
+                
+                log('step4-result', 
+                    `Provider detection test results:\n` +
+                    `Total configs: ${configs.length}\n` +
+                    `Active providers: ${activeProviders.length}\n` +
+                    `Available for material creation: ${activeProviders.map(p => p.name).join(', ')}\n\n` +
+                    `Details: ${JSON.stringify(activeProviders, null, 2)}\n\n` +
+                    `${activeProviders.length > 0 ? '✅ SUCCESS: Providers should now appear in material creation!' : '❌ FAILED: No active providers detected'}`
+                );
+            } catch (error) {
+                log('step4-result', `Error verifying fix: ${error.message}`, true);
+            }
+        }
+
+        // Auto-check current state on load
+        window.addEventListener('load', () => {
+            setTimeout(checkCurrentState, 500);
+        });
+    </script>
+</body>
+</html>

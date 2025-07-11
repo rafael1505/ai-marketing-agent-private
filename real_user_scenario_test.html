@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real User Scenario Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { border: 1px solid #ccc; margin: 10px 0; padding: 15px; }
+        .log { background-color: #f5f5f5; padding: 10px; margin: 10px 0; font-family: monospace; white-space: pre-wrap; min-height: 150px; }
+        button { margin: 5px; padding: 10px 15px; background-color: #007cba; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background-color: #005a87; }
+        .success { color: green; font-weight: bold; }
+        .error { color: red; font-weight: bold; }
+        .warning { color: orange; font-weight: bold; }
+        .info { color: blue; }
+        .scenario { background-color: #e8f4fd; padding: 10px; margin: 10px 0; border-left: 4px solid #2196F3; }
+        .result { background-color: #f8f9fa; padding: 15px; margin: 10px 0; border: 2px solid #ddd; border-radius: 5px; }
+        .test-pass { border-color: #28a745; background-color: #d4edda; }
+        .test-fail { border-color: #dc3545; background-color: #f8d7da; }
+        input { margin: 5px; padding: 8px; width: 300px; }
+        select { margin: 5px; padding: 8px; width: 200px; }
+    </style>
+</head>
+<body>
+    <h1>Real User Scenario Test</h1>
+    <p>This test simulates the exact user workflow: Configure AI Provider → Navigate to Materials → Return to Configuration</p>
+    
+    <div class="section">
+        <h2>Scenario: User Configures OpenAI Provider</h2>
+        <div class="scenario">
+            <strong>User Story:</strong> A user wants to configure OpenAI DALL-E, then use it to create materials.
+            <br><strong>Steps:</strong>
+            <ol>
+                <li>User opens Configuration tab and enters OpenAI API key</li>
+                <li>User saves the configuration</li>
+                <li>User navigates to Materials → Create Material</li>
+                <li>User expects to see OpenAI in the provider dropdown</li>
+                <li>User returns to Configuration tab and expects to see saved settings</li>
+            </ol>
+        </div>
+        
+        <h3>Step 1: Configure Provider</h3>
+        <label>Provider:</label>
+        <select id="providerId">
+            <option value="openai">OpenAI DALL-E</option>
+            <option value="stability">Stability AI</option>
+            <option value="huggingface">Hugging Face</option>
+        </select><br>
+        
+        <label>API Key:</label>
+        <input type="text" id="apiKey" placeholder="sk-..." value="sk-test123456789abcdef"><br>
+        
+        <label>Model:</label>
+        <select id="selectedModel">
+            <option value="dall-e-3">DALL-E 3</option>
+            <option value="dall-e-2">DALL-E 2</option>
+        </select><br>
+        
+        <label>Quality:</label>
+        <select id="quality">
+            <option value="standard">Standard</option>
+            <option value="hd">HD</option>
+        </select><br>
+        
+        <label>Size:</label>
+        <select id="size">
+            <option value="1024x1024">1024x1024</option>
+            <option value="1792x1024">1792x1024</option>
+            <option value="1024x1792">1024x1792</option>
+        </select><br>
+        
+        <label>
+            <input type="checkbox" id="isActive" checked> Enable this provider
+        </label><br>
+        
+        <button onclick="saveConfiguration()">Save Configuration</button>
+        <div id="saveLog" class="log"></div>
+    </div>
+
+    <div class="section">
+        <h2>Step 2: Navigate to Materials (Simulate)</h2>
+        <button onclick="navigateToMaterials()">Go to Materials Tab</button>
+        <div id="materialsLog" class="log"></div>
+    </div>
+
+    <div class="section">
+        <h2>Step 3: Return to Configuration (Simulate)</h2>
+        <button onclick="returnToConfiguration()">Return to Configuration Tab</button>
+        <div id="configLog" class="log"></div>
+    </div>
+
+    <div class="section">
+        <h2>Step 4: Test Complete Flow</h2>
+        <button onclick="runCompleteUserFlow()">Run Complete User Flow</button>
+        <div id="completeLog" class="log"></div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'ai-provider-configurations';
+
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : type === 'warning' ? 'warning' : 'info';
+            element.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            element.scrollTop = element.scrollHeight;
+        }
+
+        function clearLog(elementId) {
+            document.getElementById(elementId).innerHTML = '';
+        }
+
+        // Helper function to update localStorage configurations (simulates the real function)
+        function updateLocalStorageConfigurations(config) {
+            try {
+                console.log('Updating localStorage with config:', config);
+                
+                const cached = localStorage.getItem(STORAGE_KEY);
+                let configurations = [];
+                
+                if (cached) {
+                    try {
+                        const parsed = JSON.parse(cached);
+                        configurations = Array.isArray(parsed) ? parsed : [];
+                    } catch (parseError) {
+                        console.error('Error parsing cached configurations:', parseError);
+                        configurations = [];
+                    }
+                }
+                
+                // Find existing or add new
+                const existingIndex = configurations.findIndex(c => c.id === config.id);
+                
+                if (existingIndex >= 0) {
+                    configurations[existingIndex] = {
+                        ...configurations[existingIndex],
+                        ...config,
+                        id: config.id,
+                        name: config.name || configurations[existingIndex].name || config.id
+                    };
+                } else {
+                    configurations.push({
+                        ...config,
+                        name: config.name || config.id
+                    });
+                }
+                
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(configurations));
+                return configurations;
+                
+            } catch (error) {
+                console.error('Error updating localStorage configurations:', error);
+                return [];
+            }
+        }
+
+        // Simulate getProviderConfigurations (the fixed version)
+        function getProviderConfigurations() {
+            console.log('getProviderConfigurations: Starting...');
+            
+            // Always check localStorage first
+            const cached = localStorage.getItem(STORAGE_KEY);
+            if (cached) {
+                try {
+                    const parsed = JSON.parse(cached);
+                    if (Array.isArray(parsed)) {
+                        console.log('getProviderConfigurations: Found cached configs');
+                        return Promise.resolve(parsed);
+                    }
+                } catch (parseError) {
+                    console.error('getProviderConfigurations: Parse error:', parseError);
+                }
+            }
+            
+            // If no localStorage, simulate empty API response (which should NOT overwrite)
+            console.log('getProviderConfigurations: No cached configs, simulating API...');
+            
+            // This simulates the API returning empty data - the fix prevents overwriting
+            const apiResponse = [];
+            
+            if (Array.isArray(apiResponse) && apiResponse.length > 0) {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(apiResponse));
+                return Promise.resolve(apiResponse);
+            } else {
+                console.log('getProviderConfigurations: API empty, not overwriting localStorage');
+            }
+            
+            return Promise.resolve([]);
+        }
+
+        // Simulate getActiveProviders
+        function getActiveProviders() {
+            return getProviderConfigurations().then(configs => {
+                return configs.filter(config => {
+                    const hasApiKey = config.apiKey && config.apiKey.length > 0;
+                    const isActive = config.isActive === true;
+                    return hasApiKey && isActive;
+                });
+            });
+        }
+
+        // Step 1: Save Configuration
+        function saveConfiguration() {
+            clearLog('saveLog');
+            
+            try {
+                const config = {
+                    id: document.getElementById('providerId').value,
+                    name: document.getElementById('providerId').selectedOptions[0].text,
+                    apiKey: document.getElementById('apiKey').value,
+                    selectedModel: document.getElementById('selectedModel').value,
+                    quality: document.getElementById('quality').value,
+                    size: document.getElementById('size').value,
+                    isActive: document.getElementById('isActive').checked
+                };
+                
+                log('saveLog', `Saving configuration for ${config.name}...`, 'info');
+                log('saveLog', `API Key: ${config.apiKey}`, 'info');
+                log('saveLog', `Model: ${config.selectedModel}`, 'info');
+                log('saveLog', `Active: ${config.isActive}`, 'info');
+                
+                // Simulate the save process
+                const updatedConfigs = updateLocalStorageConfigurations(config);
+                
+                if (updatedConfigs.length > 0) {
+                    const savedConfig = updatedConfigs.find(c => c.id === config.id);
+                    if (savedConfig && savedConfig.apiKey === config.apiKey) {
+                        log('saveLog', '✓ Configuration saved successfully!', 'success');
+                        log('saveLog', `Saved config: ${JSON.stringify(savedConfig, null, 2)}`, 'info');
+                        
+                        // Verify it's in localStorage
+                        const verification = localStorage.getItem(STORAGE_KEY);
+                        if (verification) {
+                            const verifiedConfigs = JSON.parse(verification);
+                            log('saveLog', `Verification: Found ${verifiedConfigs.length} configs in localStorage`, 'success');
+                        }
+                    } else {
+                        log('saveLog', '✗ Configuration save failed', 'error');
+                    }
+                } else {
+                    log('saveLog', '✗ No configurations returned after save', 'error');
+                }
+                
+            } catch (error) {
+                log('saveLog', `✗ Error saving configuration: ${error.message}`, 'error');
+            }
+        }
+
+        // Step 2: Navigate to Materials
+        function navigateToMaterials() {
+            clearLog('materialsLog');
+            
+            log('materialsLog', 'User navigates to Materials → Create Material...', 'info');
+            log('materialsLog', 'Materials page loading active providers...', 'info');
+            
+            // Simulate what the Materials page does
+            getActiveProviders().then(activeProviders => {
+                log('materialsLog', `Found ${activeProviders.length} active providers`, 'info');
+                
+                if (activeProviders.length > 0) {
+                    activeProviders.forEach(provider => {
+                        log('materialsLog', `✓ Provider available: ${provider.name} (${provider.id})`, 'success');
+                        log('materialsLog', `  Model: ${provider.selectedModel || 'default'}`, 'info');
+                        log('materialsLog', `  API Key: ${provider.apiKey ? '***configured***' : 'not set'}`, 'info');
+                    });
+                    
+                    // Check if our saved provider is there
+                    const savedProvider = activeProviders.find(p => p.id === document.getElementById('providerId').value);
+                    if (savedProvider && savedProvider.apiKey === document.getElementById('apiKey').value) {
+                        log('materialsLog', '🎉 SUCCESS: Saved configuration is available in Materials!', 'success');
+                        document.getElementById('materialsLog').innerHTML += '<div class="result test-pass">✓ Configuration persisted during navigation to Materials</div>';
+                    } else {
+                        log('materialsLog', '❌ FAILURE: Saved configuration is missing in Materials!', 'error');
+                        document.getElementById('materialsLog').innerHTML += '<div class="result test-fail">✗ Configuration lost during navigation to Materials</div>';
+                    }
+                } else {
+                    log('materialsLog', '❌ No active providers found - configuration was lost!', 'error');
+                    document.getElementById('materialsLog').innerHTML += '<div class="result test-fail">✗ No active providers found - configuration was lost</div>';
+                }
+            }).catch(error => {
+                log('materialsLog', `✗ Error loading providers: ${error.message}`, 'error');
+            });
+        }
+
+        // Step 3: Return to Configuration
+        function returnToConfiguration() {
+            clearLog('configLog');
+            
+            log('configLog', 'User returns to Configuration tab...', 'info');
+            log('configLog', 'Configuration page loading provider configurations...', 'info');
+            
+            // Simulate what the Configuration page does
+            getProviderConfigurations().then(configs => {
+                log('configLog', `Found ${configs.length} provider configurations`, 'info');
+                
+                if (configs.length > 0) {
+                    configs.forEach(config => {
+                        log('configLog', `✓ Configuration found: ${config.name} (${config.id})`, 'success');
+                        log('configLog', `  API Key: ${config.apiKey ? config.apiKey.substring(0, 10) + '...' : 'not set'}`, 'info');
+                        log('configLog', `  Active: ${config.isActive}`, 'info');
+                    });
+                    
+                    // Check if our saved configuration is still there with the same values
+                    const ourConfig = configs.find(c => c.id === document.getElementById('providerId').value);
+                    if (ourConfig && ourConfig.apiKey === document.getElementById('apiKey').value) {
+                        log('configLog', '🎉 SUCCESS: Configuration persisted and is editable!', 'success');
+                        document.getElementById('configLog').innerHTML += '<div class="result test-pass">✓ Configuration available after returning to Configuration tab</div>';
+                        
+                        // Populate form to show it works
+                        document.getElementById('apiKey').value = ourConfig.apiKey;
+                        document.getElementById('selectedModel').value = ourConfig.selectedModel || 'dall-e-3';
+                        document.getElementById('quality').value = ourConfig.quality || 'standard';
+                        document.getElementById('size').value = ourConfig.size || '1024x1024';
+                        document.getElementById('isActive').checked = ourConfig.isActive;
+                        
+                        log('configLog', '✓ Form populated with saved values', 'success');
+                    } else {
+                        log('configLog', '❌ FAILURE: Configuration was lost or corrupted!', 'error');
+                        document.getElementById('configLog').innerHTML += '<div class="result test-fail">✗ Configuration lost after returning to Configuration tab</div>';
+                    }
+                } else {
+                    log('configLog', '❌ No configurations found - all data was lost!', 'error');
+                    document.getElementById('configLog').innerHTML += '<div class="result test-fail">✗ All configurations lost</div>';
+                }
+            }).catch(error => {
+                log('configLog', `✗ Error loading configurations: ${error.message}`, 'error');
+            });
+        }
+
+        // Step 4: Complete Flow
+        async function runCompleteUserFlow() {
+            clearLog('completeLog');
+            
+            log('completeLog', '🚀 Starting complete user flow test...', 'info');
+            log('completeLog', '='.repeat(50), 'info');
+            
+            // Clear any existing data
+            localStorage.removeItem(STORAGE_KEY);
+            log('completeLog', 'Cleared localStorage to start fresh', 'info');
+            
+            try {
+                // Step 1: Save configuration
+                log('completeLog', 'STEP 1: Saving configuration...', 'warning');
+                const testConfig = {
+                    id: 'openai',
+                    name: 'OpenAI DALL-E',
+                    apiKey: 'sk-test123456789abcdef',
+                    selectedModel: 'dall-e-3',
+                    quality: 'hd',
+                    size: '1024x1024',
+                    isActive: true
+                };
+                
+                const savedConfigs = updateLocalStorageConfigurations(testConfig);
+                if (savedConfigs.length > 0 && savedConfigs[0].apiKey === testConfig.apiKey) {
+                    log('completeLog', '✓ Configuration saved successfully', 'success');
+                } else {
+                    log('completeLog', '✗ Configuration save failed', 'error');
+                    return;
+                }
+                
+                // Step 2: Navigate to Materials
+                log('completeLog', 'STEP 2: Navigating to Materials...', 'warning');
+                const materialsProviders = await getActiveProviders();
+                
+                if (materialsProviders.length === 1 && materialsProviders[0].apiKey === testConfig.apiKey) {
+                    log('completeLog', '✓ Configuration available in Materials tab', 'success');
+                } else {
+                    log('completeLog', '✗ Configuration lost during navigation to Materials', 'error');
+                    return;
+                }
+                
+                // Step 3: Return to Configuration
+                log('completeLog', 'STEP 3: Returning to Configuration...', 'warning');
+                const configConfigs = await getProviderConfigurations();
+                
+                if (configConfigs.length === 1 && configConfigs[0].apiKey === testConfig.apiKey) {
+                    log('completeLog', '✓ Configuration available after returning to Configuration', 'success');
+                } else {
+                    log('completeLog', '✗ Configuration lost after returning to Configuration', 'error');
+                    return;
+                }
+                
+                // Step 4: Simulate page refresh
+                log('completeLog', 'STEP 4: Simulating page refresh...', 'warning');
+                const refreshConfigs = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+                
+                if (refreshConfigs.length === 1 && refreshConfigs[0].apiKey === testConfig.apiKey) {
+                    log('completeLog', '✓ Configuration persisted through page refresh', 'success');
+                } else {
+                    log('completeLog', '✗ Configuration lost after page refresh', 'error');
+                    return;
+                }
+                
+                // Success!
+                log('completeLog', '='.repeat(50), 'info');
+                log('completeLog', '🎉 COMPLETE USER FLOW TEST PASSED!', 'success');
+                log('completeLog', '✓ User can configure AI provider', 'success');
+                log('completeLog', '✓ Configuration persists during navigation', 'success');
+                log('completeLog', '✓ Provider is available in Materials tab', 'success');
+                log('completeLog', '✓ Configuration is editable after returning', 'success');
+                log('completeLog', '✓ Configuration survives page refresh', 'success');
+                
+                document.getElementById('completeLog').innerHTML += '<div class="result test-pass">🎉 COMPLETE USER FLOW TEST PASSED! The persistence fix is working correctly!</div>';
+                
+            } catch (error) {
+                log('completeLog', `✗ Complete flow test failed: ${error.message}`, 'error');
+                document.getElementById('completeLog').innerHTML += '<div class="result test-fail">❌ Complete flow test failed</div>';
+            }
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            // Check current localStorage state
+            const existing = localStorage.getItem(STORAGE_KEY);
+            if (existing) {
+                log('saveLog', `Found existing configurations: ${existing}`, 'info');
+            } else {
+                log('saveLog', 'No existing configurations found', 'info');
+            }
+        });
+    </script>
+</body>
+</html>

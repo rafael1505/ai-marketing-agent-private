@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Final Provider Verification Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .step {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .step h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        button {
+            background-color: #007cba;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #005a87;
+        }
+        .result {
+            margin: 10px 0;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .info {
+            background-color: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+        }
+        input, select {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 200px;
+        }
+        .test-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Final Provider Verification Test</h1>
+        <p>This test verifies that the provider configuration fix is working in the live application.</p>
+        
+        <div class="step">
+            <h3>Step 1: Clear Current State & Set Test Provider</h3>
+            <p>First, let's clear localStorage and set up a test provider configuration.</p>
+            <div class="test-controls">
+                <button onclick="clearLocalStorage()">Clear All Data</button>
+                <button onclick="setupTestProvider()">Setup Test Provider</button>
+            </div>
+            <div id="step1-result" class="result"></div>
+        </div>
+
+        <div class="step">
+            <h3>Step 2: Test API Provider Save (with masking)</h3>
+            <p>Save a provider via API to see if real keys are preserved when masked response comes back.</p>
+            <div class="test-controls">
+                <input type="text" id="provider-name" placeholder="Provider Name" value="test-openai">
+                <input type="text" id="api-key" placeholder="Real API Key" value="sk-test-real-key-12345">
+                <button onclick="testApiProviderSave()">Save via API</button>
+            </div>
+            <div id="step2-result" class="result"></div>
+        </div>
+
+        <div class="step">
+            <h3>Step 3: Test API Provider Load</h3>
+            <p>Load providers from API to see if masked keys are filtered out properly.</p>
+            <button onclick="testApiProviderLoad()">Load from API</button>
+            <div id="step3-result" class="result"></div>
+        </div>
+
+        <div class="step">
+            <h3>Step 4: Verify Material Provider Detection</h3>
+            <p>Test the core issue: Do configured providers appear for material creation?</p>
+            <button onclick="testMaterialProviderDetection()">Test Material Provider Detection</button>
+            <div id="step4-result" class="result"></div>
+        </div>
+
+        <div class="step">
+            <h3>Step 5: Test Complete Workflow</h3>
+            <p>Simulate the complete user workflow: Configure → Save → Create Material.</p>
+            <button onclick="testCompleteWorkflow()">Run Complete Workflow</button>
+            <div id="step5-result" class="result"></div>
+        </div>
+
+        <div class="step">
+            <h3>Live Application Links</h3>
+            <p>Test the actual application:</p>
+            <button onclick="openProviderConfig()">Open AI Providers Page</button>
+            <button onclick="openMaterialCreate()">Open Material Creation</button>
+            <div class="info">
+                <strong>Manual Test Steps:</strong><br>
+                1. Click "Open AI Providers Page"<br>
+                2. Configure an AI provider with a real API key<br>
+                3. Save the configuration<br>
+                4. Click "Open Material Creation"<br>
+                5. Check if the configured provider appears in the provider selection dropdown
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://127.0.0.1:8088';
+
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            element.className = `result ${type}`;
+            element.textContent = `[${timestamp}] ${message}`;
+        }
+
+        function clearLocalStorage() {
+            try {
+                localStorage.clear();
+                log('step1-result', 'LocalStorage cleared successfully', 'success');
+            } catch (error) {
+                log('step1-result', `Error clearing localStorage: ${error.message}`, 'error');
+            }
+        }
+
+        function setupTestProvider() {
+            try {
+                const testConfig = {
+                    'test-openai': {
+                        name: 'Test OpenAI',
+                        type: 'openai',
+                        apiKey: 'sk-test-real-key-12345',
+                        baseUrl: 'https://api.openai.com/v1',
+                        enabled: true,
+                        models: ['gpt-4', 'gpt-3.5-turbo']
+                    }
+                };
+                
+                localStorage.setItem('aiProviderConfigurations', JSON.stringify(testConfig));
+                log('step1-result', 'Test provider configuration set in localStorage:\n' + JSON.stringify(testConfig, null, 2), 'success');
+            } catch (error) {
+                log('step1-result', `Error setting up test provider: ${error.message}`, 'error');
+            }
+        }
+
+        async function testApiProviderSave() {
+            const providerName = document.getElementById('provider-name').value;
+            const apiKey = document.getElementById('api-key').value;
+            
+            try {
+                log('step2-result', 'Saving provider via API...', 'info');
+                
+                const payload = {
+                    name: `Test ${providerName}`,
+                    type: 'openai',
+                    apiKey: apiKey,
+                    baseUrl: 'https://api.openai.com/v1',
+                    enabled: true,
+                    models: ['gpt-4', 'gpt-3.5-turbo']
+                };
+
+                const response = await fetch(`${API_BASE}/api/v1/ai-providers/${providerName}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                
+                // Check what's in localStorage after the API call
+                const localStorageAfter = localStorage.getItem('aiProviderConfigurations');
+                const configsAfter = localStorageAfter ? JSON.parse(localStorageAfter) : {};
+                
+                log('step2-result', 
+                    `API Response:\n${JSON.stringify(result, null, 2)}\n\n` +
+                    `LocalStorage After API Call:\n${JSON.stringify(configsAfter, null, 2)}\n\n` +
+                    `Real API Key Preserved: ${configsAfter[providerName]?.apiKey === apiKey ? 'YES ✅' : 'NO ❌'}`,
+                    configsAfter[providerName]?.apiKey === apiKey ? 'success' : 'error'
+                );
+                
+            } catch (error) {
+                log('step2-result', `Error saving provider: ${error.message}`, 'error');
+            }
+        }
+
+        async function testApiProviderLoad() {
+            try {
+                log('step3-result', 'Loading providers from API...', 'info');
+                
+                const response = await fetch(`${API_BASE}/api/v1/ai-providers/`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                
+                // Check what's in localStorage after loading
+                const localStorageAfter = localStorage.getItem('aiProviderConfigurations');
+                const configsAfter = localStorageAfter ? JSON.parse(localStorageAfter) : {};
+                
+                // Check for masked keys
+                const maskedKeys = Object.entries(configsAfter).filter(([name, config]) => 
+                    config.apiKey && config.apiKey.includes('•')
+                );
+                
+                log('step3-result', 
+                    `API Response:\n${JSON.stringify(result, null, 2)}\n\n` +
+                    `LocalStorage After Load:\n${JSON.stringify(configsAfter, null, 2)}\n\n` +
+                    `Masked Keys Found: ${maskedKeys.length > 0 ? 'YES ❌' : 'NO ✅'}\n` +
+                    (maskedKeys.length > 0 ? `Masked: ${maskedKeys.map(([name]) => name).join(', ')}` : ''),
+                    maskedKeys.length === 0 ? 'success' : 'error'
+                );
+                
+            } catch (error) {
+                log('step3-result', `Error loading providers: ${error.message}`, 'error');
+            }
+        }
+
+        function testMaterialProviderDetection() {
+            try {
+                // Simulate the material creation provider detection logic
+                const configs = JSON.parse(localStorage.getItem('aiProviderConfigurations') || '{}');
+                
+                // Filter for enabled providers with valid API keys
+                const availableProviders = Object.entries(configs).filter(([name, config]) => {
+                    return config.enabled && 
+                           config.apiKey && 
+                           config.apiKey.length > 0 && 
+                           !config.apiKey.includes('•'); // Not masked
+                });
+                
+                const providerNames = availableProviders.map(([name]) => name);
+                
+                log('step4-result', 
+                    `Configurations in localStorage: ${Object.keys(configs).length}\n` +
+                    `Enabled configs: ${Object.values(configs).filter(c => c.enabled).length}\n` +
+                    `With valid API keys: ${Object.values(configs).filter(c => c.apiKey && !c.apiKey.includes('•')).length}\n\n` +
+                    `Available Providers for Material Creation:\n${providerNames.length > 0 ? providerNames.join(', ') : 'NONE ❌'}\n\n` +
+                    `Detailed Analysis:\n${JSON.stringify(availableProviders, null, 2)}`,
+                    providerNames.length > 0 ? 'success' : 'error'
+                );
+                
+            } catch (error) {
+                log('step4-result', `Error testing provider detection: ${error.message}`, 'error');
+            }
+        }
+
+        async function testCompleteWorkflow() {
+            try {
+                log('step5-result', 'Running complete workflow test...', 'info');
+                
+                // Step 1: Clear and setup
+                localStorage.clear();
+                
+                // Step 2: Save provider via API
+                const testProvider = {
+                    name: 'Workflow Test Provider',
+                    type: 'openai',
+                    apiKey: 'sk-workflow-test-key-67890',
+                    baseUrl: 'https://api.openai.com/v1',
+                    enabled: true,
+                    models: ['gpt-4']
+                };
+                
+                const saveResponse = await fetch(`${API_BASE}/api/v1/ai-providers/workflow-test`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(testProvider)
+                });
+                
+                if (!saveResponse.ok) {
+                    throw new Error(`Save failed: ${saveResponse.status}`);
+                }
+                
+                // Step 3: Load providers from API
+                const loadResponse = await fetch(`${API_BASE}/api/v1/ai-providers/`);
+                if (!loadResponse.ok) {
+                    throw new Error(`Load failed: ${loadResponse.status}`);
+                }
+                
+                // Step 4: Check material provider detection
+                const configs = JSON.parse(localStorage.getItem('aiProviderConfigurations') || '{}');
+                const availableProviders = Object.entries(configs).filter(([name, config]) => {
+                    return config.enabled && config.apiKey && !config.apiKey.includes('•');
+                });
+                
+                const workflowSuccess = availableProviders.length > 0 && 
+                                      availableProviders.some(([name, config]) => 
+                                          config.apiKey === testProvider.apiKey
+                                      );
+                
+                log('step5-result', 
+                    `Complete Workflow Test Results:\n\n` +
+                    `1. Provider Save: ✅\n` +
+                    `2. Provider Load: ✅\n` +
+                    `3. Real API Key Preserved: ${workflowSuccess ? '✅' : '❌'}\n` +
+                    `4. Available for Material Creation: ${availableProviders.length} providers\n\n` +
+                    `Final LocalStorage State:\n${JSON.stringify(configs, null, 2)}\n\n` +
+                    `WORKFLOW ${workflowSuccess ? 'SUCCESS' : 'FAILED'}`,
+                    workflowSuccess ? 'success' : 'error'
+                );
+                
+            } catch (error) {
+                log('step5-result', `Workflow test failed: ${error.message}`, 'error');
+            }
+        }
+
+        function openProviderConfig() {
+            window.open('http://127.0.0.1:3001/en/ai-providers', '_blank');
+        }
+
+        function openMaterialCreate() {
+            window.open('http://127.0.0.1:3001/en/materials/create', '_blank');
+        }
+
+        // Auto-run initial setup when page loads
+        window.addEventListener('load', () => {
+            console.log('Final Provider Verification Test loaded');
+            console.log('Frontend: http://127.0.0.1:3001');
+            console.log('API: http://127.0.0.1:8088');
+        });
+    </script>
+</body>
+</html>

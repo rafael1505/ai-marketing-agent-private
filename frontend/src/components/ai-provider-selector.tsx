@@ -58,7 +58,8 @@ export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({
   };
 
   const getProviderIcon = (provider: AIProviderConfig) => {
-    switch (provider.pricing.tier) {
+    const tier = provider.pricing?.tier || 'free';
+    switch (tier) {
       case 'free':
         return <span className="text-green-500">✓</span>;
       case 'freemium':
@@ -198,17 +199,17 @@ export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {selectedProviderForConfig.pricing.freeQuota && (
+                {selectedProviderForConfig.pricing?.freeQuota && (
                   <div className="mb-4 p-3 bg-green-50 rounded-lg">
                     <h5 className="font-medium text-green-800">Free Tier</h5>
-                    <p className="text-sm text-green-700">{selectedProviderForConfig.pricing.freeQuota.description}</p>
+                    <p className="text-sm text-green-700">{selectedProviderForConfig.pricing?.freeQuota?.description}</p>
                   </div>
                 )}
                 
-                {selectedProviderForConfig.pricing.paidPlans && selectedProviderForConfig.pricing.paidPlans.length > 0 && (
+                {selectedProviderForConfig.pricing?.paidPlans && selectedProviderForConfig.pricing?.paidPlans?.length > 0 && (
                   <div className="space-y-2">
                     <h5 className="font-medium">Paid Plans</h5>
-                    {selectedProviderForConfig.pricing.paidPlans.map((plan, index) => (
+                    {selectedProviderForConfig.pricing?.paidPlans?.map((plan, index) => (
                       <div key={index} className="flex justify-between items-center p-2 border rounded">
                         <div>
                           <span className="font-medium">{plan.name}</span>
@@ -234,9 +235,9 @@ export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({
               >
                 Close
               </Button>
-              {selectedProviderForConfig.pricing.websiteUrl && (
+              {selectedProviderForConfig.pricing?.websiteUrl && (
                 <Button asChild className="flex-1">
-                  <a href={selectedProviderForConfig.pricing.websiteUrl} target="_blank" rel="noopener noreferrer">
+                  <a href={selectedProviderForConfig.pricing?.websiteUrl} target="_blank" rel="noopener noreferrer">
                     Get Started <span className="ml-2">→</span>
                   </a>
                 </Button>
@@ -296,14 +297,14 @@ export const AIProviderSelector: React.FC<AIProviderSelectorProps> = ({
                 {/* Pricing Tier */}
                 <div className="mb-3">
                   <Badge 
-                    variant={provider.pricing.tier === 'free' ? 'default' : 'secondary'}
+                    variant={provider.pricing?.tier === 'free' ? 'default' : 'secondary'}
                     className="capitalize"
                   >
-                    {provider.pricing.tier}
+                    {provider.pricing?.tier || 'free'}
                   </Badge>
-                  {provider.pricing.freeQuota && (
+                  {provider.pricing?.freeQuota && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      {provider.pricing.freeQuota.description}
+                      {provider.pricing?.freeQuota?.description}
                     </p>
                   )}
                 </div>

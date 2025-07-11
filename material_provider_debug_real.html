@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Material Provider Debug - Real Data Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .test-section {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border-color: #ffeaa7;
+            color: #856404;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 10px 0;
+        }
+        .form-group {
+            margin: 10px 0;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Material Provider Debug - Real Data Test</h1>
+        <p>This tool tests the exact scenario causing the material provider issue.</p>
+        
+        <div class="test-section">
+            <h3>Step 1: Create Real Provider Configuration</h3>
+            <div class="form-group">
+                <label for="providerId">Provider:</label>
+                <select id="providerId">
+                    <option value="openai">OpenAI</option>
+                    <option value="stability">Stability AI</option>
+                    <option value="anthropic">Anthropic</option>
+                    <option value="replicate">Replicate</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="apiKey">API Key:</label>
+                <input type="text" id="apiKey" placeholder="Enter real or test API key" value="sk-test123456789012345678901234567890">
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="isActive" checked> 
+                    Enable this provider
+                </label>
+            </div>
+            <button onclick="saveRealProvider()">💾 Save Provider Configuration</button>
+            <div id="saveResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Step 2: Test Material Page Detection</h3>
+            <button onclick="testMaterialDetection()">🔍 Test Active Provider Detection</button>
+            <div id="detectionResult"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Step 3: Debug Information</h3>
+            <button onclick="showDebugInfo()">🐛 Show Debug Information</button>
+            <div id="debugInfo"></div>
+        </div>
+        
+        <div class="test-section">
+            <h3>Step 4: Test Navigation</h3>
+            <button onclick="openMaterialsPage()">🚀 Open Materials Create Page</button>
+            <button onclick="openAIProvidersPage()">⚙️ Open AI Providers Page</button>
+            <p><em>Check if providers appear correctly in the actual application pages.</em></p>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'ai-provider-configurations';
+        
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            const color = type === 'error' ? '#dc3545' : type === 'success' ? '#28a745' : type === 'warning' ? '#ffc107' : '#17a2b8';
+            element.innerHTML += `<div style="color: ${color}; margin: 2px 0;">[${timestamp}] ${message}</div>`;
+            element.scrollTop = element.scrollHeight;
+        }
+        
+        function clearLog(elementId) {
+            document.getElementById(elementId).innerHTML = '';
+        }
+        
+        function saveRealProvider() {
+            clearLog('saveResult');
+            
+            try {
+                const providerId = document.getElementById('providerId').value;
+                const apiKey = document.getElementById('apiKey').value;
+                const isActive = document.getElementById('isActive').checked;
+                
+                log('saveResult', `Saving provider: ${providerId}`, 'info');
+                log('saveResult', `API Key: ${apiKey}`, 'info');
+                log('saveResult', `Active: ${isActive}`, 'info');
+                
+                // Create realistic provider configuration
+                const providerConfig = {
+                    id: providerId,
+                    name: getProviderName(providerId),
+                    apiKey: apiKey,
+                    isActive: isActive,
+                    selectedModel: getDefaultModel(providerId),
+                    quality: 'standard',
+                    size: '1024x1024',
+                    style: 'vivid',
+                    temperature: 0.7,
+                    maxTokens: 1000,
+                    customOptions: {},
+                    updatedAt: new Date().toISOString()
+                };
+                
+                // Get existing configurations
+                let configurations = [];
+                const stored = localStorage.getItem(STORAGE_KEY);
+                if (stored) {
+                    try {
+                        const parsed = JSON.parse(stored);
+                        configurations = Array.isArray(parsed) ? parsed : [];
+                    } catch (e) {
+                        log('saveResult', `Error parsing stored configs: ${e.message}`, 'error');
+                        configurations = [];
+                    }
+                }
+                
+                log('saveResult', `Found ${configurations.length} existing configurations`, 'info');
+                
+                // Update or add configuration
+                const existingIndex = configurations.findIndex(c => c.id === providerId);
+                if (existingIndex >= 0) {
+                    configurations[existingIndex] = { ...configurations[existingIndex], ...providerConfig };
+                    log('saveResult', 'Updated existing configuration', 'success');
+                } else {
+                    configurations.push(providerConfig);
+                    log('saveResult', 'Added new configuration', 'success');
+                }
+                
+                // Save to localStorage
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(configurations));
+                log('saveResult', `Saved ${configurations.length} configurations to localStorage`, 'success');
+                log('saveResult', `Configuration: ${JSON.stringify(providerConfig, null, 2)}`, 'info');
+                
+                // Dispatch custom event
+                window.dispatchEvent(new CustomEvent('aiProviderConfigUpdated', { 
+                    detail: { providerId, configurations } 
+                }));
+                
+                log('saveResult', '✅ Provider configuration saved successfully!', 'success');
+                
+            } catch (error) {
+                log('saveResult', `❌ Error: ${error.message}`, 'error');
+            }
+        }
+        
+        function testMaterialDetection() {
+            clearLog('detectionResult');
+            
+            try {
+                log('detectionResult', 'Testing material page provider detection...', 'info');
+                
+                // Simulate getProviderConfigurations function
+                const stored = localStorage.getItem(STORAGE_KEY);
+                log('detectionResult', `LocalStorage data exists: ${!!stored}`, 'info');
+                
+                if (!stored) {
+                    log('detectionResult', '❌ No configurations found in localStorage', 'error');
+                    return;
+                }
+                
+                let allConfigs = [];
+                try {
+                    allConfigs = JSON.parse(stored);
+                    log('detectionResult', `Parsed ${allConfigs.length} configurations`, 'info');
+                } catch (e) {
+                    log('detectionResult', `❌ Error parsing configurations: ${e.message}`, 'error');
+                    return;
+                }
+                
+                if (!Array.isArray(allConfigs)) {
+                    log('detectionResult', `❌ Configurations is not an array: ${typeof allConfigs}`, 'error');
+                    return;
+                }
+                
+                log('detectionResult', 'Filtering for active providers...', 'info');
+                
+                // Simulate the improved getActiveProviders logic
+                const activeProviders = allConfigs.filter(config => {
+                    if (!config || typeof config !== 'object') {
+                        log('detectionResult', `⚠️ Invalid config object: ${JSON.stringify(config)}`, 'warning');
+                        return false;
+                    }
+                    
+                    // Improved API key checking
+                    const hasApiKey = config.apiKey && 
+                                     typeof config.apiKey === 'string' && 
+                                     config.apiKey.trim().length > 0 && 
+                                     !isMaskedApiKey(config.apiKey);
+                    
+                    const isActive = config.isActive === true;
+                    
+                    log('detectionResult', `Provider ${config.id}:`, 'info');
+                    log('detectionResult', `  - Has API key: ${hasApiKey}`, 'info');
+                    log('detectionResult', `  - Is active: ${isActive}`, 'info');
+                    log('detectionResult', `  - API key length: ${config.apiKey ? config.apiKey.length : 0}`, 'info');
+                    log('detectionResult', `  - API key masked: ${config.apiKey ? isMaskedApiKey(config.apiKey) : 'N/A'}`, 'info');
+                    
+                    // Special providers that don't need API keys
+                    const isSpecialProvider = config.id === 'free-test-provider' || config.id === 'ollama' || config.id === 'lmstudio';
+                    
+                    if (isSpecialProvider) {
+                        log('detectionResult', `  - Special provider, no API key required`, 'info');
+                        return isActive;
+                    }
+                    
+                    const shouldInclude = hasApiKey && isActive;
+                    log('detectionResult', `  - Should include: ${shouldInclude}`, shouldInclude ? 'success' : 'warning');
+                    
+                    return shouldInclude;
+                });
+                
+                log('detectionResult', `Found ${activeProviders.length} active providers`, activeProviders.length > 0 ? 'success' : 'error');
+                
+                if (activeProviders.length > 0) {
+                    activeProviders.forEach(provider => {
+                        log('detectionResult', `✅ Active provider: ${provider.name} (${provider.id})`, 'success');
+                    });
+                    log('detectionResult', '🎉 SUCCESS: Active providers detected! Material creation should work.', 'success');
+                } else {
+                    log('detectionResult', '❌ PROBLEM: No active providers detected. Material creation will show error.', 'error');
+                    log('detectionResult', 'Troubleshooting suggestions:', 'warning');
+                    log('detectionResult', '1. Ensure API key is not empty or masked', 'warning');
+                    log('detectionResult', '2. Ensure provider isActive is set to true', 'warning');
+                    log('detectionResult', '3. Check API key length > 8 characters', 'warning');
+                }
+                
+            } catch (error) {
+                log('detectionResult', `❌ Error during detection test: ${error.message}`, 'error');
+            }
+        }
+        
+        function showDebugInfo() {
+            clearLog('debugInfo');
+            
+            try {
+                log('debugInfo', 'Debug Information:', 'info');
+                log('debugInfo', '==================', 'info');
+                
+                // Check localStorage
+                const stored = localStorage.getItem(STORAGE_KEY);
+                log('debugInfo', `Storage key: ${STORAGE_KEY}`, 'info');
+                log('debugInfo', `Data exists: ${!!stored}`, 'info');
+                
+                if (stored) {
+                    log('debugInfo', `Data length: ${stored.length} characters`, 'info');
+                    try {
+                        const parsed = JSON.parse(stored);
+                        log('debugInfo', `Parsed successfully: ${Array.isArray(parsed) ? 'array' : typeof parsed}`, 'info');
+                        
+                        if (Array.isArray(parsed)) {
+                            log('debugInfo', `Number of configurations: ${parsed.length}`, 'info');
+                            
+                            parsed.forEach((config, index) => {
+                                log('debugInfo', `Configuration ${index + 1}:`, 'info');
+                                log('debugInfo', `  ID: ${config.id}`, 'info');
+                                log('debugInfo', `  Name: ${config.name}`, 'info');
+                                log('debugInfo', `  Has API Key: ${!!config.apiKey}`, 'info');
+                                log('debugInfo', `  API Key Length: ${config.apiKey ? config.apiKey.length : 0}`, 'info');
+                                log('debugInfo', `  Is Active: ${config.isActive}`, 'info');
+                                log('debugInfo', `  Selected Model: ${config.selectedModel}`, 'info');
+                                log('debugInfo', `  Full Config: ${JSON.stringify(config, null, 2)}`, 'info');
+                                log('debugInfo', '---', 'info');
+                            });
+                        }
+                    } catch (e) {
+                        log('debugInfo', `Parse error: ${e.message}`, 'error');
+                        log('debugInfo', `Raw data: ${stored}`, 'error');
+                    }
+                } else {
+                    log('debugInfo', 'No data in localStorage', 'warning');
+                }
+                
+                // Check all localStorage keys
+                log('debugInfo', 'All localStorage keys:', 'info');
+                Object.keys(localStorage).forEach(key => {
+                    log('debugInfo', `  - ${key}`, 'info');
+                });
+                
+            } catch (error) {
+                log('debugInfo', `Error getting debug info: ${error.message}`, 'error');
+            }
+        }
+        
+        function openMaterialsPage() {
+            window.open('http://localhost:3000/en/materials/create', '_blank');
+        }
+        
+        function openAIProvidersPage() {
+            window.open('http://localhost:3000/en/ai-providers', '_blank');
+        }
+        
+        function getProviderName(providerId) {
+            const names = {
+                openai: 'OpenAI',
+                stability: 'Stability AI',
+                anthropic: 'Anthropic',
+                replicate: 'Replicate',
+                huggingface: 'Hugging Face'
+            };
+            return names[providerId] || providerId;
+        }
+        
+        function getDefaultModel(providerId) {
+            const models = {
+                openai: 'dall-e-3',
+                stability: 'stable-diffusion-xl-1024-v1-0',
+                anthropic: 'claude-3-sonnet',
+                replicate: 'stability-ai/sdxl',
+                huggingface: 'stabilityai/stable-diffusion-xl-base-1.0'
+            };
+            return models[providerId] || 'default';
+        }
+        
+        function isMaskedApiKey(apiKey) {
+            if (!apiKey || typeof apiKey !== 'string') return true;
+            
+            // Check for various masking patterns
+            return apiKey.includes('••••') || 
+                   apiKey.includes('****') || 
+                   apiKey.includes('...') ||
+                   /^\*+$/.test(apiKey) ||
+                   apiKey === 'hidden' ||
+                   apiKey === 'masked' ||
+                   apiKey.length < 8;
+        }
+        
+        // Auto-run debug info on page load
+        window.addEventListener('load', () => {
+            setTimeout(showDebugInfo, 500);
+        });
+    </script>
+</body>
+</html>

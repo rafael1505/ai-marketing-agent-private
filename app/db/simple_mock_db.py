@@ -88,7 +88,8 @@ class SimpleMockDatabase:
         self._data = {
             "users": {},
             "companies": {},
-            "materials": {}
+            "materials": {},
+            "ai_providers": {}
         }
         self._next_id = 1
         
@@ -103,6 +104,10 @@ class SimpleMockDatabase:
     @property
     def materials(self):
         return SimpleMockCollection(self._data["materials"], self)
+        
+    @property
+    def ai_providers(self):
+        return SimpleMockCollection(self._data["ai_providers"], self)
 
     def close(self):
         # No-op for simple mock

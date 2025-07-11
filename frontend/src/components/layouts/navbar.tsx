@@ -119,6 +119,13 @@ export const Navbar: React.FC<NavbarProps> = ({ locale = "en" }) => {
           <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full"></span>
         </Link>
         <Link
+          href={`/${locale}/ai-providers`}
+          className="transition-all duration-200 hover:text-primary relative group"
+        >
+          <span>AI Providers</span>
+          <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full"></span>
+        </Link>
+        <Link
           href={`/${locale}/settings`}
           className="transition-all duration-200 hover:text-primary relative group"
         >

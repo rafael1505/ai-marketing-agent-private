@@ -224,20 +224,20 @@ export function AIProviderDialog({
         {provider?.pricing && (
           <div className="bg-gray-50 p-3 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
-              <PricingBadge tier={provider.pricing.tier} />
+              <PricingBadge tier={provider.pricing?.tier || 'free'} />
               <h4 className="font-medium">Pricing Information</h4>
             </div>
             
-            {provider.pricing.tier === 'free' && (
+            {provider.pricing?.tier === 'free' && (
               <p className="text-sm text-green-700">
                 ✅ This provider is completely free to use!
               </p>
             )}
             
-            {provider.pricing.tier === 'freemium' && (
+            {provider.pricing?.tier === 'freemium' && (
               <div className="text-sm space-y-1">
                 <p className="text-blue-700">
-                  💎 Free tier available: {provider.pricing.freeQuota?.description}
+                  💎 Free tier available: {provider.pricing?.freeQuota?.description}
                 </p>
                 <p className="text-gray-600">
                   Paid plans available for higher usage
@@ -245,20 +245,20 @@ export function AIProviderDialog({
               </div>
             )}
             
-            {provider.pricing.tier === 'paid' && (
+            {provider.pricing?.tier === 'paid' && (
               <div className="text-sm space-y-1">
                 <p className="text-purple-700">
                   💳 This is a paid service
                 </p>
                 <p className="text-gray-600">
-                  Starting from: {provider.pricing.paidPlans?.[0]?.description}
+                  Starting from: {provider.pricing?.paidPlans?.[0]?.description}
                 </p>
               </div>
             )}
             
-            {provider.pricing.websiteUrl && (
+            {provider.pricing?.websiteUrl && (
               <a 
-                href={provider.pricing.websiteUrl} 
+                href={provider.pricing?.websiteUrl} 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:underline text-sm inline-flex items-center gap-1 mt-2"

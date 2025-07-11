@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Provider Configuration Fix Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .debug-section { border: 1px solid #ddd; padding: 15px; margin: 10px 0; }
+        .button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+        .error { color: red; }
+        .success { color: green; }
+        .warning { color: orange; }
+    </style>
+</head>
+<body>
+    <h1>Provider Configuration Fix Test</h1>
+    
+    <div class="debug-section">
+        <h3>Test Scenario: Simulate API Response with Masked Keys</h3>
+        <button class="button" onclick="testMaskedKeyHandling()">Test Masked Key Protection</button>
+        <button class="button" onclick="testRealProviderFlow()">Test Real Provider Configuration Flow</button>
+        <button class="button" onclick="testGetActiveProviders()">Test getActiveProviders()</button>
+        <button class="button" onclick="clearData()">Clear All Data</button>
+        <pre id="testResult"></pre>
+    </div>
+
+    <div class="debug-section">
+        <h3>Current State</h3>
+        <pre id="currentState"></pre>
+    </div>
+
+    <script>
+        const PROVIDER_CONFIGS_STORAGE_KEY = 'ai-provider-configurations';
+        const log = document.getElementById('testResult');
+        const stateEl = document.getElementById('currentState');
+
+        function updateLog(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            let className = '';
+            switch(type) {
+                case 'error': className = 'error'; break;
+                case 'success': className = 'success'; break;
+                case 'warning': className = 'warning'; break;
+                default: className = '';
+            }
+            log.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            log.scrollTop = log.scrollHeight;
+            updateCurrentState();
+        }
+
+        function updateCurrentState() {
+            try {
+                const data = localStorage.getItem(PROVIDER_CONFIGS_STORAGE_KEY);
+                if (data) {
+                    const parsed = JSON.parse(data);
+                    stateEl.textContent = JSON.stringify(parsed, null, 2);
+                } else {
+                    stateEl.textContent = 'No data in localStorage';
+                }
+            } catch (error) {
+                stateEl.textContent = `Error reading localStorage: ${error.message}`;
+            }
+        }
+
+        // Enhanced masking detection (same as the updated frontend code)
+        function isMaskedApiKey(apiKey) {
+            if (!apiKey || typeof apiKey !== 'string') return false;
+            const maskingPatterns = [
+                /^[•*]+$/,                    // All dots or asterisks
+                /^[•*]{8,}$/,                 // 8+ dots/asterisks
+                /••••/,                       // Contains 4+ bullet chars
+                /\*{4,}/,                     // Contains 4+ asterisks
+                /^[•*\-]{6,}$/,               // 6+ masking chars
+                /^sk-[•*]{10,}$/,             // OpenAI pattern with masking
+                /^r8_[•*]{10,}$/,             // Replicate pattern with masking
+                /^hf_[•*]{10,}$/,             // HuggingFace pattern with masking
+            ];
+            return maskingPatterns.some(pattern => pattern.test(apiKey));
+        }
+
+        // Simulate the updated updateLocalStorageConfigurations function
+        function updateLocalStorageConfigurations(config) {
+            try {
+                updateLog(`Updating localStorage with config for ${config.id}:`);
+                updateLog(`  API Key: "${config.apiKey || 'none'}"`);
+                updateLog(`  Is Masked: ${isMaskedApiKey(config.apiKey)}`);
+                
+                const hasMaskedApiKey = config.apiKey && isMaskedApiKey(config.apiKey);
+                
+                const cached = localStorage.getItem(PROVIDER_CONFIGS_STORAGE_KEY);
+                let configurations = [];
+                
+                if (cached) {
+                    try {
+                        const parsed = JSON.parse(cached);
+                        configurations = Array.isArray(parsed) ? parsed : [];
+                        updateLog(`Found ${configurations.length} existing configurations`);
+                    } catch (parseError) {
+                        updateLog(`Parse error: ${parseError.message}`, 'error');
+                        configurations = [];
+                    }
+                }
+                
+                const existingIndex = configurations.findIndex(c => c.id === config.id);
+                const existingConfig = existingIndex >= 0 ? configurations[existingIndex] : null;
+                
+                if (existingIndex >= 0) {
+                    // Key logic: preserve real API keys when masked keys come in
+                    let apiKeyToUse = config.apiKey;
+                    if (hasMaskedApiKey && existingConfig && existingConfig.apiKey && !isMaskedApiKey(existingConfig.apiKey)) {
+                        updateLog(`⚠️ Preserving existing real API key instead of overwriting with masked key`, 'warning');
+                        apiKeyToUse = existingConfig.apiKey;
+                    }
+                    
+                    configurations[existingIndex] = {
+                        ...configurations[existingIndex],
+                        ...config,
+                        apiKey: apiKeyToUse,
+                        id: config.id,
+                        name: config.name || configurations[existingIndex].name || config.id
+                    };
+                    updateLog(`✓ Updated existing configuration for ${config.id}`, 'success');
+                } else {
+                    if (hasMaskedApiKey) {
+                        updateLog(`⚠️ Adding new provider ${config.id} with masked API key`, 'warning');
+                    }
+                    
+                    const newConfig = {
+                        ...config,
+                        name: config.name || config.id
+                    };
+                    configurations.push(newConfig);
+                    updateLog(`✓ Added new configuration for ${config.id}`, 'success');
+                }
+                
+                localStorage.setItem(PROVIDER_CONFIGS_STORAGE_KEY, JSON.stringify(configurations));
+                updateLog(`✓ Saved to localStorage`, 'success');
+                
+            } catch (error) {
+                updateLog(`Error: ${error.message}`, 'error');
+            }
+        }
+
+        function getActiveProviders() {
+            try {
+                const data = localStorage.getItem(PROVIDER_CONFIGS_STORAGE_KEY);
+                if (!data) {
+                    updateLog('No configurations found in localStorage');
+                    return [];
+                }
+                
+                const configs = JSON.parse(data);
+                if (!Array.isArray(configs)) {
+                    updateLog('Invalid configuration data in localStorage', 'error');
+                    return [];
+                }
+                
+                updateLog(`Found ${configs.length} total configurations`);
+                
+                const activeProviders = configs.filter(config => {
+                    const hasApiKey = config.apiKey && config.apiKey.length > 0;
+                    const isNotMasked = !isMaskedApiKey(config.apiKey);
+                    const isActive = config.isActive === true;
+                    
+                    updateLog(`  ${config.id}: hasApiKey=${hasApiKey}, isNotMasked=${isNotMasked}, isActive=${isActive}`);
+                    
+                    return hasApiKey && isNotMasked && isActive;
+                });
+                
+                updateLog(`✓ Found ${activeProviders.length} active providers:`, 'success');
+                activeProviders.forEach(p => updateLog(`    - ${p.id} (${p.name})`));
+                
+                return activeProviders;
+            } catch (error) {
+                updateLog(`Error in getActiveProviders: ${error.message}`, 'error');
+                return [];
+            }
+        }
+
+        function testMaskedKeyHandling() {
+            updateLog('=== Testing Masked Key Protection ===');
+            
+            // Step 1: Save a real configuration
+            updateLog('Step 1: Saving a real provider configuration...');
+            const realConfig = {
+                id: 'openai',
+                name: 'OpenAI',
+                apiKey: 'sk-real123456789abcdef',
+                selectedModel: 'dall-e-3',
+                isActive: true
+            };
+            updateLocalStorageConfigurations(realConfig);
+            
+            // Step 2: Simulate API response with masked key (this should NOT overwrite the real key)
+            updateLog('\nStep 2: Simulating API response with masked key...');
+            const maskedConfig = {
+                id: 'openai',
+                name: 'OpenAI',
+                apiKey: '••••••••••••••••',
+                selectedModel: 'dall-e-3',
+                isActive: true,
+                someNewField: 'updated from API'
+            };
+            updateLocalStorageConfigurations(maskedConfig);
+            
+            // Step 3: Verify the real key was preserved
+            updateLog('\nStep 3: Verifying real API key was preserved...');
+            const saved = JSON.parse(localStorage.getItem(PROVIDER_CONFIGS_STORAGE_KEY));
+            const openaiConfig = saved.find(c => c.id === 'openai');
+            if (openaiConfig && openaiConfig.apiKey === 'sk-real123456789abcdef') {
+                updateLog('✅ SUCCESS: Real API key was preserved!', 'success');
+            } else {
+                updateLog('❌ FAILED: Real API key was overwritten!', 'error');
+                updateLog(`Expected: sk-real123456789abcdef, Got: ${openaiConfig?.apiKey}`);
+            }
+        }
+
+        function testRealProviderFlow() {
+            updateLog('=== Testing Real Provider Configuration Flow ===');
+            
+            // Clear existing data
+            localStorage.removeItem(PROVIDER_CONFIGS_STORAGE_KEY);
+            updateLog('Cleared localStorage');
+            
+            // Simulate user configuring a provider
+            updateLog('\nStep 1: User configures OpenAI provider...');
+            const userConfig = {
+                id: 'openai',
+                name: 'OpenAI',
+                apiKey: 'sk-user123456789abcdef',
+                selectedModel: 'dall-e-3',
+                temperature: 0.7,
+                isActive: true
+            };
+            updateLocalStorageConfigurations(userConfig);
+            
+            // Test getActiveProviders
+            updateLog('\nStep 2: Testing getActiveProviders()...');
+            const activeProviders = getActiveProviders();
+            
+            if (activeProviders.length === 1 && activeProviders[0].id === 'openai') {
+                updateLog('✅ SUCCESS: Provider appears in active providers list!', 'success');
+            } else {
+                updateLog('❌ FAILED: Provider not found in active providers!', 'error');
+            }
+        }
+
+        function testGetActiveProviders() {
+            updateLog('=== Testing getActiveProviders() Function ===');
+            getActiveProviders();
+        }
+
+        function clearData() {
+            localStorage.removeItem(PROVIDER_CONFIGS_STORAGE_KEY);
+            updateLog('Cleared all data');
+            updateCurrentState();
+        }
+
+        // Initial state display
+        updateCurrentState();
+    </script>
+</body>
+</html>

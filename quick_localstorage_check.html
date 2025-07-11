@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quick LocalStorage Check</title>
+</head>
+<body>
+    <h1>Current LocalStorage State</h1>
+    <div id="output"></div>
+    <script>
+        const output = document.getElementById('output');
+        const configs = localStorage.getItem('aiProviderConfigurations');
+        
+        if (configs) {
+            const parsed = JSON.parse(configs);
+            output.innerHTML = '<h2>AI Provider Configurations:</h2><pre>' + JSON.stringify(parsed, null, 2) + '</pre>';
+            
+            // Check for masked keys
+            const maskedKeys = Object.entries(parsed).filter(([name, config]) => 
+                config.apiKey && config.apiKey.includes('•')
+            );
+            
+            if (maskedKeys.length > 0) {
+                output.innerHTML += '<h2 style="color: red;">⚠️ Masked Keys Found:</h2><pre>' + 
+                    JSON.stringify(maskedKeys, null, 2) + '</pre>';
+            } else {
+                output.innerHTML += '<h2 style="color: green;">✅ No Masked Keys Found</h2>';
+            }
+            
+            // Check enabled providers
+            const enabledProviders = Object.entries(parsed).filter(([name, config]) => 
+                config.enabled && config.apiKey && !config.apiKey.includes('•')
+            );
+            
+            output.innerHTML += '<h2>Providers Available for Material Creation:</h2><pre>' + 
+                enabledProviders.map(([name]) => name).join(', ') + '</pre>';
+                
+        } else {
+            output.innerHTML = '<h2>No AI Provider Configurations Found</h2>';
+        }
+    </script>
+</body>
+</html>
