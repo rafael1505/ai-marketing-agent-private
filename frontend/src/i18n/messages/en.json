@@ -1,0 +1,19 @@
+{
+  "homepage": {
+    "title": "Full Stack is Working!",
+    "serviceStatus": "Service Status:",
+    "mongodb": "MongoDB: Running",
+    "backend": "Backend API: Running on port 8088",
+    "frontend": "Frontend: Running on port 3001",
+    "operational": "All services are operational!",
+    "availableRoutes": "Available Routes:"
+  },
+  "aiProviders": {
+    "title": "AI Providers",
+    "description": "Available AI providers for the marketing agent:",
+    "provider": "Provider",
+    "type": "Type",
+    "status": "Status",
+    "backToHome": "← Back to Homepage"
+  }
+}

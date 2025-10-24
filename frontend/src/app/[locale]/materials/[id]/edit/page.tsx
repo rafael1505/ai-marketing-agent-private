@@ -6,10 +6,12 @@ import { Button } from "@/components/ui/button";
 import { IdeaGenerationForm } from "@/components/forms/idea-generation-form";
 import { EnhancedRefinementForm } from "@/components/forms/enhanced-refinement-form";
 import { FinalizationForm } from "@/components/forms/finalization-form";
+import { AIErrorDisplay } from "@/components/ui/ai-error-display";
 import { MaterialStage, MaterialStatus, IdeaGenerationFormData, RefinementFormData, FinalizationFormData, GeneratedImage, Material } from "@/types";
 import { getMaterial, updateMaterial, addGeneratedImage, selectImage, addFeedback, updateStage } from "@/services/materials";
 import { generateMultipleImages, getAvailableProviders, getProviderConfigurations, getActiveProviders, type ProviderConfig } from "@/services/ai-providers";
 import { MATERIAL_CREATION_STEPS } from "@/constants";
+import { getTranslations } from "@/i18n";
 
 export default function EditMaterialPage({
   params
@@ -23,12 +25,18 @@ export default function EditMaterialPage({
   const [material, setMaterial] = useState<Material | null>(null);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<any | null>(null);
   const [activeProviders, setActiveProviders] = useState<ProviderConfig[]>([]);
+  const [translations, setTranslations] = useState<Record<string, any>>({});
 
   useEffect(() => {
     const loadMaterial = async () => {
       try {
         setIsLoading(true);
+        
+        // Load translations
+        const trans = await getTranslations(locale === "pt" ? "pt" : "en");
+        setTranslations(trans);
         
         // Load provider configurations first
         await loadActiveProviders();
@@ -134,6 +142,9 @@ export default function EditMaterialPage({
       return;
     }
     
+    // Clear previous errors
+    setAiError(null);
+    
     console.log(`Generating image with prompt: "${prompt}" using provider: ${aiProvider}`);
     
     try {
@@ -158,6 +169,11 @@ export default function EditMaterialPage({
       const result = await generateMultipleImages(prompt, providerToUse, 5, '1024x1024');
       
       if (!result.success) {
+        // Display enriched error if available
+        if (result.error_details) {
+          setAiError(result.error_details);
+          return; // Exit early to show error display component
+        }
         throw new Error(result.error || 'Failed to generate images');
       }
       
@@ -203,9 +219,16 @@ export default function EditMaterialPage({
       const costMessage = result.cost && result.cost > 0 ? ` (Cost: $${result.cost.toFixed(4)})` : '';
       alert(`Successfully generated ${result.images.length} images using ${result.provider}!${costMessage}`);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error generating images:", error);
-      alert(`Failed to generate images: ${error.message || "Unknown error"}`);
+      
+      // Check if error has enriched details (from network errors, etc.)
+      if (error.error_details) {
+        setAiError(error.error_details);
+      } else {
+        // Show simple alert for unexpected errors (not from AI providers)
+        alert(`Failed to generate images: ${error.message || "Unknown error"}`);
+      }
     }
   };
 
@@ -370,6 +393,24 @@ export default function EditMaterialPage({
       </div>
 
       <div className="mt-8">
+        {/* Display AI Error if present */}
+        {aiError && (
+          <AIErrorDisplay
+            error={aiError.message}
+            errorDetails={aiError}
+            onRetry={() => {
+              setAiError(null);
+              // Could trigger retry logic here
+            }}
+            onSwitchProvider={() => {
+              setAiError(null);
+              router.push(`/${locale}/settings/ai-providers`);
+            }}
+            locale={locale}
+            translations={translations}
+          />
+        )}
+        
         {currentStep === 0 && (
           <IdeaGenerationForm
             onSubmit={handleIdeaSubmit}

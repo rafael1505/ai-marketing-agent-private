@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clear AI Provider Cache</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        button { padding: 10px 20px; margin: 10px 0; background: #007cba; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #005a87; }
+        .success { color: green; margin: 10px 0; }
+        .info { background: #f0f8ff; padding: 15px; border-left: 4px solid #007cba; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AI Provider Cache Clear Tool</h1>
+        
+        <div class="info">
+            <h3>Why do you need this?</h3>
+            <p>We fixed a bug where configured providers (like OpenAI with masked API keys) were being filtered out of the frontend display. However, your browser may have cached the old filtered data.</p>
+            <p>Click the button below to clear the cache and allow the frontend to fetch the complete list of providers from the backend.</p>
+        </div>
+        
+        <button onclick="clearProviderCache()">Clear AI Provider Cache</button>
+        
+        <div id="result"></div>
+        
+        <div class="info">
+            <h3>After clearing the cache:</h3>
+            <ol>
+                <li>Go back to your AI Providers page</li>
+                <li>Refresh the page (F5 or Ctrl+R)</li>
+                <li>You should now see all 9 providers, including the configured OpenAI provider</li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        function clearProviderCache() {
+            try {
+                // Clear the CORRECT localStorage key used by the AI provider service
+                localStorage.removeItem('ai-provider-configurations');
+                
+                // Also clear any other related cache keys
+                const keysToRemove = ['ai-provider-configurations'];
+                for (let i = 0; i < localStorage.length; i++) {
+                    const key = localStorage.key(i);
+                    if (key && (key.includes('provider') || key.includes('ai_') || key.includes('config'))) {
+                        keysToRemove.push(key);
+                    }
+                }
+                
+                // Remove duplicates and clear all
+                const uniqueKeys = [...new Set(keysToRemove)];
+                uniqueKeys.forEach(key => localStorage.removeItem(key));
+                
+                document.getElementById('result').innerHTML = 
+                    '<div class="success">✅ Successfully cleared AI provider cache!</div>' +
+                    '<div class="success">Cleared keys: ' + uniqueKeys.join(', ') + '</div>' +
+                    '<div class="success">Now refresh your AI Providers page to see all providers.</div>';
+                    
+            } catch (error) {
+                document.getElementById('result').innerHTML = 
+                    '<div style="color: red;">❌ Error clearing cache: ' + error.message + '</div>';
+            }
+        }
+        
+        // Auto-show current cache status
+        window.onload = function() {
+            const cached = localStorage.getItem('ai-provider-configurations');
+            if (cached) {
+                try {
+                    const parsed = JSON.parse(cached);
+                    document.getElementById('result').innerHTML = 
+                        '<div style="color: orange;">⚠️ Found cached provider data with ' + parsed.length + ' providers. Click above to clear.</div>';
+                } catch (e) {
+                    document.getElementById('result').innerHTML = 
+                        '<div style="color: orange;">⚠️ Found cached provider data (invalid format). Click above to clear.</div>';
+                }
+            } else {
+                document.getElementById('result').innerHTML = 
+                    '<div style="color: gray;">ℹ️ No cached provider data found. Cache is already clear.</div>';
+            }
+        };
+    </script>
+</body>
+</html>

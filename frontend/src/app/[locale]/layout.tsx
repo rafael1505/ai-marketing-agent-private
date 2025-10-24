@@ -1,18 +1,21 @@
-import { AuthProvider } from "@/contexts/auth-context";
-import { MainLayout } from "@/components/layouts/main-layout";
+'use client';
 
-export default function LocaleLayout({
-  children,
-  params
-}: {
+import { AuthProvider } from '@/contexts/auth-context';
+import { MainLayout } from '@/components/layouts/main-layout';
+
+interface LocaleLayoutProps {
   children: React.ReactNode;
-  params: { locale: string }
-}) {
+  params: {
+    locale: string;
+  };
+}
+
+export default function LocaleLayout({ children, params }: LocaleLayoutProps) {
   return (
-    <AuthProvider> 
+    <AuthProvider>
       <MainLayout locale={params.locale}>
         {children}
       </MainLayout>
-    </AuthProvider> 
+    </AuthProvider>
   );
 }

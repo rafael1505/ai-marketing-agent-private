@@ -50,161 +50,42 @@ api_app.add_middleware(
 from app.core.formdata_array_fix import apply_array_parsing_fix
 apply_array_parsing_fix(api_app)
 
-# Import and apply database persistence patch
-from app.core.persistence_patch import apply_persistence_patch
-# Import and apply ID format patch
-import app.db.id_format_patch
-apply_persistence_patch()
-logging.info("Database persistence patch has been applied")
-
 @api_app.on_event("startup")
 async def startup_db_client():
-    # Set up mock database for development
-    from app.db.simple_mock_db import SimpleMockDatabase
-    api_app.mongodb_client = SimpleMockDatabase()
-    api_app.mongodb = api_app.mongodb_client
-    logging.info("Using simple mock database for development")
+    """Initialize MongoDB connection on startup"""
+    from app.db.mongodb import mongodb
     
-    setup_i18n()
-    
-    # Initialize the test company
     try:
-        # Initialize test data
-        from app.core.auth import get_password_hash
-        from datetime import datetime
-        from app.db.company import CompanyDB
-        from app.models.company import CompanyCreate, CompanyUpdate
+        # Connect to MongoDB
+        await mongodb.connect()
+        api_app.mongodb = mongodb.db
+        api_app.mongodb_client = mongodb.client
+        logging.info("✅ Successfully connected to MongoDB - using real database")
         
-        # Use the correct way to access collections from MockDatabase
-        users_collection = api_app.mongodb.users
-
-        # Clear existing users to avoid duplication
-        try:
-            # Pass a query dictionary to delete_many
-            await users_collection.delete_many({"email": "test@example.com"})
-        except Exception as e:
-            logging.warning(f"Could not clear test user, may not exist: {e}")
-        # Create test user with all required fields
-        test_user = {
-            # "_id": ObjectId(), # ObjectId might not be compatible with SQLite mock or necessary
-            "name": "Test User",
-            "full_name": "Test User",
-            "email": "test@example.com",
-            "hashed_password": "$2b$12$KEM/.wsdaeBqeOSyN8gVAubF.uyCe21l4cF5zdTCLlYtsMkpVd8Be", # Corrected hash
-            "active": True,
-            "is_admin": True,
-            "company_id": "test_company",
-            "created_at": datetime.utcnow().isoformat(), # Store as ISO format string
-            "updated_at": datetime.utcnow().isoformat()  # Store as ISO format string
-        }
+        # Create indexes for optimal performance
+        await mongodb.create_indexes()
         
-        # Insert test user into collection
-        await users_collection.insert_one(test_user)
-          # Debug: Try to retrieve the user
-        test_fetch = await users_collection.find_one({"email": "test@example.com"})
-        if test_fetch:
-            logging.info(f"Test user found: {test_fetch}")
-        else:
-            logging.error("Failed to retrieve test user after creation")
-            
-        logging.info("Test user created successfully: test@example.com")
+        # Log collection counts
+        users_count = await api_app.mongodb.users.count_documents({})
+        companies_count = await api_app.mongodb.companies.count_documents({})
+        providers_count = await api_app.mongodb.ai_providers.count_documents({})
         
-        # Create test company only if no companies exist
-        try:
-            # Access the companies collection
-            companies_collection = api_app.mongodb.companies
-            
-            # Check if we have any companies already (from persistence)
-            # Be explicit about checking the collection directly
-            all_companies = []
-            try:
-                # Get companies cursor
-                companies_cursor = companies_collection.find({})
-                
-                # Handle both async and sync cases
-                if hasattr(companies_cursor, '__await__'):
-                    try:
-                        # For real MongoDB
-                        all_companies = await companies_cursor
-                    except Exception as e:
-                        # For our mock cursor
-                        all_companies = list(companies_cursor)
-                else:
-                    # For direct list results or other types
-                    all_companies = list(companies_cursor)
-                
-                # Get the count
-                existing_count = len(all_companies)
-                logging.info(f"Database loaded with {existing_count} companies")
-                
-                # Debug: print company info
-                for company in all_companies:
-                    logging.info(f"Found company: {company.get('name')}, ID: {company.get('_id')}, "
-                                f"active: {company.get('active')}, "
-                                f"brand_colors: {company.get('brand_colors')}")
-            except Exception as e:
-                logging.error(f"Error checking existing companies: {e}")
-                existing_count = 0
-            
-            if existing_count > 0:
-                logging.info(f"Found {existing_count} existing companies - skipping test company creation")
-                
-                # Make sure one company is set as active 
-                active_company = None
-                try:
-                    active_company = await companies_collection.find_one({"active": True})
-                except Exception as e:
-                    logging.error(f"Error finding active company: {e}")
-                
-                if not active_company:
-                    logging.info("No active company found - setting the first company as active")
-                    first_company = all_companies[0]
-                    try:
-                        await companies_collection.update_one(
-                            {"_id": first_company.get("_id")},
-                            {"$set": {"active": True}}
-                        )
-                        logging.info(f"Set company {first_company.get('name')} as active")
-                    except Exception as e:
-                        logging.error(f"Error setting company as active: {e}")
-            else:
-                # No companies found, create the test company
-                logging.info("No existing companies found - creating test company")
-                
-                # Create a test company
-                test_company = {
-                    "_id": "test_company",  # Use _id instead of id to match MongoDB expectations
-                    "id": "test_company",   # Explicitly add the id field to match both ways
-                    "name": "Test Company",
-                    "description": "This is a test company for development",
-                    "email": "contact@testcompany.com",
-                    "phone": "+1 (555) 123-4567",
-                    "address": "123 Test Street, Test City, TC 12345",
-                    "brand_colors": ["#FF0000", "#00FF00", "#0000FF"],  # Initialize with default colors
-                    "active": True,
-                    "created_at": datetime.utcnow().isoformat(),
-                    "updated_at": datetime.utcnow().isoformat()
-                }
-                
-                # Insert test company into collection
-                await companies_collection.insert_one(test_company)
-                
-                # Verify company was created
-                test_company_fetch = await companies_collection.find_one({"name": "Test Company"})
-                if test_company_fetch:
-                    logging.info(f"Test company found: {test_company_fetch}")
-                else:
-                    logging.error("Failed to retrieve test company after creation")
-                    
-                logging.info("Test company created successfully: Test Company")
-        except Exception as e:
-            logging.error(f"Error creating test company: {e}")
+        logging.info(f"📊 Database initialized: {users_count} users, {companies_count} companies, {providers_count} AI providers")
+        
     except Exception as e:
-        logging.error(f"Error creating test user: {e}")
+        logging.error(f"❌ Failed to connect to MongoDB: {e}")
+        logging.error("Please ensure MongoDB is running: systemctl start mongod")
+        raise
+    
+    # Initialize i18n
+    setup_i18n()
+
 
 @api_app.on_event("shutdown")
 async def shutdown_db_client():
-    api_app.mongodb_client.close()
+    """Close MongoDB connection on shutdown"""
+    from app.db.mongodb import mongodb
+    await mongodb.close()
 
 @api_app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):

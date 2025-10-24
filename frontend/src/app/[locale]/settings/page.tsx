@@ -49,7 +49,7 @@ export default function SettingsPage({
     if (filterTier === 'all') {
       setFilteredProviders(providers);
     } else {
-      setFilteredProviders(providers.filter(provider => provider.pricing?.tier === filterTier));
+      setFilteredProviders(providers.filter(provider => provider.pricing.tier === filterTier));
     }
   }, [providers, filterTier]);
 
@@ -57,19 +57,7 @@ export default function SettingsPage({
     try {
       setLoading(true);
       const userProviders = await getUserAIProviders();
-      
-      // Normalize providers to ensure they have pricing structure
-      const normalizedProviders = (userProviders.length > 0 ? userProviders : DEFAULT_AI_PROVIDERS).map(provider => ({
-        ...provider,
-        pricing: provider.pricing || {
-          tier: 'free' as const,
-          freeQuota: {
-            description: 'User configured provider'
-          }
-        }
-      }));
-      
-      setProviders(normalizedProviders);
+      setProviders(userProviders.length > 0 ? userProviders : DEFAULT_AI_PROVIDERS);
     } catch (error) {
       console.error("Error loading providers:", error);
       setProviders(DEFAULT_AI_PROVIDERS);
@@ -198,12 +186,6 @@ export default function SettingsPage({
 
   const formatPricing = (provider: AIProviderConfig) => {
     const { pricing } = provider;
-    
-    // Handle case where pricing is undefined or null
-    if (!pricing || pricing === null) {
-      return 'Pricing not available';
-    }
-    
     if (pricing.tier === 'free') {
       return pricing.freeQuota?.description || 'Free';
     }
@@ -219,8 +201,8 @@ export default function SettingsPage({
       if (plan.monthlyFee) {
         return `From $${plan.monthlyFee}/month`;
       }
-      if (plan.pricePerRequest) {
-        return `$${plan.pricePerRequest} per request`;
+      if (plan.pricePerToken) {
+        return `$${plan.pricePerToken}/token`;
       }
     }
     return 'Contact for pricing';
@@ -487,21 +469,21 @@ export default function SettingsPage({
                       onClick={() => setFilterTier('free')}
                       className="flex items-center gap-1"
                     >
-                      Free ({providers.filter(p => p.pricing?.tier === 'free').length})
+                      Free ({providers.filter(p => p.pricing.tier === 'free').length})
                     </Button>
                     <Button
                       variant={filterTier === 'freemium' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setFilterTier('freemium')}
                     >
-                      Freemium ({providers.filter(p => p.pricing?.tier === 'freemium').length})
+                      Freemium ({providers.filter(p => p.pricing.tier === 'freemium').length})
                     </Button>
                     <Button
                       variant={filterTier === 'paid' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => setFilterTier('paid')}
                     >
-                      Paid ({providers.filter(p => p.pricing?.tier === 'paid').length})
+                      Paid ({providers.filter(p => p.pricing.tier === 'paid').length})
                     </Button>
                   </div>
 
@@ -526,9 +508,9 @@ export default function SettingsPage({
                                   <h3 className="font-medium">{provider.name}</h3>
                                   <Badge 
                                     variant="secondary"
-                                    className={getPricingBadgeColor(provider.pricing?.tier || 'free')}
+                                    className={getPricingBadgeColor(provider.pricing.tier)}
                                   >
-                                    {(provider.pricing?.tier || 'free').charAt(0).toUpperCase() + (provider.pricing?.tier || 'free').slice(1)}
+                                    {provider.pricing.tier.charAt(0).toUpperCase() + provider.pricing.tier.slice(1)}
                                   </Badge>
                                   {provider.isConfigured && (
                                     <Badge className="bg-green-100 text-green-800">
@@ -541,22 +523,22 @@ export default function SettingsPage({
                                   {formatPricing(provider)}
                                 </p>
                                 
-                                {provider.pricing?.freeQuota?.description && (
+                                {provider.pricing.freeQuota?.description && (
                                   <p className="text-xs text-gray-500">
-                                    {provider.pricing?.freeQuota?.description}
+                                    {provider.pricing.freeQuota.description}
                                   </p>
                                 )}
                               </div>
                             </div>
                             
                             <div className="flex items-center gap-2">
-                              {provider.pricing?.websiteUrl && (
+                              {provider.pricing.websiteUrl && (
                                 <Button
                                   size="sm"
                                   variant="ghost"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    window.open(provider.pricing?.websiteUrl, '_blank');
+                                    window.open(provider.pricing.websiteUrl, '_blank');
                                   }}
                                 >
                                   💰

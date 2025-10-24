@@ -2,6 +2,26 @@ import { AIProviderConfig } from "@/types";
 import { apiRequest } from "./api";
 import { DEFAULT_AI_PROVIDERS } from "@/constants";
 
+// Error handling types for AI generation
+export enum AIGenerationErrorType {
+  BILLING_LIMIT_REACHED = 'billing_limit_reached',
+  INVALID_API_KEY = 'invalid_api_key',
+  QUOTA_EXCEEDED = 'quota_exceeded',
+  RATE_LIMIT_EXCEEDED = 'rate_limit_exceeded',
+  CONTENT_POLICY_VIOLATION = 'content_policy_violation',
+  NETWORK_ERROR = 'network_error',
+  SERVICE_UNAVAILABLE = 'service_unavailable',
+  UNKNOWN_ERROR = 'unknown_error'
+}
+
+export interface AIGenerationError {
+  type: AIGenerationErrorType;
+  message: string;
+  correlation_id?: string;
+  suggested_actions?: string[];
+  details?: Record<string, any>;
+}
+
 // Constants
 const PROVIDER_CONFIGS_STORAGE_KEY = 'ai-provider-configurations';
 
@@ -39,6 +59,18 @@ export interface ImageGenerationResult {
   metadata: Record<string, any>;
   cost?: number;
   error?: string;
+  error_details?: {
+    error_type: string;
+    message: string;
+    user_message: string;
+    provider: string;
+    correlation_id: string;
+    timestamp: string;
+    http_status?: number;
+    suggested_actions: string[];
+    details?: Record<string, any>;
+    retry_after?: number;
+  };
 }
 
 // Configuration interfaces
@@ -77,174 +109,139 @@ const getTestApiUrl = (path: string): string => {
  */
 export const getAvailableProviders = async (): Promise<AIProvider[]> => {
   try {
-    // Try the main API first
-    const response = await apiRequest('/api/v1/ai/providers', {
+    // Database-driven only - no fallbacks
+    const response = await apiRequest('/api/v1/ai-providers', {
       method: 'GET'
     });
     
-    if (response && response.providers) {
-      console.log('Loaded providers from main API:', response.providers);
+    // Check if response is the array directly or wrapped in providers property
+    if (Array.isArray(response)) {
+      console.log('Loaded providers from database:', response);
+      return response;
+    } else if (response && response.providers) {
+      console.log('Loaded providers from database (wrapped):', response.providers);
       return response.providers;
     }
-  } catch (error) {
-    console.error('Error fetching providers from main API:', error);
     
-    // Fallback to test server
-    try {
-      const fallbackResponse = await fetch('http://127.0.0.1:8089/providers');
-      if (fallbackResponse.ok) {
-        const fallbackData = await fallbackResponse.json();
-        console.log('Loaded providers from test server:', fallbackData.providers);
-        return fallbackData.providers || [];
-      }
-    } catch (fallbackError) {
-      console.error('Fallback provider fetch failed:', fallbackError);
-    }
+    // If API returns unexpected format, return empty array
+    console.warn('API returned unexpected format:', response);
+    return [];
+  } catch (error) {
+    console.error('Error fetching providers from API:', error);
+    // No fallbacks - return empty array to show error state
+    return [];
   }
-  
-  // Return mock data for testing when all APIs fail
-  console.log('Using mock providers for testing');
-  return [
-    {
-      id: "free-test-provider",
-      name: "Free Test Provider",
-      configured: true,
-      available: true,
-      model: "test-svg-generator",
-      max_variations: 4,
-      supported_sizes: ["512x512", "1024x1024"],
-      features: ["fast", "free", "testing"],
-      pricing: { per_image: 0.0 },
-      status: "active"
-    },
-    {
-      id: "openai",
-      name: "OpenAI DALL-E",
-      configured: false,
-      available: false,
-      model: "dall-e-3",
-      max_variations: 1,
-      supported_sizes: ["1024x1024", "1792x1024", "1024x1792"],
-      features: ["high-quality", "realistic", "creative"],
-      pricing: { per_image: 0.04 },
-      status: "not_configured"
-    },
-    {
-      id: "stability",
-      name: "Stability AI",
-      configured: false,
-      available: false,
-      model: "stable-diffusion-xl-1024-v1-0",
-      max_variations: 10,
-      supported_sizes: ["1024x1024", "1152x896", "896x1152"],
-      features: ["artistic", "customizable", "fast"],
-      pricing: { per_image: 0.03 },
-      status: "not_configured"
-    }
-  ];
 };
 
-// Get default provider options for a given provider ID
+// Get provider-specific options (models) from the API
 export const getProviderOptions = async (providerId: string): Promise<{ models: string[] }> => {
   try {
     // Try API call to get provider-specific options
-    try {
-      const response = await apiRequest(`/api/v1/ai-providers/${providerId}/options`, {
-        method: "GET"
-      });
-      
-      if (response && response.models) {
-        return response;
-      }
-    } catch (error) {
-      console.error("Error fetching provider options:", error);
+    const response = await apiRequest(`/api/v1/ai-providers/${providerId}/options`, {
+      method: "GET"
+    });
+    
+    if (response && response.models) {
+      console.log(`Loaded ${response.models.length} models for ${providerId} from API`);
+      return response;
     }
     
-    // If API fails, return mock options based on provider ID
-    const mockOptions = {
-      stability: [
-        "stable-diffusion-xl-1024-v1-0",
-        "stable-diffusion-xl-1024-v0-9",
-        "stable-diffusion-v1-5"
-      ],
-      huggingface: [
-        "runwayml/stable-diffusion-v1-5",
-        "CompVis/stable-diffusion-v1-4",
-        "stabilityai/stable-diffusion-2-1"
-      ],
-      replicate: [
-        "stability-ai/sdxl",
-        "stability-ai/stable-diffusion",
-        "cjwbw/dreamshaper"
-      ]
-    };
-    
-    console.log(`Using mock options for ${providerId}`);
-    return { 
-      models: mockOptions[providerId as keyof typeof mockOptions] || ["default-model-1", "default-model-2"] 
-    };
-  } catch (error) {
-    console.error("Error in getProviderOptions:", error);
+    // If API returns unexpected format, return empty
+    console.warn(`API returned unexpected format for provider options:`, response);
     return { models: [] };
+  } catch (error) {
+    console.error("Error fetching provider options:", error);
+    // No fallbacks - return empty models
+    return { models: [] };
+  }
+};
+
+/**
+ * Get all configurable AI providers for the configuration page
+ * This returns all possible providers that can be configured, regardless of current status
+ */
+export const getConfigurableProviders = async (): Promise<AIProvider[]> => {
+  const timestamp = new Date().toISOString();
+  console.log(`🚀 [DEBUG] ${timestamp} getConfigurableProviders called`);
+  console.log(`🚀 [DEBUG] ${timestamp} This log should appear in browser console`);
+  
+  // Add debugging to track execution flow
+  console.log(`🚀 [DEBUG] ${timestamp} About to enter try block`);
+  try {
+    // Use direct fetch to bypass the apiRequest base URL issue
+    console.log(`🔄 [DEBUG] ${timestamp} Making direct fetch to /api/v1/ai-providers`);
+    const response = await fetch(`/api/v1/ai-providers?bust=${Date.now()}`, {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    console.log("📡 [DEBUG] Fetch response status:", response.status, response.statusText);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log("📥 [DEBUG] Direct fetch response received:", data);
+    console.log("📥 [DEBUG] Response type:", typeof data, "Is array:", Array.isArray(data));
+    console.log("📥 [DEBUG] First provider example:", data[0]);
+    
+    if (data && Array.isArray(data)) {
+      console.log('✅ [DEBUG] Loaded configurable providers from ai-providers API:', data.length);
+      
+      // Convert the provider config format to AIProvider format
+      const convertedProviders: AIProvider[] = data.map(provider => ({
+        id: provider.id,
+        name: provider.name,
+        configured: provider.isConfigured || false,
+        available: provider.isActive || false,
+        model: provider.selectedModel || 'default',
+        max_variations: 1,
+        supported_sizes: ["1024x1024"],
+        features: ["text-to-image"],
+        pricing: provider.pricing || {}, // Use the actual pricing from backend
+        status: provider.isConfigured ? 'configured' : 'not_configured'
+      }));
+      
+      console.log('🎯 [DEBUG] Converted providers:', convertedProviders);
+      console.log('🎯 [DEBUG] First provider example:', convertedProviders[0]);
+      console.log('🎯 [DEBUG] OpenAI provider example:', convertedProviders.find(p => p.id === 'openai'));
+      return convertedProviders;
+    } else {
+      console.log("⚠️ [DEBUG] Response is not an array or is empty");
+      throw new Error("API response is not an array");
+    }
+  } catch (error) {
+    console.error('❌ [DEBUG] Error fetching configurable providers:', error);
+    console.error('❌ [DEBUG] Error details:', error instanceof Error ? error.message : 'Unknown error');
+    console.error('❌ [DEBUG] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    // No fallback - return empty array to show error state
+    return [];
   }
 };
 
 // Get all AI providers configured for the current user
 export const getUserAIProviders = async (): Promise<AIProviderConfig[]> => {
   try {
-    console.log("getUserAIProviders: Starting...");
+    console.log("getUserAIProviders: Fetching from database...");
     
-    // Always check localStorage first - it's our source of truth for user configurations
-    const cachedProviders = localStorage.getItem(PROVIDER_CONFIGS_STORAGE_KEY);
-    if (cachedProviders) {
-      try {
-        const parsed = JSON.parse(cachedProviders);
-        if (Array.isArray(parsed)) {
-          console.log(`getUserAIProviders: Found ${parsed.length} cached providers, using as authoritative source`);
-          return parsed;
-        }
-      } catch (parseError) {
-        console.error("getUserAIProviders: Error parsing cached providers:", parseError);
-      }
+    // Database-driven only - no localStorage, no fallbacks
+    const response = await apiRequest("/api/v1/ai-providers", {
+      method: "GET"
+    });
+    
+    if (response && Array.isArray(response)) {
+      console.log(`getUserAIProviders: Loaded ${response.length} providers from database`);
+      return response;
     }
     
-    // Only if no localStorage data exists, try to get initial setup from API
-    console.log("getUserAIProviders: No cached providers found, attempting initial API fetch...");
-    
-    try {
-      const response = await apiRequest("/ai-providers", {
-        method: "GET"
-      });
-      
-      if (response && Array.isArray(response) && response.length > 0) {
-        console.log(`getUserAIProviders: API returned ${response.length} providers for initial setup`);
-        
-        // Filter out any configurations with masked API keys before storing
-        const safeConfigs = response.filter(config => 
-          !config.apiKey || !isMaskedApiKey(config.apiKey)
-        );
-        
-        console.log(`getUserAIProviders: Filtered out ${response.length - safeConfigs.length} providers with masked keys`);
-        
-        if (safeConfigs.length > 0) {
-          localStorage.setItem(PROVIDER_CONFIGS_STORAGE_KEY, JSON.stringify(safeConfigs));
-          return safeConfigs;
-        } else {
-          console.log("getUserAIProviders: All API configs had masked keys, not storing");
-        }
-      } else {
-        console.log("getUserAIProviders: API returned empty or invalid data, not storing");
-      }
-    } catch (apiErr) {
-      console.log("getUserAIProviders: API unavailable (normal):", apiErr);
-    }
-    
-    // If API fails and no cache, return empty array instead of defaults
-    // This prevents overwriting user configurations with default values
-    console.log("getUserAIProviders: No data available, returning empty array");
+    console.warn("getUserAIProviders: API returned unexpected format:", response);
     return [];
   } catch (error) {
-    console.error("getUserAIProviders: Error:", error);
+    console.error("getUserAIProviders: Error fetching from database:", error);
     
     // Final fallback: try localStorage one more time
     try {
@@ -267,84 +264,47 @@ export const getUserAIProviders = async (): Promise<AIProviderConfig[]> => {
 // Save an AI provider configuration
 export const saveAIProvider = async (provider: AIProviderConfig): Promise<AIProviderConfig | null> => {
   try {
-    // Try to save via API
-    try {
-      const response = await apiRequest("/api/v1/ai-providers", {
-        method: "POST",
-        body: JSON.stringify(provider)
-      });
-      
-      if (response) {
-        // Update local storage with the new/updated provider
-        // Note: Converting AIProviderConfig to ProviderConfig for storage
-        const configForStorage: ProviderConfig = {
-          id: response.id,
-          name: response.name || response.id,
-          apiKey: response.apiKey,
-          isActive: response.isActive,
-          ...response
-        };
-        updateLocalStorageConfigurations(configForStorage);
-        return response;
-      }
-    } catch (apiErr) {
-      console.error("API error saving AI provider:", apiErr);
+    const response = await apiRequest("/api/v1/ai-providers", {
+      method: "POST",
+      body: JSON.stringify(provider)
+    });
+    
+    if (response) {
+      // Extract provider data from API response
+      const providerData = response.provider || response;
+      console.log("SaveAIProvider - saved to database:", providerData);
+      return providerData;
     }
     
-    // If API fails, just update localStorage as fallback
-    const configForStorage: ProviderConfig = {
-      ...provider,
-      id: provider.id,
-      name: provider.name || provider.id
-    };
-    updateLocalStorageConfigurations(configForStorage);
-    return provider;
+    console.warn("SaveAIProvider - API returned unexpected response:", response);
+    return null;
   } catch (error) {
-    console.error("Error in saveAIProvider:", error);
+    console.error("Error saving AI provider to database:", error);
     return null;
   }
 };
 
 // Update an existing AI provider
 export const updateAIProvider = async (providerId: string, updates: Partial<AIProviderConfig>): Promise<AIProviderConfig | null> => {
+  console.log('updateAIProvider called with:', { providerId, updates });
+  
   try {
-    // Try to update via API
-    try {
-      const response = await apiRequest(`/api/v1/ai-providers/${providerId}`, {
-        method: "PUT",
-        body: JSON.stringify(updates)
-      });
-      
-      if (response) {
-        // Update local storage with the updated provider
-        const configForStorage: ProviderConfig = {
-          ...response,
-          id: response.id,
-          name: response.name || response.id
-        };
-        updateLocalStorageConfigurations(configForStorage);
-        return response;
-      }
-    } catch (apiErr) {
-      console.error(`API error updating AI provider ${providerId}:`, apiErr);
+    console.log('Making API request to update provider:', `/api/v1/ai-providers/${providerId}`);
+    const response = await apiRequest(`/api/v1/ai-providers/${providerId}`, {
+      method: "PUT",
+      body: JSON.stringify(updates)
+    });
+    
+    if (response) {
+      const providerData = response.provider || response;
+      console.log("updateAIProvider - saved to database:", providerData);
+      return providerData;
     }
     
-    // If API fails, update localStorage as fallback
-    const cachedProviders = localStorage.getItem(PROVIDER_CONFIGS_STORAGE_KEY);
-    if (cachedProviders) {
-      const providers = JSON.parse(cachedProviders) as AIProviderConfig[];
-      const updatedProviders = providers.map(p => 
-        p.id === providerId ? { ...p, ...updates } : p
-      );
-      
-      localStorage.setItem(PROVIDER_CONFIGS_STORAGE_KEY, JSON.stringify(updatedProviders));
-      
-      return updatedProviders.find(p => p.id === providerId) || null;
-    }
-    
+    console.warn("updateAIProvider - API returned unexpected response:", response);
     return null;
   } catch (error) {
-    console.error("Error in updateAIProvider:", error);
+    console.error("Error updating AI provider in database:", error);
     return null;
   }
 };
@@ -352,26 +312,14 @@ export const updateAIProvider = async (providerId: string, updates: Partial<AIPr
 // Delete an AI provider
 export const deleteAIProvider = async (providerId: string): Promise<boolean> => {
   try {
-    // Try to delete via API
-    try {
-      await apiRequest(`/api/v1/ai-providers/${providerId}`, {
-        method: "DELETE"
-      });
-    } catch (apiErr) {
-      console.error(`API error deleting AI provider ${providerId}:`, apiErr);
-    }
+    const response = await apiRequest(`/api/v1/ai-providers/${providerId}`, {
+      method: "DELETE"
+    });
     
-    // Always update localStorage regardless of API success
-    const cachedProviders = localStorage.getItem(PROVIDER_CONFIGS_STORAGE_KEY);
-    if (cachedProviders) {
-      const providers = JSON.parse(cachedProviders) as AIProviderConfig[];
-      const updatedProviders = providers.filter(p => p.id !== providerId);
-      localStorage.setItem(PROVIDER_CONFIGS_STORAGE_KEY, JSON.stringify(updatedProviders));
-    }
-    
+    console.log(`deleteAIProvider - deleted ${providerId} from database`);
     return true;
   } catch (error) {
-    console.error("Error in deleteAIProvider:", error);
+    console.error(`Error deleting AI provider ${providerId} from database:`, error);
     return false;
   }
 };
@@ -425,14 +373,33 @@ export const validateAPIKey = async (providerId: string, apiKey: string): Promis
  */
 export const generateImagesWithProvider = async (request: ImageGenerationRequest): Promise<ImageGenerationResult> => {
   try {
+    console.log('[generateImagesWithProvider] Sending request to backend:', request);
+    
+    // Map frontend request to backend format
+    const backendRequest = {
+      prompt: request.prompt,
+      ai_provider: request.provider, // Backend expects 'ai_provider', not 'provider'
+      size: request.size,
+      style: request.style || 'vivid',
+      quality: request.quality || 'standard',
+      variations: request.variations || 1,
+      negative_prompt: request.negative_prompt,
+      seed: request.seed,
+      model: request.model
+    };
+    
+    console.log('[generateImagesWithProvider] Backend request:', backendRequest);
+    
     // Try the main API first
     const response = await apiRequest('/api/v1/ai/generate-image', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(request),
+      body: JSON.stringify(backendRequest),
     });
+
+    console.log('[generateImagesWithProvider] Backend response:', response);
 
     if (response && response.success) {
       console.log('Generated images with main API:', response);
@@ -443,6 +410,18 @@ export const generateImagesWithProvider = async (request: ImageGenerationRequest
       }
       
       return response;
+    } else if (response && !response.success && response.error_details) {
+      // Return enriched error details
+      console.error('API returned error with details:', response.error_details);
+      return {
+        success: false,
+        images: [],
+        provider: response.provider || request.provider,
+        model: 'unknown',
+        metadata: {},
+        error: response.error,
+        error_details: response.error_details
+      };
     }
   } catch (error) {
     console.error('Error generating images with main API:', error);
@@ -501,30 +480,26 @@ const getStoredProviderConfig = (providerId: string): ProviderConfig | null => {
 
 /**
  * Generate multiple image variations efficiently
+ * PURE DATABASE-DRIVEN: Uses provider from database, no localStorage dependency
  */
 export const generateMultipleImages = async (
   prompt: string,
-  provider: string = 'free-test-provider',
+  provider: string = 'openai',
   variations: number = 5,
   size: string = '1024x1024'
 ): Promise<ImageGenerationResult> => {
-  // Get the provider configuration to include selected model and other options
-  const providerConfig = getStoredProviderConfig(provider);
+  console.log(`[generateMultipleImages] Using provider: ${provider}, variations: ${variations}`);
   
   const request: ImageGenerationRequest = {
     prompt,
     provider,
-    size: providerConfig?.size || size,
+    size,
     variations,
-    style: providerConfig?.style || 'vivid',
-    quality: providerConfig?.quality || 'standard',
+    style: 'vivid',
+    quality: 'standard',
   };
 
-  // Add selected model if available
-  if (providerConfig?.selectedModel) {
-    request.model = providerConfig.selectedModel;
-  }
-
+  console.log('[generateMultipleImages] Request:', request);
   return generateImagesWithProvider(request);
 };
 
@@ -552,7 +527,7 @@ export const saveProviderConfiguration = async (config: ProviderConfig): Promise
     
     // Try main API first
     try {
-      const response = await apiRequest('/ai-providers', {
+      const response = await apiRequest('/api/v1/ai-providers', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -646,7 +621,7 @@ export const updateProviderConfiguration = async (providerId: string, updates: P
     
     // Try main API first
     try {
-      const response = await apiRequest(`/ai-providers/${providerId}`, {
+      const response = await apiRequest(`/api/v1/ai-providers/${providerId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -722,7 +697,7 @@ export const testProviderConfiguration = async (config: ProviderConfig): Promise
   try {
     // Try main API first
     try {
-      const response = await apiRequest('/ai-providers/validate', {
+      const response = await apiRequest('/api/v1/ai-providers/validate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -825,7 +800,7 @@ export const getProviderConfigurations = async (): Promise<ProviderConfig[]> => 
     
     // Try main API to get initial configurations only for first setup
     try {
-      const response = await apiRequest('/ai-providers/configurations', {
+      const response = await apiRequest('/api/v1/ai-providers/configurations', {
         method: 'GET',
       });
       
@@ -1042,81 +1017,67 @@ const updateLocalStorageConfigurations = (config: ProviderConfig): void => {
 /**
  * Get active and configured AI providers for use in material creation/editing
  * This function is used by material pages to get available providers
+ * PURE DATABASE-DRIVEN: Fetches from API, no localStorage fallback
  */
 export const getActiveProviders = async (): Promise<ProviderConfig[]> => {
   try {
-    console.log('=== Getting active providers for material creation/editing ===');
+    console.log('=== Getting active providers for material creation/editing (database-driven) ===');
     
-    // Get all provider configurations
-    const allConfigs = await getProviderConfigurations();
-    console.log('All configurations loaded:', allConfigs);
+    // Fetch directly from database via API
+    const response = await apiRequest("/api/v1/ai-providers", {
+      method: "GET",
+    });
     
-    if (!Array.isArray(allConfigs)) {
-      console.error('allConfigs is not an array:', typeof allConfigs, allConfigs);
+    if (!response || !Array.isArray(response)) {
+      console.error('Invalid response from API:', response);
       return [];
     }
     
+    console.log('All providers from database:', response);
+    
     // Filter for active and configured providers
-    const activeProviders = allConfigs.filter(config => {
-      if (!config || typeof config !== 'object') {
-        console.warn('Invalid config object:', config);
+    const activeProviders = response.filter(provider => {
+      if (!provider || typeof provider !== 'object') {
+        console.warn('Invalid provider object:', provider);
         return false;
       }
       
-      // More lenient API key checking
-      const hasApiKey = config.apiKey && 
-                       typeof config.apiKey === 'string' && 
-                       config.apiKey.trim().length > 0 && 
-                       !isMaskedApiKey(config.apiKey);
+      // Check if the provider is explicitly marked as configured
+      // Only include providers that have been explicitly configured by the user
+      const isConfigured = provider.isConfigured === true;
       
-      // Check if the provider is marked as active
-      const isActive = config.isActive === true;
+      // Check if provider has API key (for providers that need one)
+      const hasApiKey = provider.apiKey && 
+                       typeof provider.apiKey === 'string' && 
+                       provider.apiKey.trim().length > 0;
       
-      console.log(`Provider ${config.id}:`, {
+      // Special local providers (Ollama, LM Studio) need to have a selected model to be considered configured
+      const isLocalProvider = provider.id === 'ollama' || provider.id === 'lmstudio';
+      const hasSelectedModel = provider.selectedModel && 
+                              typeof provider.selectedModel === 'string' && 
+                              provider.selectedModel.trim().length > 0;
+      
+      console.log(`Provider ${provider.id}:`, {
+        isConfigured,
         hasApiKey,
-        isActive,
-        apiKeyLength: config.apiKey ? config.apiKey.length : 0,
-        apiKeyMasked: config.apiKey ? isMaskedApiKey(config.apiKey) : false,
-        apiKeyValue: config.apiKey ? config.apiKey.substring(0, 10) + '...' : 'none',
-        rawConfig: config
+        isLocalProvider,
+        hasSelectedModel
       });
       
-      // A provider is active if it has a valid API key AND is marked as active
-      // OR if it's a special provider that doesn't need an API key
-      const isSpecialProvider = config.id === 'free-test-provider' || config.id === 'ollama' || config.id === 'lmstudio';
+      // Include only if explicitly configured AND:
+      // - Has API key (for cloud providers), OR
+      // - Is local provider AND has selected model
+      const shouldInclude = isConfigured && (hasApiKey || (isLocalProvider && hasSelectedModel));
       
-      if (isSpecialProvider) {
-        console.log(`Special provider ${config.id}: requires no API key, active=${isActive}`);
-        return isActive;
-      }
-      
-      const shouldInclude = hasApiKey && isActive;
-      console.log(`Provider ${config.id} should be included: ${shouldInclude} (hasApiKey=${hasApiKey}, isActive=${isActive})`);
+      console.log(`Provider ${provider.id} should be included: ${shouldInclude}`);
       
       return shouldInclude;
     });
     
-    console.log('=== Active providers found ===', activeProviders.length, 'providers:', activeProviders);
+    console.log('=== Active providers found ===', activeProviders.length, 'providers:', activeProviders.map(p => p.id));
     
     if (activeProviders.length === 0) {
-      console.warn('No active providers found. Troubleshooting:');
-      console.warn('1. Check that providers are configured with valid API keys');
-      console.warn('2. Check that providers are enabled (isActive: true)');
-      console.warn('3. Check localStorage contains the configurations');
-      console.warn('4. Use browser dev tools to inspect localStorage:', localStorage.getItem(PROVIDER_CONFIGS_STORAGE_KEY));
-      
-      // Show current localStorage state for debugging
-      const stored = localStorage.getItem(PROVIDER_CONFIGS_STORAGE_KEY);
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          console.warn('Current localStorage state:', parsed);
-        } catch (e) {
-          console.warn('Error parsing localStorage:', e);
-        }
-      } else {
-        console.warn('No data in localStorage under key:', PROVIDER_CONFIGS_STORAGE_KEY);
-      }
+      console.warn('No active providers found. Please configure and enable at least one AI provider in the AI Providers page.');
     }
     
     return activeProviders;

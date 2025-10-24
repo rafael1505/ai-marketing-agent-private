@@ -2,8 +2,13 @@ import axios from 'axios';
 
 // Use relative URL to leverage Next.js proxy in development
 // This will use the proxy rules defined in next.config.js
-const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '';
 console.log('API_URL configured as:', API_URL);
+
+// Generate correlation ID for request tracing
+const generateCorrelationId = (): string => {
+  return 'req_' + Math.random().toString(36).substr(2, 9) + '_' + Date.now().toString(36);
+};
 
 // Add a flag to track API availability
 export const apiStatus = {
@@ -74,13 +79,29 @@ const api = axios.create({
 // Add request interceptor to add the authorization token to the header
 api.interceptors.request.use(
   (config) => {
+    // Add correlation ID to every request
+    const correlationId = generateCorrelationId();
+    config.headers['X-Correlation-ID'] = correlationId;
+    
+    // Add timestamp for debugging
+    console.log(`[${new Date().toISOString()}] API Request [${correlationId}]:`, {
+      method: config.method?.toUpperCase(),
+      url: config.url,
+      baseURL: config.baseURL,
+      fullURL: `${config.baseURL || ''}${config.url}`
+    });
+    
     const token = localStorage.getItem('token');
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
+      console.log(`[${correlationId}] Adding auth token to request`);
+    } else {
+      console.log(`[${correlationId}] No auth token found`);
     }
     return config;
   },
   (error) => {
+    console.error(`[${new Date().toISOString()}] Request interceptor error:`, error);
     return Promise.reject(error);
   }
 );
@@ -88,24 +109,40 @@ api.interceptors.request.use(
 // Add response interceptor to handle token expiration and other errors
 api.interceptors.response.use(
   (response) => {
-    console.log(`API response: ${response.config.url} - Status: ${response.status}`);
+    const correlationId = response.config.headers['X-Correlation-ID'];
+    console.log(`[${new Date().toISOString()}] API Success [${correlationId}]:`, {
+      url: response.config.url,
+      status: response.status,
+      statusText: response.statusText
+    });
     return response;
   },
   async (error) => {
+    const correlationId = error.config?.headers?.['X-Correlation-ID'] || 'unknown';
+    
     // Handle network errors like connection refused
     if (error.message === 'Network Error' || !error.response) {
-      console.error('API network error:', error.message, 'for request:', error.config?.url);
+      console.error(`[${new Date().toISOString()}] Network Error [${correlationId}]:`, {
+        message: error.message,
+        url: error.config?.url,
+        isConnectionError: true
+      });
       error.isConnectionError = true;
       return Promise.reject(error);
     }
     
-    console.error('API error interceptor caught:', error.message);
+    console.error(`[${new Date().toISOString()}] API Error [${correlationId}]:`, {
+      url: error.config?.url,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data
+    });
     
     const originalRequest = error.config;
     
     // Handle auth errors - but don't redirect in development mode to allow demo data
     if (error.response?.status === 401 && !originalRequest._retry) {
-      console.log('Unauthorized access detected');
+      console.log(`[${correlationId}] Unauthorized access detected`);
       originalRequest._retry = true;
       
       // Edge-compatible development mode detection
@@ -129,7 +166,7 @@ api.interceptors.response.use(
         try {
           localStorage.removeItem('token');
         } catch (storageError) {
-          console.warn('Failed to remove token from localStorage:', storageError);
+          console.warn(`[${correlationId}] Failed to remove token from localStorage:`, storageError);
         }
         
         // Get current locale from URL or default to 'en'
@@ -140,17 +177,10 @@ api.interceptors.response.use(
           window.location.href = '/en/login';
         }
       } else {
-        console.log('Development mode: Not redirecting to login, allowing service to handle with demo data');
+        console.log(`[${correlationId}] Development mode: Not redirecting to login, allowing service to handle with demo data`);
         // Add a flag to indicate this is an auth error in development
         error.isDevelopmentAuthError = true;
       }
-    }
-    
-    // Log other errors for debugging
-    if (error.response) {
-      console.error(`API error: ${originalRequest.url} - Status: ${error.response.status}`, error.response.data);
-    } else if (error.request) {
-      console.error('API request made but no response received:', error.request);
     }
     
     return Promise.reject(error);
@@ -163,9 +193,6 @@ export const apiRequest = async (
   options: { method: string; body?: any; headers?: Record<string, string> } = { method: "GET" }
 ): Promise<any> => {
   try {
-    // Check API availability first if we haven't done it recently
-    await apiStatus.check();
-    
     // Prepare the request configuration
     const config = {
       url,
@@ -174,8 +201,11 @@ export const apiRequest = async (
       headers: options.headers
     };
 
+    console.log('Making API request to:', url, 'with config:', config);
+    
     // Make the API call
     const response = await api(config);
+    console.log('API response received:', response.data);
     return response.data;
   } catch (error) {
     console.error(`API request failed for ${url}:`, error);

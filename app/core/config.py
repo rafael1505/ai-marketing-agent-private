@@ -1,9 +1,11 @@
 import secrets
 from typing import List, Union
 from pydantic_settings import BaseSettings
-from pydantic import validator
+from pydantic import validator, ConfigDict
 
 class Settings(BaseSettings):
+    model_config = ConfigDict(case_sensitive=True, env_file=".env", extra="allow")
+    
     PROJECT_NAME: str = "AI Marketing Agent"
     PROJECT_VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
@@ -33,9 +35,5 @@ class Settings(BaseSettings):
     
     # AI Provider Settings
     DEFAULT_AI_PROVIDER: str = "openai"  # Can be changed based on requirements
-    
-    class Config:
-        case_sensitive = True
-        env_file = ".env"
 
 settings = Settings()

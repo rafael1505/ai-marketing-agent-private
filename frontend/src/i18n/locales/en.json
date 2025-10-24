@@ -135,7 +135,41 @@
     "email": "Invalid email address",
     "min_length": "Must be at least {{min}} characters",
     "max_length": "Must be at most {{max}} characters",
-    "server_error": "Server error. Please try again later."
+    "server_error": "Server error. Please try again later.",
+    "ai": {
+      "billing_limit_reached": "💳 Billing limit reached on {{provider}}",
+      "invalid_api_key": "🔑 Invalid or expired API key for {{provider}}",
+      "quota_exceeded": "📊 API quota exceeded for {{provider}}",
+      "rate_limit_exceeded": "⏱️ Rate limit exceeded for {{provider}}",
+      "content_policy_violation": "⚠️ Content violates {{provider}}'s usage policy",
+      "network_error": "🌐 Network connection error",
+      "service_unavailable": "🔧 {{provider}} service is temporarily unavailable",
+      "invalid_request": "❌ Invalid request parameters",
+      "provider_not_configured": "⚙️ {{provider}} is not configured",
+      "timeout": "⏰ Request timed out",
+      "unknown_error": "⚠️ An unexpected error occurred"
+    }
+  },
+  "actions": {
+    "check_billing": "Check your billing and payment methods",
+    "upgrade_plan": "Upgrade your plan for higher limits",
+    "switch_provider": "Try using a different AI provider",
+    "check_api_key": "Verify your API key is correct and active",
+    "regenerate_key": "Generate a new API key from provider dashboard",
+    "configure_provider": "Configure provider settings",
+    "modify_prompt": "Modify your prompt to comply with policies",
+    "review_guidelines": "Review provider's content guidelines",
+    "check_parameters": "Check your request parameters",
+    "review_docs": "Review provider documentation",
+    "try_again_later": "Please try again in a few moments",
+    "check_status": "Check provider status page",
+    "wait_and_retry": "Wait {{seconds}} seconds and try again",
+    "reduce_frequency": "Reduce request frequency",
+    "try_again": "Try again",
+    "check_connection": "Check your internet connection",
+    "contact_support": "Contact support with correlation ID: {{correlationId}}",
+    "check_logs": "Check error logs for more details",
+    "add_payment_method": "Add a payment method to your account"
   },
   "common": {
     "loading": "Loading...",

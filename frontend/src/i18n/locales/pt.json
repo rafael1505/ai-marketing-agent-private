@@ -28,7 +28,6 @@
     "title": "Título",
     "description": "Descrição",
     "stage": "Estágio",
-    "status": "Status",
     "created": "Criado em",
     "actions": "Ações",
     "view": "Visualizar",
@@ -39,7 +38,7 @@
       "refinement": "Refinamento",
       "finalization": "Finalização"
     },
-    "status": {
+    "statuses": {
       "draft": "Rascunho",
       "in_progress": "Em Progresso",
       "ready_for_review": "Pronto para Revisão",
@@ -132,7 +131,41 @@
     "email": "Endereço de email inválido",
     "min_length": "Deve ter pelo menos {{min}} caracteres",
     "max_length": "Deve ter no máximo {{max}} caracteres",
-    "server_error": "Erro no servidor. Por favor, tente novamente mais tarde."
+    "server_error": "Erro no servidor. Por favor, tente novamente mais tarde.",
+    "ai": {
+      "billing_limit_reached": "💳 Limite de faturamento atingido em {{provider}}",
+      "invalid_api_key": "🔑 Chave API inválida ou expirada para {{provider}}",
+      "quota_exceeded": "📊 Cota da API excedida para {{provider}}",
+      "rate_limit_exceeded": "⏱️ Limite de taxa excedido para {{provider}}",
+      "content_policy_violation": "⚠️ Conteúdo viola a política de uso de {{provider}}",
+      "network_error": "🌐 Erro de conexão de rede",
+      "service_unavailable": "🔧 Serviço de {{provider}} temporariamente indisponível",
+      "invalid_request": "❌ Parâmetros de solicitação inválidos",
+      "provider_not_configured": "⚙️ {{provider}} não está configurado",
+      "timeout": "⏰ Tempo limite da solicitação excedido",
+      "unknown_error": "⚠️ Ocorreu um erro inesperado"
+    }
+  },
+  "actions": {
+    "check_billing": "Verifique seu faturamento e métodos de pagamento",
+    "upgrade_plan": "Atualize seu plano para limites maiores",
+    "switch_provider": "Tente usar um provedor de IA diferente",
+    "check_api_key": "Verifique se sua chave API está correta e ativa",
+    "regenerate_key": "Gere uma nova chave API no painel do provedor",
+    "configure_provider": "Configure as configurações do provedor",
+    "modify_prompt": "Modifique seu prompt para estar em conformidade com as políticas",
+    "review_guidelines": "Revise as diretrizes de conteúdo do provedor",
+    "check_parameters": "Verifique os parâmetros da sua solicitação",
+    "review_docs": "Revise a documentação do provedor",
+    "try_again_later": "Por favor, tente novamente em alguns instantes",
+    "check_status": "Verifique a página de status do provedor",
+    "wait_and_retry": "Aguarde {{seconds}} segundos e tente novamente",
+    "reduce_frequency": "Reduza a frequência de solicitações",
+    "try_again": "Tente novamente",
+    "check_connection": "Verifique sua conexão com a internet",
+    "contact_support": "Entre em contato com o suporte com o ID de correlação: {{correlationId}}",
+    "check_logs": "Verifique os logs de erro para mais detalhes",
+    "add_payment_method": "Adicione um método de pagamento à sua conta"
   },
   "common": {
     "loading": "Carregando...",

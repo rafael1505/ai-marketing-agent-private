@@ -12,11 +12,41 @@ const nextConfig = {
     // Warning: This allows production builds to successfully complete even if
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
-  },  async rewrites() {
+  },
+  // Commenting out redirects since we removed internationalization
+  // async redirects() {
+  //   return [
+  //     {
+  //       source: '/database-status',
+  //       destination: '/en/database-status',
+  //       permanent: false,
+  //     },
+  //     {
+  //       source: '/ai-providers',
+  //       destination: '/en/ai-providers',
+  //       permanent: false,
+  //     },
+  //     {
+  //       source: '/dashboard',
+  //       destination: '/en/dashboard',
+  //       permanent: false,
+  //     },
+  //     {
+  //       source: '/login',
+  //       destination: '/en/login',
+  //       permanent: false,
+  //     },
+  //   ];
+  // },
+  async rewrites() {
     return [
       {
         source: '/api/:path*',
-        destination: `${process.env.API_URL || 'http://127.0.0.1:8089'}/api/:path*`,
+        destination: `${process.env.API_URL || 'http://127.0.0.1:8088'}/api/:path*`,
+      },
+      {
+        source: '/diagnostic/:path*',
+        destination: `${process.env.API_URL || 'http://127.0.0.1:8088'}/diagnostic/:path*`,
       },
       // Add specific proxy bypass for authentication endpoint
       {

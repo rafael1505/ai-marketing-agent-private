@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug getUserAIProviders</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .log { background: #f5f5f5; padding: 10px; margin: 10px 0; border-left: 4px solid #007cba; }
+        .error { border-left-color: #ff0000; background: #fff5f5; }
+        .success { border-left-color: #00aa00; background: #f5fff5; }
+        pre { white-space: pre-wrap; word-break: break-all; }
+        button { padding: 10px 20px; margin: 10px 0; background: #007cba; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #005a87; }
+    </style>
+</head>
+<body>
+    <h1>Debug getUserAIProviders Function</h1>
+    <button onclick="testGetUserAIProviders()">Test getUserAIProviders()</button>
+    <button onclick="testDirectAPI()">Test Direct API Call</button>
+    <button onclick="clearCache()">Clear localStorage Cache</button>
+    
+    <div id="output"></div>
+
+    <script>
+        function log(message, type = 'log') {
+            const output = document.getElementById('output');
+            const div = document.createElement('div');
+            div.className = `log ${type}`;
+            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}:</strong> ${message}`;
+            output.appendChild(div);
+            console.log(message);
+        }
+
+        // Simplified version of isMaskedApiKey function
+        function isMaskedApiKey(apiKey) {
+            if (!apiKey || typeof apiKey !== 'string') return true;
+            return apiKey.includes('••••') || 
+                   apiKey.includes('****') || 
+                   apiKey.includes('...') ||
+                   /^\*+$/.test(apiKey) ||
+                   apiKey === 'hidden' ||
+                   apiKey === 'masked' ||
+                   apiKey.length < 8;
+        }
+
+        // Simulate the NEW getUserAIProviders logic
+        async function testGetUserAIProviders() {
+            log("🧪 Testing getUserAIProviders() logic...");
+            
+            try {
+                // Check localStorage first
+                const cached = localStorage.getItem('ai_provider_configs');
+                if (cached) {
+                    log("📦 Found cached data in localStorage:", 'success');
+                    try {
+                        const parsed = JSON.parse(cached);
+                        log(`📦 Cached providers: ${parsed.length} items`);
+                        const openai = parsed.find(p => p.id === 'openai');
+                        if (openai) {
+                            log(`✅ OpenAI found in cache: configured=${openai.isConfigured}, apiKey=${openai.apiKey}`, 'success');
+                        } else {
+                            log("❌ OpenAI not found in cached data", 'error');
+                        }
+                        log(`<pre>${JSON.stringify(parsed, null, 2)}</pre>`);
+                        return;
+                    } catch (e) {
+                        log("❌ Error parsing cached data: " + e.message, 'error');
+                    }
+                }
+                
+                // No cache, try API
+                log("🌐 No cache found, trying API call...");
+                const response = await fetch('/api/v1/ai-providers', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                log(`🌐 API returned ${data.length} providers`);
+                
+                // Show the NEW logic (include all providers)
+                log("🔄 NEW LOGIC: Including all providers from backend");
+                
+                data.forEach((provider, index) => {
+                    const masked = provider.apiKey && isMaskedApiKey(provider.apiKey);
+                    log(`${index + 1}. ${provider.name} - configured: ${provider.isConfigured}, apiKey: ${masked ? 'MASKED' : 'NOT MASKED'} (${provider.apiKey || 'null'})`);
+                });
+                
+                const openai = data.find(p => p.id === 'openai');
+                if (openai) {
+                    log(`✅ OpenAI found in API response: configured=${openai.isConfigured}, apiKey=${openai.apiKey}`, 'success');
+                } else {
+                    log("❌ OpenAI not found in API response", 'error');
+                }
+                
+                // Store all providers (new logic)
+                localStorage.setItem('ai_provider_configs', JSON.stringify(data));
+                log("💾 Stored all providers in localStorage", 'success');
+                
+            } catch (error) {
+                log("❌ Error in getUserAIProviders: " + error.message, 'error');
+            }
+        }
+
+        async function testDirectAPI() {
+            log("🔗 Testing direct API call to backend...");
+            try {
+                const response = await fetch('/api/v1/ai-providers');
+                const data = await response.json();
+                log(`🔗 Direct API returned ${data.length} providers`);
+                
+                const openai = data.find(p => p.id === 'openai');
+                if (openai) {
+                    log(`✅ OpenAI found in direct API: ${JSON.stringify(openai, null, 2)}`, 'success');
+                } else {
+                    log("❌ OpenAI not found in direct API response", 'error');
+                }
+                
+                log(`<pre>${JSON.stringify(data, null, 2)}</pre>`);
+            } catch (error) {
+                log("❌ Direct API error: " + error.message, 'error');
+            }
+        }
+
+        function clearCache() {
+            localStorage.removeItem('ai_provider_configs');
+            log("🗑️ Cleared localStorage cache", 'success');
+        }
+
+        // Auto-run on page load
+        window.onload = function() {
+            log("🚀 Debug tool loaded. Click buttons to test different scenarios.");
+        };
+    </script>
+</body>
+</html>

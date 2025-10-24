@@ -1,0 +1,12 @@
+{
+  "openai": {
+    "id": "openai",
+    "name": "OpenAI DALL-E",
+    "apiKey": "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",
+    "selectedModel": "dall-e-3",
+    "modelOptions": [],
+    "maxTokens": 1000,
+    "temperature": 0.7,
+    "isActive": true
+  }
+}

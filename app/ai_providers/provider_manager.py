@@ -12,6 +12,8 @@ from dataclasses import dataclass
 from enum import Enum
 import json
 
+from .errors import AIErrorClassifier, AIProviderError
+
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -41,6 +43,7 @@ class ImageGenerationResult:
     metadata: Dict[str, Any]
     error: Optional[str] = None
     cost: Optional[float] = None
+    error_details: Optional[Dict[str, Any]] = None  # Enriched error information
 
 class AIProviderManager:
     """Manages multiple AI providers for image generation"""
@@ -271,7 +274,8 @@ class OpenAIProvider(BaseProvider):
                 async with session.post(
                     f"{self.config['base_url']}/images/generations",
                     headers=headers,
-                    json=payload
+                    json=payload,
+                    timeout=aiohttp.ClientTimeout(total=120)
                 ) as response:
                     if response.status == 200:
                         data = await response.json()
@@ -284,7 +288,8 @@ class OpenAIProvider(BaseProvider):
                                     async with session.post(
                                         f"{self.config['base_url']}/images/generations",
                                         headers=headers,
-                                        json=payload
+                                        json=payload,
+                                        timeout=aiohttp.ClientTimeout(total=120)
                                     ) as extra_response:
                                         if extra_response.status == 200:
                                             extra_data = await extra_response.json()
@@ -309,23 +314,58 @@ class OpenAIProvider(BaseProvider):
                             cost=cost
                         )
                     else:
+                        # Error response - use enriched error classification
                         error_data = await response.json()
+                        ai_error = AIErrorClassifier.classify_provider_error(
+                            provider="openai",
+                            status_code=response.status,
+                            error_data=error_data
+                        )
+                        
+                        logger.error(f"OpenAI error [{ai_error.correlation_id}]: {ai_error.message}")
+                        
                         return ImageGenerationResult(
                             success=False,
                             images=[],
                             provider="openai",
                             model=self.config["model"],
                             metadata={},
-                            error=f"OpenAI API error: {error_data.get('error', {}).get('message', 'Unknown error')}"
+                            error=ai_error.message,
+                            error_details=ai_error.to_dict()
                         )
-        except Exception as e:
+        except asyncio.TimeoutError as e:
+            ai_error = AIErrorClassifier.classify_provider_error(
+                provider="openai",
+                status_code=None,
+                error_data={},
+                exception=e
+            )
+            logger.error(f"OpenAI timeout [{ai_error.correlation_id}]: {ai_error.message}")
             return ImageGenerationResult(
                 success=False,
                 images=[],
                 provider="openai",
                 model=self.config["model"],
                 metadata={},
-                error=f"Request failed: {str(e)}"
+                error=ai_error.message,
+                error_details=ai_error.to_dict()
+            )
+        except Exception as e:
+            ai_error = AIErrorClassifier.classify_provider_error(
+                provider="openai",
+                status_code=None,
+                error_data={},
+                exception=e
+            )
+            logger.error(f"OpenAI exception [{ai_error.correlation_id}]: {ai_error.message}")
+            return ImageGenerationResult(
+                success=False,
+                images=[],
+                provider="openai",
+                model=self.config["model"],
+                metadata={},
+                error=ai_error.message,
+                error_details=ai_error.to_dict()
             )
 
 class StabilityAIProvider(BaseProvider):

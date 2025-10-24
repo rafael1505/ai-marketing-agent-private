@@ -49,7 +49,17 @@ async def generate_image_with_provider(
                 "cost": result.cost
             }
         else:
-            raise HTTPException(status_code=500, detail=result.error)
+            # Return enriched error details if available
+            if result.error_details:
+                return {
+                    "success": False,
+                    "error": result.error,
+                    "error_details": result.error_details,
+                    "provider": result.provider
+                }
+            else:
+                # Fallback to simple error
+                raise HTTPException(status_code=500, detail=result.error)
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Image generation failed: {str(e)}")

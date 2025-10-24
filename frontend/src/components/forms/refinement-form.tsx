@@ -10,7 +10,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { RefinementFormData, AIProviderConfig, GeneratedImage } from "@/types";
 import { Loader } from "@/components/ui/loader";
-import { AIProviderSelector } from "@/components/ai-provider-selector";
 import { MARKETING_AI_PROVIDERS, getConfiguredProviders } from "@/constants/marketing-ai-providers";
 
 interface RefinementFormProps {

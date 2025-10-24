@@ -1,0 +1,41 @@
+{
+  "correlation_id": "test-1760143910",
+  "timestamp": 1760143911.3657615,
+  "total_tests": 5,
+  "passed": 2,
+  "failed": 2,
+  "errors": 0,
+  "warnings": 1,
+  "results": [
+    {
+      "test": "api_providers_count",
+      "status": "FAIL",
+      "error": "API returned status 404",
+      "details": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "test": "proxy_providers_count",
+      "status": "FAIL",
+      "error": "Proxy returned status 404",
+      "details": "{\"detail\":\"Not Found\"}"
+    },
+    {
+      "test": "database_status_accessibility",
+      "status": "PASS",
+      "page_status": 200
+    },
+    {
+      "test": "ai_providers_page_load",
+      "status": "WARNING",
+      "page_status": 200,
+      "has_providers_content": true,
+      "potential_loading_issues": true
+    },
+    {
+      "test": "correlation_id_tracking",
+      "status": "PASS",
+      "sent_correlation_id": "test-1760143910",
+      "returned_correlation_id": "test-1760143910"
+    }
+  ]
+}

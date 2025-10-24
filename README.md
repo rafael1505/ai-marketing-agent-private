@@ -34,74 +34,111 @@ After running the script:
 1. Access the frontend directly at: http://127.0.0.1:3900
 2. Access the API docs directly at: http://127.0.0.1:9000/docs
 
-## Database Setup Options
+## Database Setup
 
-Due to certificate verification issues with Docker in corporate environments, we've provided multiple ways to set up the database for development:
+**⚠️ Important:** This application uses **MongoDB** as its primary database. The mock database system has been removed as of January 2025.
 
-### Option 1: Use the Mock Database (No MongoDB Required)
+### Prerequisites
 
-The application has been configured to use a mock database if MongoDB is unavailable. This is perfect for development and testing:
+You need MongoDB installed and running on your system.
 
-1. Start the application:
+#### Install MongoDB
+
+**Ubuntu/WSL:**
 ```bash
-./start-dev.sh
+sudo apt-get update
+sudo apt-get install -y mongodb
+sudo service mongodb start
 ```
 
-Or use the VS Code task:
-- Press `F1`, type "Tasks: Run Task", select "Run API (Mock Database)"
-
-### Option 2: Install MongoDB Locally
-
-For a full setup with a real MongoDB database:
-
-1. Run the setup script:
+**macOS:**
 ```bash
-./setup-local-db.sh
+brew install mongodb-community
+brew services start mongodb-community
 ```
 
-This script will:
-- Check if MongoDB is installed
-- Help you install MongoDB if needed
-- Create the required database and collections
-- Set up a test user account
+**Windows:**
+- Download from [mongodb.com](https://www.mongodb.com/try/download/community)
+- Install and start the MongoDB service
 
-2. Start the application:
+#### Verify MongoDB is Running
+
 ```bash
-./start-dev.sh
+mongo --eval "db.version()"
 ```
 
-### Option 3: Docker Setup (If Docker Registry Access Is Fixed)
+### Initial Setup
 
-If your corporate certificate issues with Docker are resolved:
-
-1. Start Docker:
+1. **Start MongoDB:**
 ```bash
-sudo systemctl start docker
+sudo service mongodb start  # Linux/WSL
+brew services start mongodb-community  # macOS
 ```
 
-2. Run the application with Docker Compose:
+2. **Run Migration Script** (first time only):
 ```bash
-docker compose up -d
+python scripts/migrate_to_mongodb.py
 ```
+
+This will:
+- Connect to MongoDB
+- Create the `ai_marketing_agent` database
+- Set up collections: users, companies, ai_providers, materials
+- Create performance indexes
+- Load initial test data (1 user, 1 company, 9 AI providers)
+
+3. **Start the Application:**
+```bash
+uvicorn app.main:api_app --host 127.0.0.1 --port 8088 --reload
+```
+
+Or use VS Code task: "Run API (Mock Database)"
+
+### Environment Configuration
+
+Create a `.env` file (or update existing one):
+```bash
+MONGODB_URL=mongodb://localhost:27017
+MONGODB_DB=ai_marketing_agent
+```
+
+### Documentation
+
+For detailed MongoDB architecture documentation, see:
+- **Architecture Overview:** [docs/MONGODB_ARCHITECTURE.md](docs/MONGODB_ARCHITECTURE.md)
+- **Migration Summary:** [docs/MIGRATION_SUMMARY.md](docs/MIGRATION_SUMMARY.md)
+- **Cleanup Summary:** [docs/CLEANUP_SUMMARY.md](docs/CLEANUP_SUMMARY.md)
 
 ## Development Workflow
 
 For the best development experience:
 
-1. Start the API:
-   - VS Code: Run task "Run API (Mock Database)"
-   - Terminal: `./start-dev.sh` 
+1. **Ensure MongoDB is Running:**
+   ```bash
+   sudo service mongodb status  # Linux/WSL
+   brew services list | grep mongodb  # macOS
+   ```
 
-2. Start the Frontend:
+2. **Start the API:**
+   - VS Code: Run task "Run API (Mock Database)"
+   - Terminal: `uvicorn app.main:api_app --host 127.0.0.1 --port 8088 --reload`
+
+3. **Start the Frontend:**
    - VS Code: Run task "Run Frontend (Dev)"
    - Terminal: `cd frontend && npm run dev`
 
-3. Access the application:
-   - API: http://localhost:8000
-   - Frontend: http://localhost:3001
+4. **Access the Application:**
+   - API: http://127.0.0.1:8088
+   - API Docs: http://127.0.0.1:8088/docs
+   - Frontend: http://127.0.0.1:3001
 
 ## Test User Credentials
 
-When using the mock database or local MongoDB setup:
-- Email: test@example.com
-- Password: password
+The migration script creates a default test user:
+- Email: demo@example.com
+- Password: demo123
+
+You can verify the user was created:
+```bash
+mongo ai_marketing_agent --eval "db.users.find().pretty()"
+```

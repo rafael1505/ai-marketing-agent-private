@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException, Body, Request, Depends
 from pydantic import BaseModel
 import logging
 from app.ai_providers.provider_manager import AIProviderManager
+from app.services.ai_provider_service import get_provider_service
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -55,270 +56,7 @@ class ValidationRequest(BaseModel):
     providerId: str
     apiKey: str
 
-# Mock data - Popular AI providers with realistic pricing tiers
-MOCK_PROVIDERS = [
-    # FREE PROVIDERS
-    {
-        "name": "Ollama (Local)",
-        "id": "ollama",
-        "logo": "/ai-providers/ollama.svg",
-        "isConfigured": False,
-        "maxTokens": 4096,
-        "temperature": 0.7,
-        "isActive": True,
-        "user_id": "1",
-        "pricing": {
-            "tier": "free",
-            "freeQuota": {
-                "description": "Completely free - runs locally on your machine. Supports Llama 2, Code Llama, Mistral, and other open-source models"
-            },
-            "websiteUrl": "https://ollama.ai"
-        }
-    },
-    {
-        "name": "LM Studio",
-        "id": "lmstudio",
-        "logo": "/ai-providers/lmstudio.svg",
-        "isConfigured": False,
-        "maxTokens": 4096,
-        "temperature": 0.7,
-        "isActive": True,
-        "user_id": "1",
-        "pricing": {
-            "tier": "free",
-            "freeQuota": {
-                "description": "Free local LLM runtime. Run any open-source model on your hardware"
-            },
-            "websiteUrl": "https://lmstudio.ai"
-        }
-    },
-    
-    # FREEMIUM PROVIDERS
-    {
-        "name": "Hugging Face",
-        "id": "huggingface",
-        "logo": "/ai-providers/huggingface.svg",
-        "isConfigured": False,
-        "selectedModel": "runwayml/stable-diffusion-v1-5",
-        "maxTokens": 1000,
-        "temperature": 0.7,
-        "isActive": True,
-        "user_id": "1",
-        "pricing": {
-            "tier": "freemium",
-            "freeQuota": {
-                "requestsPerMonth": 1000,
-                "description": "1,000 requests/month free for Inference API"
-            },
-            "paidPlans": [
-                {
-                    "name": "Pro",
-                    "monthlyFee": 9,
-                    "currency": "USD",
-                    "description": "$9/month for unlimited requests and priority access"
-                }
-            ],
-            "websiteUrl": "https://huggingface.co/pricing"
-        }
-    },
-    {
-        "name": "Google Colab",
-        "id": "colab",
-        "logo": "/ai-providers/colab.svg",
-        "isConfigured": False,
-        "maxTokens": 2048,
-        "temperature": 0.7,
-        "isActive": True,
-        "user_id": "1",
-        "pricing": {
-            "tier": "freemium",
-            "freeQuota": {
-                "description": "Free GPU/TPU access with usage limits. Run Gemini, open-source models"
-            },
-            "paidPlans": [
-                {
-                    "name": "Colab Pro",
-                    "monthlyFee": 9.99,
-                    "currency": "USD",
-                    "description": "$9.99/month for faster GPUs and longer runtimes"
-                },
-                {
-                    "name": "Colab Pro+",
-                    "monthlyFee": 49.99,
-                    "currency": "USD",
-                    "description": "$49.99/month for premium GPUs and background execution"
-                }
-            ],
-            "websiteUrl": "https://colab.research.google.com/signup"
-        }
-    },
-    {
-        "name": "Replicate",
-        "id": "replicate",
-        "logo": "/ai-providers/replicate.svg",
-        "isConfigured": False,
-        "selectedModel": "stability-ai/sdxl",
-        "maxTokens": 1000,
-        "temperature": 0.7,
-        "isActive": True,
-        "user_id": "1",
-        "pricing": {
-            "tier": "freemium",
-            "freeQuota": {
-                "description": "Free tier with limited usage. Pay-per-use for additional requests"
-            },
-            "paidPlans": [
-                {
-                    "name": "Pay-per-use",
-                    "pricePerRequest": 0.0023,
-                    "currency": "USD",
-                    "description": "Starting at $0.0023 per prediction"
-                }
-            ],
-            "websiteUrl": "https://replicate.com/pricing"
-        }
-    },
-    
-    # PAID PROVIDERS
-    {
-        "name": "OpenAI",
-        "id": "openai",
-        "logo": "/ai-providers/openai.svg",
-        "isConfigured": False,
-        "maxTokens": 4096,
-        "temperature": 0.7,
-        "isActive": True,
-        "user_id": "1",
-        "pricing": {
-            "tier": "paid",
-            "paidPlans": [
-                {
-                    "name": "GPT-4o",
-                    "pricePerToken": 0.000005,
-                    "currency": "USD",
-                    "description": "$5 per 1M input tokens, $15 per 1M output tokens"
-                },
-                {
-                    "name": "GPT-4 Turbo",
-                    "pricePerToken": 0.00001,
-                    "currency": "USD",
-                    "description": "$10 per 1M input tokens, $30 per 1M output tokens"
-                },
-                {
-                    "name": "DALL-E 3",
-                    "pricePerRequest": 0.04,
-                    "currency": "USD",
-                    "description": "$0.04 per image (1024×1024)"
-                }
-            ],
-            "websiteUrl": "https://openai.com/pricing"
-        }
-    },
-    {
-        "name": "Anthropic Claude",
-        "id": "anthropic",
-        "logo": "/ai-providers/anthropic.svg",
-        "isConfigured": False,
-        "maxTokens": 4096,
-        "temperature": 0.7,
-        "isActive": True,
-        "user_id": "1",
-        "pricing": {
-            "tier": "paid",
-            "paidPlans": [
-                {
-                    "name": "Claude 3 Haiku",
-                    "pricePerToken": 0.00000025,
-                    "currency": "USD",
-                    "description": "$0.25 per 1M input tokens, $1.25 per 1M output tokens"
-                },
-                {
-                    "name": "Claude 3 Sonnet",
-                    "pricePerToken": 0.000003,
-                    "currency": "USD",
-                    "description": "$3 per 1M input tokens, $15 per 1M output tokens"
-                },
-                {
-                    "name": "Claude 3 Opus",
-                    "pricePerToken": 0.000015,
-                    "currency": "USD",
-                    "description": "$15 per 1M input tokens, $75 per 1M output tokens"
-                }
-            ],
-            "websiteUrl": "https://www.anthropic.com/pricing"
-        }
-    },
-    {
-        "name": "Stability AI",
-        "id": "stability",
-        "logo": "/ai-providers/stability.svg",
-        "isConfigured": False,
-        "selectedModel": "stable-diffusion-xl-1024-v1-0",
-        "maxTokens": 1000,
-        "temperature": 0.7,
-        "isActive": True,
-        "user_id": "1",
-        "pricing": {
-            "tier": "paid",
-            "paidPlans": [
-                {
-                    "name": "Starter",
-                    "pricePerRequest": 0.04,
-                    "currency": "USD",
-                    "description": "$0.04 per image generation"
-                },
-                {
-                    "name": "Professional",
-                    "monthlyFee": 20,
-                    "currency": "USD",
-                    "description": "$20/month for 3,000 images"
-                },
-                {
-                    "name": "Enterprise",
-                    "monthlyFee": 100,
-                    "currency": "USD",
-                    "description": "$100/month for 15,000 images + priority support"
-                }
-            ],
-            "websiteUrl": "https://stability.ai/pricing"
-        }
-    },
-    {
-        "name": "Midjourney",
-        "id": "midjourney",
-        "logo": "/ai-providers/midjourney.svg",
-        "isConfigured": False,
-        "selectedModel": "midjourney-v6",
-        "maxTokens": 1000,
-        "temperature": 0.7,
-        "isActive": True,
-        "user_id": "1",
-        "pricing": {
-            "tier": "paid",
-            "paidPlans": [
-                {
-                    "name": "Basic",
-                    "monthlyFee": 10,
-                    "currency": "USD",
-                    "description": "$10/month for ~200 generations"
-                },
-                {
-                    "name": "Standard",
-                    "monthlyFee": 30,
-                    "currency": "USD",
-                    "description": "$30/month for ~900 generations"
-                },
-                {
-                    "name": "Pro",
-                    "monthlyFee": 60,
-                    "currency": "USD",
-                    "description": "$60/month for ~1800 generations + stealth mode"
-                }
-            ],
-            "websiteUrl": "https://docs.midjourney.com/docs/plans"
-        }
-    }
-]
+# Database-driven AI providers - no more hardcoded mock data
 
 @router.get("", response_model=List[AIProviderModel])
 async def get_user_ai_providers(request: Request):
@@ -326,66 +64,50 @@ async def get_user_ai_providers(request: Request):
     user_id = get_current_user_id()
     logger.debug(f"Getting AI providers for user_id: {user_id}")
     
-    # Fall back to mock data if there's an issue
-    providers = []
-    
     try:
-        # Try to get from database if it exists
-        if hasattr(request.app, "mongodb") and hasattr(request.app.mongodb, "ai_providers"):
-            logger.debug("Attempting to query MongoDB collection")
-            providers_collection = request.app.mongodb.ai_providers
-            try:
-                providers = await providers_collection.find({"user_id": user_id}).to_list(100)
-                logger.debug(f"Successfully retrieved {len(providers)} providers from database")
-            except Exception as db_err:
-                logger.error(f"Database query error: {db_err}")
-                # Fall back to mock data
-                providers = list(MOCK_PROVIDERS)
-        else:
-            logger.warning("MongoDB collection not available, using mock data")
-            providers = list(MOCK_PROVIDERS)
-            
-        # Don't return API keys in the list view
-        for provider in providers:
-            if "apiKey" in provider:
-                provider["apiKey"] = "••••••••••••••••"
-            # Ensure ID is a string
-            provider["id"] = str(provider["id"])
-            # Remove MongoDB _id
-            if "_id" in provider:
-                del provider["_id"]
+        # Get the provider service with database connection
+        provider_service = get_provider_service(
+            database_client=getattr(request.app, 'mongodb', None)
+        )
         
+        # Get providers from database (with automatic seeding if empty)
+        providers = await provider_service.get_providers(user_id)
+        
+        if not providers:
+            logger.warning("No providers found in database and seeding failed")
+            return []
+        
+        logger.info(f"Successfully retrieved {len(providers)} providers")
         return providers
+        
     except Exception as e:
-        # If there's an error or no database, return mock data
         logger.error(f"Error retrieving AI providers: {e}")
-        return MOCK_PROVIDERS
+        # Return empty list instead of mock data
+        return []
 
 @router.get("/{provider_id}", response_model=AIProviderModel)
 async def get_ai_provider(provider_id: str, request: Request):
     """Get a specific AI provider by ID"""
     user_id = get_current_user_id()
+    
     try:
-        # Try to get from database
-        providers_collection = request.app.mongodb.ai_providers
-        provider = await providers_collection.find_one({
-            "id": provider_id,
-            "user_id": user_id
-        })
+        # Get the provider service with database connection
+        provider_service = get_provider_service(
+            database_client=getattr(request.app, 'mongodb', None)
+        )
+        
+        # Get provider from database
+        provider = await provider_service.get_provider(provider_id, user_id)
         
         if not provider:
             raise HTTPException(status_code=404, detail="Provider not found")
         
-        # Mask the API key
-        if "apiKey" in provider:
-            provider["apiKey"] = "••••••••••••••••"
-        
-        # Remove MongoDB _id
-        if "_id" in provider:
-            del provider["_id"]
-            
         return provider
+        
+    except HTTPException:
+        raise
     except Exception as e:
+        logger.error(f"Error retrieving provider {provider_id}: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @router.post("", response_model=AIProviderModel)
@@ -446,76 +168,23 @@ async def create_ai_provider(provider: AIProviderModel, request: Request):
 async def update_ai_provider(provider_id: str, request: Request, updates: Dict[str, Any] = Body(...)):
     """Update an existing AI provider configuration"""
     user_id = get_current_user_id()
-    logger.debug(f"Updating AI provider {provider_id} for user: {user_id}")
+    logger.debug(f"Updating AI provider {provider_id} for user: {user_id} with updates: {updates}")
     
     try:
-        # Try to use the database if it's available
-        if hasattr(request.app, "mongodb") and hasattr(request.app.mongodb, "ai_providers"):
-            logger.debug("Using database to update provider")
-            providers_collection = request.app.mongodb.ai_providers
-            
-            try:
-                # For the mock database, we need to check if the document exists
-                # The mock DB stores documents with id as the key, so we check by _id (which is the key)
-                provider = await providers_collection.find_one({"_id": provider_id})
-                
-                if not provider:
-                    # If not found by _id, try searching by user_id for the provider_id
-                    provider = await providers_collection.find_one({"user_id": user_id})
-                    if not provider or provider.get("_id") != provider_id:
-                        logger.warning(f"Provider {provider_id} not found in database")
-                        raise HTTPException(status_code=404, detail="Provider not found")
-                
-                # Verify the provider belongs to the current user
-                if provider.get("user_id") != user_id:
-                    logger.warning(f"Provider {provider_id} does not belong to user {user_id}")
-                    raise HTTPException(status_code=404, detail="Provider not found")
-                
-                # Update the provider using _id as the key (how mock DB stores it)
-                await providers_collection.update_one(
-                    {"_id": provider_id},
-                    {"$set": updates}
-                )
-                
-                # Get the updated provider
-                updated_provider = await providers_collection.find_one({"_id": provider_id})
-                
-                # Ensure the response has the correct structure
-                if updated_provider:
-                    # Add the id field back for the response
-                    updated_provider["id"] = provider_id
-                    
-                    # Mask the API key
-                    if "apiKey" in updated_provider:
-                        updated_provider["apiKey"] = "••••••••••••••••"
-                    
-                    # Remove MongoDB _id from response
-                    if "_id" in updated_provider:
-                        del updated_provider["_id"]
-                        
-                logger.debug(f"Successfully updated provider {provider_id}")
-                return updated_provider
-                
-            except Exception as db_err:
-                if isinstance(db_err, HTTPException):
-                    raise db_err
-                logger.error(f"Database error during update: {db_err}")
-                raise HTTPException(status_code=500, detail=f"Database error: {str(db_err)}")
-        else:
-            logger.warning("MongoDB collection not available, mock update")
-            # For mock mode, just return the updated data (since we don't persist it)
-            # This allows the frontend to continue working during development
-            mock_provider = {
-                "id": provider_id,
-                "user_id": user_id,
-                **updates
-            }
-            
-            # Mask the API key
-            if "apiKey" in mock_provider:
-                mock_provider["apiKey"] = "••••••••••••••••"
-                
-            return mock_provider
+        # Get the provider service with database connection
+        provider_service = get_provider_service(
+            getattr(request.app, 'mongodb', None)
+        )
+        
+        # Use the service to update the provider
+        updated_provider = await provider_service.update_provider(provider_id, updates, user_id)
+        
+        if not updated_provider:
+            logger.warning(f"Provider {provider_id} not found or update failed")
+            raise HTTPException(status_code=404, detail="Provider not found")
+        
+        logger.debug(f"Successfully updated provider {provider_id}")
+        return updated_provider
             
     except Exception as e:
         if isinstance(e, HTTPException):
@@ -762,6 +431,30 @@ def validate_huggingface_config(config: dict) -> dict:
         validation_result["valid"] = False
     
     return validation_result
+
+@router.get("/{provider_id}/options")
+async def get_provider_options(provider_id: str):
+    """Get available options (models) for a specific provider"""
+    logger.debug(f"Getting options for provider: {provider_id}")
+    
+    # Return provider-specific model options
+    provider_models = {
+        "openai": ["gpt-4", "gpt-4-turbo", "gpt-3.5-turbo", "dall-e-3", "dall-e-2"],
+        "anthropic": ["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-haiku-20240307", "claude-2.1", "claude-2.0"],
+        "google-ai": ["gemini-pro", "gemini-pro-vision", "gemini-ultra"],
+        "huggingface": ["runwayml/stable-diffusion-v1-5", "stabilityai/stable-diffusion-2-1", "CompVis/stable-diffusion-v1-4"],
+        "replicate": ["stability-ai/sdxl", "stability-ai/stable-diffusion", "meta/llama-2-70b-chat"],
+        "stability": ["stable-diffusion-xl-1024-v1-0", "stable-diffusion-v1-6", "stable-diffusion-xl-beta-v2-2-2"],
+        "midjourney": ["v6", "v5.2", "v5.1", "v5"],
+        "ollama": ["llama2", "mistral", "codellama", "neural-chat", "starling-lm"],
+        "lmstudio": ["local-model"],
+        "colab": ["custom-model"],
+    }
+    
+    models = provider_models.get(provider_id, ["default-model"])
+    logger.debug(f"Returning {len(models)} models for {provider_id}")
+    
+    return {"models": models}
 
 # Duplicate routes to handle frontend API path duplication issue
 @router.get("/api/v1/ai-providers", response_model=List[AIProviderModel])

@@ -68,15 +68,15 @@ export const MaterialCard: React.FC<MaterialCardProps> = ({
   const getStatusLabel = (status: MaterialStatus): string => {
     switch (status) {
       case MaterialStatus.DRAFT:
-        return t.materials.status.draft;
+        return t.materials.statuses.draft;
       case MaterialStatus.IN_PROGRESS:
-        return t.materials.status.in_progress;
+        return t.materials.statuses.in_progress;
       case MaterialStatus.READY_FOR_REVIEW:
-        return t.materials.status.ready_for_review;
+        return t.materials.statuses.ready_for_review;
       case MaterialStatus.COMPLETED:
-        return t.materials.status.completed;
+        return t.materials.statuses.completed;
       case MaterialStatus.ARCHIVED:
-        return t.materials.status.archived;
+        return t.materials.statuses.archived;
       default:
         return status;
     }
