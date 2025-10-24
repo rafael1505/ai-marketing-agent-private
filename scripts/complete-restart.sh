@@ -20,10 +20,10 @@ rm -rf node_modules/.cache
 npm ci
 npm run build
 
-# Start the backend with mock DB
-echo "🚀 Starting backend with mock database..."
+# Start the backend
+echo "🚀 Starting backend..."
 cd "$SCRIPT_DIR"
-USE_MOCK_DB=True uvicorn app.main:app --host 127.0.0.1 --port 8088 --reload &
+uvicorn app.main:api_app --host 127.0.0.1 --port 8088 --reload &
 
 # Wait for backend to start
 echo "⏳ Waiting for backend to initialize..."

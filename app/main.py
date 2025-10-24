@@ -16,9 +16,6 @@ logging.basicConfig(level=logging.DEBUG,
                    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
                    handlers=[logging.StreamHandler()])
 
-# Setup development mode flag - always use mock DB for local development
-USE_MOCK_DB = True  # Force using mock database for development
-
 # Use a different name for the FastAPI app to avoid confusion with the app package
 api_app = FastAPI(
     title=settings.PROJECT_NAME,

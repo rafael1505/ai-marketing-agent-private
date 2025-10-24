@@ -30,10 +30,10 @@ AI-MARKETING-AGENT/
 ├── archive/  
 ├── database/  
 ├── debug/  
+├── docs/  
 ├── frontend/  
 │ ├── .next/  
 │ ├── certificates/  
-│ ├── docs/  
 │ ├── node_modules/  
 │ ├── pages/  
 │ ├── public/  
@@ -54,7 +54,7 @@ All automatically created files **must follow this structure**.
 | File Type | Target Folder | Notes |
 |------------|----------------|-------|
 | Test scripts (`*.py`, `*.js`, `*.ts`, `*.test.js`) | `tests/` | Use descriptive names, e.g. `api-connection-test.py` |
-| Documentation (`*.md`) | `frontend/docs/` | Never generate docs at the root |
+| Documentation (`*.md`) | `docs/` | Never generate docs at the root |
 | Prompts / Templates | `prompts/` | For AI or internal templates only |
 | Assets (images, icons, logos) | `frontend/public/` | Group AI provider SVGs under `ai-providers/` |
 | API and backend code | `app/` | Core backend logic (FastAPI / Django) |
@@ -103,7 +103,7 @@ If the assistant cannot determine the correct folder, the default target must be
 
 All documentation files must:
 
-- Be placed under `frontend/docs/`
+- Be placed under `docs/`
 - Be named according to purpose (e.g., `api-endpoints.md`, `architecture-overview.md`, `deployment-guide.md`, etc.)
 - Contain the following sections:
   - Context  
@@ -140,14 +140,14 @@ When interacting within this project, the assistant must:
    - Avoid overwriting existing files without confirmation  
 4. Always maintain consistency with the defined tech stack, naming conventions, and architecture.  
 5. If uncertain about file placement, ask:  
-   “Where should this file be created — `frontend/docs/`, `tests/`, or another folder?”  
+   “Where should this file be created — `docs/`, `tests/`, or another folder?”  
 
 ---
 
 ## 📦 Documentation and Test File Generation
 
 When the assistant is instructed to generate a:  
-- Documentation file (`.md`): create under `frontend/docs/`  
+- Documentation file (`.md`): create under `docs/`  
 - Test script: create under `tests/`  
 - API or backend file: create under `app/`  
 - UI or frontend file: create under `frontend/src/`  
