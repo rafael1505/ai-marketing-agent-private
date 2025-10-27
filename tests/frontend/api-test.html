@@ -1,95 +1,27 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>API Connection Test</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .test-result { 
-            padding: 10px; 
-            margin: 10px 0; 
-            border-radius: 5px; 
-        }
-        .success { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-        .error { background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-        .info { background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
-        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        button:hover { background: #0056b3; }
-        pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; }
-    </style>
+    <title>API Test</title>
 </head>
 <body>
-    <h1>AI Marketing Agent - API Connection Test</h1>
-    
-    <div id="results"></div>
-    
-    <button onclick="testApiConnection()">Test API Connection</button>
-    <button onclick="testWithAuth()">Test With Auth</button>
-    <button onclick="clearResults()">Clear Results</button>
-
+    <h1>API Test</h1>
+    <div id="result"></div>
+    <button onclick="testAPI()">Test API</button>
     <script>
-        const API_BASE = 'http://localhost:8088/api/v1';
-        const resultsDiv = document.getElementById('results');
-
-        function addResult(message, type = 'info') {
-            const div = document.createElement('div');
-            div.className = `test-result ${type}`;
-            div.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
-            resultsDiv.appendChild(div);
-            resultsDiv.scrollTop = resultsDiv.scrollHeight;
-        }
-
-        function clearResults() {
-            resultsDiv.innerHTML = '';
-        }
-
-        async function testApiConnection() {
-            addResult('Testing API connection...', 'info');
-            
+        async function testAPI() {
             try {
-                // Test companies/active endpoint (no auth required)
-                const response = await fetch(`${API_BASE}/companies/active`);
+                const response = await fetch('/api/v1/ai/providers');
                 const data = await response.json();
-                
-                if (response.ok) {
-                    addResult(`✅ API Connection Success: ${response.status}`, 'success');
-                    addResult(`Company data: <pre>${JSON.stringify(data, null, 2)}</pre>`, 'success');
-                } else {
-                    addResult(`⚠️ API Response: ${response.status} - ${data.detail || 'Unknown error'}`, 'error');
-                }
+                document.getElementById('result').innerHTML = 
+                    '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
             } catch (error) {
-                addResult(`❌ Connection Error: ${error.message}`, 'error');
-                addResult('This could indicate the API server is not running or there are CORS issues', 'error');
+                document.getElementById('result').innerHTML = 
+                    '<p style="color: red;">Error: ' + error.message + '</p>';
             }
         }
-
-        async function testWithAuth() {
-            addResult('Testing authenticated endpoint...', 'info');
-            
-            try {
-                // Test materials endpoint (requires auth)
-                const response = await fetch(`${API_BASE}/materials`);
-                const data = await response.json();
-                
-                if (response.status === 401) {
-                    addResult(`✅ Auth endpoint working: ${response.status} - ${data.detail}`, 'success');
-                    addResult('This confirms the API is properly protecting authenticated endpoints', 'info');
-                } else if (response.ok) {
-                    addResult(`✅ Unexpected success: ${response.status}`, 'success');
-                    addResult(`Materials data: <pre>${JSON.stringify(data, null, 2)}</pre>`, 'success');
-                } else {
-                    addResult(`⚠️ Unexpected response: ${response.status} - ${data.detail || 'Unknown error'}`, 'error');
-                }
-            } catch (error) {
-                addResult(`❌ Connection Error: ${error.message}`, 'error');
-            }
-        }
-
-        // Auto-run tests on page load
-        window.onload = function() {
-            addResult('Page loaded. Click buttons to test API connectivity.', 'info');
-        };
+        
+        // Test on page load
+        testAPI();
     </script>
 </body>
 </html>

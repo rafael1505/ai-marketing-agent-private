@@ -49,8 +49,10 @@ echo
 echo "==== Application URLs ===="
 echo "Frontend: http://localhost:3001"
 echo "API: http://localhost:8088"
+echo "API Documentation: http://localhost:8088/docs"
 echo
-echo "NOTE: The application uses a mock database for development."
+echo "NOTE: The application uses MongoDB for data persistence."
+echo "Ensure MongoDB is running: systemctl start mongod"
 echo "You can access the component showcase at: http://localhost:3001/component-showcase"
 echo 
 echo "To stop the services: pkill -f 'uvicorn|npm run dev'"

@@ -1,3 +1,4 @@
+#!/bin/bash
 #!/usr/bin/env bash
 # Fixed API Startup Script
 # Applies company persistence fixes and starts the FastAPI server

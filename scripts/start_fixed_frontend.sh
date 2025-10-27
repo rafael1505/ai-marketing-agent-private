@@ -1,3 +1,4 @@
+#!/bin/bash
 #!/usr/bin/env bash
 # Fixed Frontend Startup Script
 # Ensures proper configuration for connecting to the API server with company persistence fix

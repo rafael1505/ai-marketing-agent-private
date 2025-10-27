@@ -1,3 +1,4 @@
+#!/bin/bash
 #!/usr/bin/env bash
 
 # Script to start the API server and run the comprehensive authentication test
