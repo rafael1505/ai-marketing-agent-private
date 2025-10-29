@@ -10,6 +10,13 @@ We are now progressively evolving it toward a **refined, Apple-inspired experien
 
 These guidelines should apply **only to new features and UI components** for now, while **existing pages are gradually updated** as part of normal development work.
 
+## 📚 Related Guidelines
+When working on UI/UX, also reference:
+- **Component Organization**: See `.github/instructions/ai-marketing-agent.development-best-practices.instructions.md`
+- **Architecture Standards**: See `.github/instructions/ai-marketing-agent.architecture-and-development-guidelines.instructions.md`
+- **Error Display**: Always use `AIErrorDisplay` component (see `.github/copilot-instructions.md`)
+- **Instruction Hierarchy**: Check `.github/copilot-instructions.md` for precedence rules
+
 ---
 
 ## 🧭 Design Philosophy

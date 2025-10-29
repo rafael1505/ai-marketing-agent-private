@@ -81,7 +81,7 @@ AI-MARKETING-AGENT/
 - Use a centralized **AI Provider Service** class to handle requests, caching, and fallback logic.
 - When generating tests or docs, store outputs in:
   - `/tests/` → for test files  
-  - `/frontend/docs/` → for documentation (`.md` or `.pdf`)
+  - `/docs/` → for all project documentation (architecture, guides, reports)
 
 ---
 

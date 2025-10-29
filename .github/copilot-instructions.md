@@ -21,6 +21,22 @@ AI providers are **never hardcoded**. All provider configurations (name, API key
 
 ---
 
+## 📋 Instruction File Hierarchy
+
+When conflicts arise between instruction files, follow this precedence order:
+
+1. **Copilot Instructions** (`.github/copilot-instructions.md`) - Quick reference and critical overrides
+2. **Specialized Instructions** (`.github/instructions/*.instructions.md`) - Context-specific rules:
+   - `architecture-and-development-guidelines.instructions.md` - System design decisions
+   - `development-best-practices.instructions.md` - Code quality standards  
+   - `fix-bug.instructions.md` - Debugging workflow
+   - `ux-guidelines.instructions.md` - Frontend design rules
+3. **Main Prompt** (`.github/prompts/ai-marketing-agent.prompt.md`) - Original project vision and general guidelines
+
+**Golden Rule**: More specific instructions override general ones. When in doubt, consult this file first.
+
+---
+
 ## Critical Workflows
 
 ### Starting Development Environment
@@ -167,6 +183,17 @@ Translations: `frontend/src/i18n/locales/{en,pt}.json`
 - **Frontend must proxy to port 8088** (defined in `next.config.js`)
 - Backend API name: `api_app` (not `app`) - see `app/main.py:19`
 - CORS: Explicitly allows `localhost:3000`, `localhost:3001`, `127.0.0.1:3000`, `127.0.0.1:3001`
+
+---
+
+## Common Pitfalls
+
+1. **Don't hardcode AI providers** - They're database-driven, never in code
+2. **Don't use `alert()`** - Use `AIErrorDisplay` component
+3. **Don't forget correlation IDs** - Needed for debugging production issues
+4. **Don't ignore timeout errors** - DALL-E needs 60s, handle gracefully
+5. **Don't create masked API keys** - Check `isMaskedApiKey()` before storing (`sk-****` is masked)
+6. **Port 8088 is non-negotiable** - Frontend proxy expects this exact port
 
 ---
 

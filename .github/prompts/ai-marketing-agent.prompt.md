@@ -9,9 +9,9 @@ The system must provide a **modern, fluid, and clean interface** with:
 - Secure login and authentication  
 - Company and user registration  
 - CRUD for marketing material types  
-- Integration with AI image/text generation APIs: **DALL·E**, **Hugging Face**, **Replicate**, **Midjourney**, **Anthropic**, **OpenAI**, **Colab**, **LM Studio**, **Ollama**, **Stability AI**, etc.  
+- Integration with AI image/text generation APIs: **OpenAI DALL-E**, **Stability AI**, **Replicate**, **HuggingFace** (with planned support for Anthropic Claude, Midjourney, LM Studio, Ollama)  
 - Multilingual support (🇺🇸 English / 🇧🇷 Portuguese)  
-- Backend using **Python (Django or FastAPI)** and **MongoDB (containerized)**  
+- Backend using **FastAPI (Python)** and **MongoDB (containerized)**  
 - Based on **Clean Code**, modular architecture, automated tests, and complete documentation in Markdown  
 
 ---
@@ -56,7 +56,7 @@ All automatically created files **must follow this structure**.
 |------------|----------------|-------|
 | Test scripts (`*.py`, `*.js`, `*.ts`, `*.test.js`) | `tests/` | Use descriptive names, e.g. `api-connection-test.py` |
 | Documentation (`*.md`) | `docs/` | Never generate docs at the root |
-| Prompts / Templates | `prompts/` | For AI or internal templates only |
+| System Prompts / AI Templates | `.github/prompts/` | AI system prompts only (NOT for general docs) |
 | Assets (images, icons, logos) | `frontend/public/` | Group AI provider SVGs under `ai-providers/` |
 | API and backend code | `app/` | Core backend logic (FastAPI / Django) |
 | Database scripts / seeds / schemas | `database/` | Structure definitions and initialization scripts |
@@ -71,7 +71,7 @@ If the assistant cannot determine the correct folder, the default target must be
 
 ## 🧱 Coding Standards
 
-### Backend (Python / FastAPI / Django)
+### Backend (Python / FastAPI)
 - Follow **PEP 8** and **Clean Code** principles  
 - Always include **type hints**  
 - Separate business logic into a `services/` folder  

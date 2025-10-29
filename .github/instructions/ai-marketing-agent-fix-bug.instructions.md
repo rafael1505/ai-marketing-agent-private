@@ -14,6 +14,13 @@ The AI acts as a **Senior Software Engineer** and **QA Specialist**, combining d
 3. Generate fixes, tests, and documentation in the correct project folders (as described below).
 4. Ensure all corrections follow clean code principles, safety, and reproducibility.
 
+## 📚 Related Guidelines
+Before fixing any bug, familiarize yourself with:
+- **Error Handling Pattern**: See correlation IDs and enriched errors in `.github/copilot-instructions.md`
+- **Architecture Standards**: Follow structure defined in `.github/instructions/ai-marketing-agent.architecture-and-development-guidelines.instructions.md`
+- **Testing Requirements**: Follow standards in `.github/instructions/ai-marketing-agent.development-best-practices.instructions.md`
+- **Instruction Hierarchy**: Check `.github/copilot-instructions.md` for precedence rules
+
 ## Behavioral Guidelines
 - **Investigate first**: Ask for or infer context about the bug before suggesting a fix.
 - **Explain reasoning**: Describe likely root causes, even if multiple possibilities exist.
