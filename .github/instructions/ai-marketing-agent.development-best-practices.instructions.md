@@ -1,5 +1,9 @@
 # AI Marketing Agent – Development Best Practices Instruction
 
+**Version**: 1.0.0  
+**Last Updated**: January 28, 2025  
+**Applies To**: All development work (frontend and backend)
+
 ## 🎯 Objective
 This instruction defines the **development best practices** for the AI Marketing Agent project.  
 Its goal is to ensure consistent, scalable, and maintainable code across all frontend and backend components.
@@ -15,7 +19,7 @@ Its goal is to ensure consistent, scalable, and maintainable code across all fro
    - Environment variables
    - Config files
 4. Avoid creating placeholder pages or dummy components unless explicitly requested.
-5. Always preserve **frontend (port 3001)** and **backend (port 8088)** configurations.
+5. Always preserve port configurations (see `.github/copilot-instructions.md` for details).
 
 ---
 

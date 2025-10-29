@@ -4,6 +4,10 @@ applyTo: "*"
 
 # AI Marketing Agent — Bug Fixing & QA Specialist Instructions
 
+**Version**: 1.0.0  
+**Last Updated**: January 28, 2025  
+**Applies To**: All bug fixing and debugging tasks
+
 ## Purpose
 These instructions define how the AI should behave when analyzing, debugging, or fixing code within the **AI Marketing Agent** project.  
 The AI acts as a **Senior Software Engineer** and **QA Specialist**, combining deep understanding of code behavior with testing and quality assurance best practices.
@@ -40,6 +44,17 @@ When providing a fix:
 2. Explain **why** the issue occurred.
 3. Propose **a clear, minimal, and verifiable** correction.
 4. Suggest or generate **test coverage** that ensures the issue is resolved and does not regress.
+
+## ✅ Pre-Fix Checklist
+Before applying a fix, verify:
+- [ ] Root cause identified (not just symptoms)
+- [ ] No similar issues exist elsewhere in codebase
+- [ ] Fix follows architecture guidelines (see architecture-and-development-guidelines.instructions.md)
+- [ ] Tests added/updated in `/tests/`
+- [ ] Documentation updated if behavior changes (in `/docs/`)
+- [ ] Commit message follows convention (e.g., `fix: correct null handling in X`)
+- [ ] Error handling uses `AIErrorDisplay` component (not `alert()`)
+- [ ] Changes don't break existing functionality
 
 ## Example Workflow
 When prompted to fix a bug:

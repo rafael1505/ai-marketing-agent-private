@@ -1,5 +1,9 @@
 # 🧠 Instruction: Architecture & Development Guidelines
 
+**Version**: 1.0.0  
+**Last Updated**: January 28, 2025  
+**Applies To**: All development work
+
 ## 🎯 Goal
 Ensure technical consistency, maintainability, and compliance with the architectural principles of the **AI Marketing Agent** project.  
 This instruction defines how to structure the code, where business logic should reside, and how frontend, backend, and AI providers interact harmoniously.
@@ -19,9 +23,10 @@ This instruction defines how to structure the code, where business logic should 
 
 ## ⚙️ Environment Rules
 
+> **Port Configuration**: See `.github/copilot-instructions.md` for detailed port assignments
 - **Frontend port:** `3001`  
 - **Backend port:** `8088`  
-- **Database port:** managed by Docker (`27017` internal)
+- **Database port:** `27017` (managed by Docker, internal)
 - **No automatic port switching is allowed.**
 - **Never create new placeholders or pages unless explicitly requested.**
 - Always debug and fix the existing component first.
@@ -73,7 +78,52 @@ AI-MARKETING-AGENT/
 
 ---
 
-### 3. AI Provider Integration
+### 3. Material Creation Workflow (3-Stage Pipeline)
+
+The application follows a strict 3-stage material creation process:
+
+**Stage 1: Idea** (`/materials/create`)
+- User defines title, description, target audience, campaign objective, keywords
+- Creates material record with `stage="idea"` and `status="draft"`
+- Frontend form: Standard Next.js form with shadcn/ui components
+- Backend endpoint: `POST /api/v1/materials` → inserts into `materials` collection
+
+**Stage 2: Refinement** (`/materials/[id]/edit`)
+- User generates AI images using configured providers
+- Uses `enhanced-refinement-form.tsx` component for provider selection
+- Backend workflow:
+  1. `POST /api/v1/ai/generate-image` receives request
+  2. Validates API keys via `isMaskedApiKey()` check
+  3. Coordinates with provider-specific service (e.g., `OpenAIService`, `StabilityService`)
+  4. Returns image URLs with metadata (provider, model, parameters)
+- Images stored in `material.generated_images[]` array with:
+  ```json
+  {
+    "id": "gen_123",
+    "url": "https://...",
+    "provider": "openai",
+    "model": "dall-e-3",
+    "prompt": "enhanced prompt",
+    "created_at": "2025-01-28T10:00:00Z"
+  }
+  ```
+- Frontend displays images with provider badges and selection interface
+
+**Stage 3: Finalization**
+- User selects final image from generated options
+- Material moves to `stage="finalization"` and `status="completed"`
+- Backend endpoint: `PATCH /api/v1/materials/{id}/finalize`
+- Selected image becomes `material.final_image`
+
+**Critical Rules**:
+- Never skip stages (idea → refinement → finalization)
+- Always validate `stage` before allowing operations
+- Image generation must use database-configured providers (never hardcoded)
+- Timeout handling: 60 seconds for DALL-E (show progress indicator)
+
+---
+
+### 4. AI Provider Integration
 
 - All AI providers (e.g., DALL·E, Hugging Face, Replicate) must be **defined in the database** with:
   - Name, API key reference, endpoint, and capability metadata.
@@ -85,7 +135,7 @@ AI-MARKETING-AGENT/
 
 ---
 
-### 4. i18n and Localization
+### 5. i18n and Localization
 
 - Always wrap user-facing text with i18n functions.  
 - Support both English and Portuguese translations.  
@@ -94,7 +144,7 @@ AI-MARKETING-AGENT/
 
 ---
 
-### 5. Quality and Test Rules
+### 6. Quality and Test Rules
 
 - All new features must include at least **unit tests** or **integration tests**.
 - Always prefer **test-driven development (TDD)** when possible.

@@ -4,6 +4,10 @@ applyTo: "frontend/**"
 
 # AI Marketing Agent – UX Guidelines (Apple-Inspired Gradual Transition)
 
+**Version**: 1.0.0  
+**Last Updated**: January 28, 2025  
+**Applies To**: Frontend UI/UX work
+
 ## 🎯 Context
 The current UX of the AI Marketing Agent project was initially created by AI without strict design rules.  
 We are now progressively evolving it toward a **refined, Apple-inspired experience**: simple, elegant, and user-centered.

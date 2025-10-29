@@ -192,6 +192,18 @@ Always follow them unless explicitly told otherwise by Rafael Amorim.
 
 ---
 
+## Testing Standards
+- **Backend Testing**: Use Python's built-in `unittest` or manual test scripts (no pytest dependency currently).
+  - Unit tests: `/tests/unit/`
+  - Integration tests: `/tests/integration/`
+  - Follow PEP 8 naming conventions (`test_*.py`)
+- **Frontend Testing**: No testing framework currently configured.
+  - HTML test suites available in `/tests/frontend/` for manual debugging
+  - Component testing to be implemented with Vitest (recommended for Next.js 14)
+- Always add/update tests when fixing bugs or adding features.
+
+---
+
 ## General behavior
 - When debugging, prefer to *analyze and fix* rather than *replace or recreate*.
 - Ask for clarification before assuming large changes.

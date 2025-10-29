@@ -1,5 +1,9 @@
 # AI Marketing Agent - Copilot Instructions
 
+**Version**: 1.0.0  
+**Last Updated**: January 28, 2025  
+**Maintainer**: Rafael Amorim
+
 > **⚠️ IMPORTANT:** Before making any changes, always read the relevant instruction files from `.github/instructions/` based on your task:
 > - **All tasks:** Read `.github/instructions/ai-marketing-agent.architecture-and-development-guidelines.instructions.md`
 > - **All tasks:** Read `.github/instructions/ai-marketing-agent.development-best-practices.instructions.md`
@@ -194,6 +198,53 @@ Translations: `frontend/src/i18n/locales/{en,pt}.json`
 4. **Don't ignore timeout errors** - DALL-E needs 60s, handle gracefully
 5. **Don't create masked API keys** - Check `isMaskedApiKey()` before storing (`sk-****` is masked)
 6. **Port 8088 is non-negotiable** - Frontend proxy expects this exact port
+
+---
+
+## 🌳 Quick Decision Tree
+
+### Creating a New File?
+```
+→ Test file? → `/tests/`
+→ Documentation? → `/docs/`
+→ Backend code? → `/app/`
+→ Frontend component? → `/frontend/src/components/`
+→ Frontend page? → `/frontend/src/app/[locale]/`
+→ Debug script? → `/debug/`
+→ System prompt? → `.github/prompts/`
+→ Not sure? → **ASK FIRST** (never create at project root)
+```
+
+### Fixing a Bug?
+```
+1. Read `.github/instructions/ai-marketing-agent-fix-bug.instructions.md`
+2. Investigate → Identify root cause
+3. Check Pre-Fix Checklist
+4. Apply fix in correct file
+5. Add/update tests in `/tests/`
+6. Update docs if behavior changed
+7. Commit with `fix:` prefix
+```
+
+### Adding UI Feature?
+```
+1. Read `.github/instructions/ai-marketing-agent-ux-guidelines.instructions.md`
+2. Use shadcn/ui components
+3. Follow Apple-inspired design principles
+4. Add i18n support (English + Portuguese)
+5. Use `AIErrorDisplay` for errors (never `alert()`)
+6. Test on mobile viewports
+7. Ensure accessibility (WCAG AA)
+```
+
+### Encountering an Error?
+```
+→ Backend error? → Check correlation ID in logs
+→ Frontend error? → Check browser console
+→ AI generation error? → Display via `AIErrorDisplay` component
+→ Database error? → Check MongoDB connection
+→ Port conflict? → Don't change ports - debug the conflict
+```
 
 ---
 
