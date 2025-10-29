@@ -1,6 +1,8 @@
 import { AIProviderConfig } from "@/types";
 import { apiRequest } from "./api";
 import { DEFAULT_AI_PROVIDERS } from "@/constants";
+import api from "./api"; // Import api instance for timeout override
+import axios from "axios"; // Import axios directly for bypassing Next.js proxy
 
 // Error handling types for AI generation
 export enum AIGenerationErrorType {
@@ -369,11 +371,45 @@ export const validateAPIKey = async (providerId: string, apiKey: string): Promis
 };
 
 /**
+ * Calculate dynamic timeout based on provider and image count
+ * Different AI providers have different generation speeds
+ */
+const calculateTimeout = (imageCount: number, provider: string): number => {
+  const baseTimeout = 30000; // 30s base overhead for API calls
+  
+  // Per-provider time estimates per image (in milliseconds)
+  const providerTimePerImage: Record<string, number> = {
+    'openai': 25000,          // DALL-E 3: ~20-25s per image
+    'stability': 15000,       // Stability AI: ~12-15s per image
+    'replicate': 20000,       // Replicate: ~15-20s per image
+    'huggingface': 30000,     // HuggingFace: ~25-30s per image
+    'midjourney': 35000,      // Midjourney: ~30-35s per image
+    'default': 20000          // Default: ~20s per image
+  };
+  
+  const timePerImage = providerTimePerImage[provider.toLowerCase()] || providerTimePerImage['default'];
+  const calculatedTimeout = baseTimeout + (imageCount * timePerImage);
+  
+  // Cap at 120 seconds (2 minutes) to prevent infinite waits
+  const maxTimeout = 120000;
+  const finalTimeout = Math.min(calculatedTimeout, maxTimeout);
+  
+  console.log(`[calculateTimeout] Provider: ${provider}, Images: ${imageCount}, Timeout: ${finalTimeout}ms (${finalTimeout/1000}s)`);
+  
+  return finalTimeout;
+};
+
+/**
  * Generate images using the new backend AI provider manager
  */
 export const generateImagesWithProvider = async (request: ImageGenerationRequest): Promise<ImageGenerationResult> => {
+  // Calculate dynamic timeout based on provider and image count
+  const dynamicTimeout = calculateTimeout(request.variations || 1, request.provider);
+  const startTime = Date.now();
+  
   try {
     console.log('[generateImagesWithProvider] Sending request to backend:', request);
+    console.log(`[generateImagesWithProvider] Using dynamic timeout: ${dynamicTimeout}ms for ${request.variations || 1} images with ${request.provider}`);
     
     // Map frontend request to backend format
     const backendRequest = {
@@ -390,41 +426,107 @@ export const generateImagesWithProvider = async (request: ImageGenerationRequest
     
     console.log('[generateImagesWithProvider] Backend request:', backendRequest);
     
-    // Try the main API first
-    const response = await apiRequest('/api/v1/ai/generate-image', {
-      method: 'POST',
+    // CRITICAL: Bypass Next.js proxy for AI generation to avoid proxy timeout
+    // Next.js proxy has hardcoded ~30s timeout, but DALL-E needs 60-90s
+    // Call backend directly at http://127.0.0.1:8088
+    const backendUrl = 'http://127.0.0.1:8088/api/v1/ai/generate-image';
+    console.log(`[generateImagesWithProvider] Calling backend directly (bypassing proxy): ${backendUrl}`);
+    
+    // Get auth token from storage
+    const token = localStorage.getItem('authToken');
+    
+    const response = await axios.post(backendUrl, backendRequest, {
+      timeout: dynamicTimeout,
       headers: {
         'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(backendRequest),
+        'X-Request-Type': 'ai-generation',
+        'Authorization': token ? `Bearer ${token}` : '',
+      }
     });
 
-    console.log('[generateImagesWithProvider] Backend response:', response);
+    const data = response.data;
+    console.log('[generateImagesWithProvider] Backend response:', data);
 
-    if (response && response.success) {
-      console.log('Generated images with main API:', response);
+    if (data && data.success) {
+      console.log('Generated images with main API:', data);
       
       // Convert single image response to multiple images format for backward compatibility
-      if (response.image_url && !response.images) {
-        response.images = [response.image_url];
+      if (data.image_url && !data.images) {
+        data.images = [data.image_url];
       }
       
-      return response;
-    } else if (response && !response.success && response.error_details) {
+      return data;
+    } else if (data && !data.success && data.error_details) {
       // Return enriched error details
-      console.error('API returned error with details:', response.error_details);
+      console.error('API returned error with details:', data.error_details);
       return {
         success: false,
         images: [],
-        provider: response.provider || request.provider,
+        provider: data.provider || request.provider,
         model: 'unknown',
         metadata: {},
-        error: response.error,
-        error_details: response.error_details
+        error: data.error,
+        error_details: data.error_details
       };
     }
-  } catch (error) {
+  } catch (error: any) {
+    const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
     console.error('Error generating images with main API:', error);
+    console.error(`Request failed after ${elapsedTime}s (timeout was ${dynamicTimeout/1000}s)`);
+    
+    // Check if this is a timeout error from axios interceptor
+    if (error.isTimeout || error.code === 'ECONNABORTED') {
+      console.error('Timeout error detected:', error);
+      
+      // Calculate estimated time for user messaging
+      const estimatedMin = Math.ceil(dynamicTimeout / 1000 * 0.7); // 70% of timeout
+      const estimatedMax = Math.ceil(dynamicTimeout / 1000); // Full timeout
+      
+      return {
+        success: false,
+        images: [],
+        provider: request.provider,
+        model: 'unknown',
+        metadata: {},
+        error: `Request timed out after ${dynamicTimeout/1000}s`,
+        error_details: error.error_details || {
+          error_type: 'timeout',
+          message: `AI image generation exceeded ${dynamicTimeout/1000} second timeout for ${request.variations || 1} images`,
+          user_message: 'errors.ai.timeout',
+          provider: request.provider,
+          correlation_id: error.config?.headers?.['X-Correlation-ID'] || `client-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          http_status: 408,
+          suggested_actions: [
+            'actions.try_again',
+            'actions.reduce_image_count',    // Most effective for timeout
+            'actions.simplify_prompt',
+            'actions.try_different_provider' // Stability AI is faster than DALL-E
+          ],
+          details: {
+            timeout_seconds: dynamicTimeout / 1000,
+            images_requested: request.variations || 1,
+            provider: request.provider,
+            elapsed_seconds: elapsedTime,
+            estimated_time_range: `${estimatedMin}-${estimatedMax}s`,
+            url: error.config?.url
+          }
+        }
+      };
+    }
+    
+    // Check if error has enriched details from backend
+    if (error.error_details) {
+      return {
+        success: false,
+        images: [],
+        provider: request.provider,
+        model: 'unknown',
+        metadata: {},
+        error: error.message || 'Failed to generate images',
+        error_details: error.error_details
+      };
+    }
     
     // Fallback to test server
     try {

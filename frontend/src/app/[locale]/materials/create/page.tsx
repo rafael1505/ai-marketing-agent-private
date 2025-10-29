@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { IdeaGenerationForm } from "@/components/forms/idea-generation-form";
 import { EnhancedRefinementForm } from "@/components/forms/enhanced-refinement-form";
 import { FinalizationForm } from "@/components/forms/finalization-form";
+import { AIErrorDisplay } from "@/components/ui/ai-error-display";
 import { MaterialStage, MaterialStatus, IdeaGenerationFormData, RefinementFormData, FinalizationFormData, GeneratedImage, Material } from "@/types";
 import { createMaterial, addGeneratedImage, selectImage, addFeedback, updateStage } from "@/services/materials";
 import { generateMultipleImages, getAvailableProviders, getRecommendedProvider, getProviderConfigurations, getActiveProviders, type ProviderConfig } from "@/services/ai-providers";
@@ -24,6 +25,7 @@ export default function CreateMaterialPage({
   const [material, setMaterial] = useState<Material | null>(null);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [activeProviders, setActiveProviders] = useState<ProviderConfig[]>([]);
+  const [aiError, setAiError] = useState<any>(null);
   useEffect(() => {
     const loadTranslations = async () => {
       setIsLoading(true);
@@ -123,6 +125,9 @@ export default function CreateMaterialPage({
     
     console.log("Generating multiple images with new AI provider service:", { materialId: material.id, prompt, aiProvider });
     
+    // Clear any previous errors
+    setAiError(null);
+    
     try {
       // Check if the selected provider is active and configured
       const selectedProvider = activeProviders.find(p => p.id === aiProvider);
@@ -139,12 +144,17 @@ export default function CreateMaterialPage({
         console.log(`Provider ${aiProvider} not active, using: ${providerToUse}`);
       }
       
-      // Generate 5 images as per SRS requirements using the new service
-      console.log(`Generating 5 images with provider: ${providerToUse}`);
+      // Generate 3 images (reduced from 5 to improve performance)
+      console.log(`Generating 3 images with provider: ${providerToUse}`);
       
-      const result = await generateMultipleImages(prompt, providerToUse, 5, '1024x1024');
+      const result = await generateMultipleImages(prompt, providerToUse, 3, '1024x1024');
       
       if (!result.success) {
+        // Display enriched error if available
+        if (result.error_details) {
+          setAiError(result.error_details);
+          return; // Exit early to show error display component
+        }
         throw new Error(result.error || 'Failed to generate images');
       }
       
@@ -189,11 +199,43 @@ export default function CreateMaterialPage({
       setGeneratedImages(updatedMaterial.generated_images || []);
       
       const costMessage = result.cost && result.cost > 0 ? ` (Cost: $${result.cost.toFixed(4)})` : '';
-      alert(`Successfully generated ${result.images.length} images using ${result.provider}!${costMessage}`);
+      console.log(`Successfully generated ${result.images.length} images using ${result.provider}!${costMessage}`);
       
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error generating images:", error);
-      alert(`Failed to generate images: ${error.message || "Unknown error"}`);
+      
+      // Check if error has enriched details (from network errors, timeout, etc.)
+      if (error.error_details) {
+        setAiError(error.error_details);
+      } else if (error.isTimeout) {
+        // Handle timeout errors specifically
+        setAiError({
+          error_type: 'timeout',
+          message: error.userMessage || 'Request timeout',
+          user_message: 'errors.ai.timeout',
+          provider: aiProvider || 'unknown',
+          correlation_id: error.error_details?.correlation_id || `client-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          http_status: 408,
+          suggested_actions: [
+            'actions.try_again',
+            'actions.try_different_provider',
+            'actions.reduce_image_complexity'
+          ],
+          details: error.error_details?.details || {}
+        });
+      } else {
+        // Set generic error for unexpected exceptions
+        setAiError({
+          error_type: 'unknown',
+          message: error.message || "Unknown error",
+          user_message: "errors.ai.unknown",
+          provider: aiProvider || 'unknown',
+          correlation_id: `client-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          suggested_actions: ["actions.try_again", "actions.check_console"]
+        });
+      }
     }
   };
 
@@ -215,9 +257,33 @@ export default function CreateMaterialPage({
       console.log("Material stage updated:", updatedMaterial);
       setMaterial(updatedMaterial);
       setCurrentStep(2);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating stage:", error);
-      alert(`Failed to proceed to finalization: ${error.message || "Unknown error"}`);
+      
+      // Enhanced error handling
+      const errorMessage = error?.response?.data?.detail || 
+                          error?.message || 
+                          "Unknown error occurred while updating stage";
+      const statusCode = error?.response?.status;
+      
+      // Set AI error state for better UX
+      setAiError({
+        error_type: statusCode === 404 ? 'not_found' : 'unknown',
+        message: errorMessage,
+        user_message: statusCode === 404 
+          ? 'errors.stage_update_not_found' 
+          : 'errors.stage_update_failed',
+        correlation_id: `stage-update-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        http_status: statusCode,
+        suggested_actions: ['actions.try_again', 'actions.refresh_page'],
+        details: {
+          materialId: material.id,
+          targetStage: MaterialStage.FINALIZATION,
+          error: errorMessage
+        }
+      });
+      
       throw error; // Re-throw to allow form to handle error state
     }
   };
@@ -311,6 +377,21 @@ export default function CreateMaterialPage({
       </div>
 
       <div className="mt-8">
+        {/* AI Error Display - Shows when image generation fails */}
+        {aiError && (
+          <div className="mb-6">
+            <AIErrorDisplay 
+              error={aiError.message || "An error occurred"}
+              errorDetails={aiError}
+              onRetry={() => {
+                setAiError(null);
+                // User can retry by clicking generate again
+              }}
+              locale={locale}
+            />
+          </div>
+        )}
+        
         {currentStep === 0 && (
           <IdeaGenerationForm
             onSubmit={handleIdeaSubmit}

@@ -46,6 +46,8 @@ export default function MaterialsPage({
     loadTranslations();
   }, [locale]);  // Function to fetch materials that can be called on demand
   const fetchMaterials = async (forceRefresh = false) => {
+    console.log('[Materials Page] fetchMaterials called, forceRefresh:', forceRefresh);
+    
     if (forceRefresh) {
       setIsRefreshing(true);
     } else {
@@ -53,12 +55,26 @@ export default function MaterialsPage({
     }
     
     try {
+      console.log('[Materials Page] Calling getMaterials...');
       const data = await getMaterials(undefined, undefined, 0, 100, forceRefresh);
-      setMaterials(data);
+      console.log('[Materials Page] getMaterials returned:', data);
+      console.log('[Materials Page] Data is array?', Array.isArray(data));
+      console.log('[Materials Page] Data length:', data?.length);
+      
+      // Defensive check: ensure data is an array
+      if (Array.isArray(data)) {
+        console.log('[Materials Page] Setting materials state with', data.length, 'items');
+        setMaterials(data);
+      } else {
+        console.error('[Materials Page] getMaterials returned non-array data:', data);
+        setMaterials([]); // Set empty array as fallback
+      }
+      
       setError(""); // Clear any previous errors
     } catch (err) {
-      console.error("Error fetching materials:", err);
+      console.error("[Materials Page] Error fetching materials:", err);
       setError("Unable to load materials. Please try again later.");
+      setMaterials([]); // Set empty array on error
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -91,8 +107,10 @@ export default function MaterialsPage({
       </div>
     );
   }
+  
   // Check if we're in demo/mock mode (this happens when the backend has DB issues)
-  const isDemoMode = materials.some(mat => mat.api_error === true);
+  // Defensive check: ensure materials is an array before calling .some()
+  const isDemoMode = Array.isArray(materials) && materials.some(mat => mat.api_error === true);
 
   return (
     <div className="space-y-6">

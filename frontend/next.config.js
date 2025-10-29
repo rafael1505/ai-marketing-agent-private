@@ -138,6 +138,27 @@ const nextConfig = {
         port: '',
         pathname: '/**',
       },
+      // OpenAI DALL-E image storage (Azure Blob Storage)
+      {
+        protocol: 'https',
+        hostname: 'oaidalleapiprodscus.blob.core.windows.net',
+        port: '',
+        pathname: '/**',
+      },
+      // Stability AI image storage
+      {
+        protocol: 'https',
+        hostname: '*.amazonaws.com',
+        port: '',
+        pathname: '/**',
+      },
+      // Replicate image storage
+      {
+        protocol: 'https',
+        hostname: 'replicate.delivery',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   // output: 'standalone',

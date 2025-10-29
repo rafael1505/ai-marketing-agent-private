@@ -41,6 +41,8 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
   const [selectedProvider, setSelectedProvider] = React.useState<any | null>(null);
   const [providerError, setProviderError] = React.useState<string>("");
   const [selectedImageIndex, setSelectedImageIndex] = React.useState<number | null>(null);
+  const [progressMessage, setProgressMessage] = React.useState<string>("");
+  const [elapsedSeconds, setElapsedSeconds] = React.useState<number>(0);
 
   React.useEffect(() => {
     const loadTranslations = async () => {
@@ -164,20 +166,48 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
     
     setIsGenerating(true);
     setProviderError("");
+    setElapsedSeconds(0);
+    setProgressMessage("");
+    
+    // Start progress tracking - update every 10 seconds
+    const startTime = Date.now();
+    const progressInterval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      setElapsedSeconds(elapsed);
+      
+      // Provider-specific time estimates
+      const providerEstimates: Record<string, number> = {
+        'openai': 75,      // DALL-E 3: ~75s for 3 images
+        'stability': 45,   // Stability AI: ~45s for 3 images
+        'replicate': 60,   // Replicate: ~60s for 3 images
+        'huggingface': 90, // HuggingFace: ~90s for 3 images
+      };
+      const estimatedTime = providerEstimates[formData.aiProvider.toLowerCase()] || 60;
+      
+      if (elapsed >= 10 && elapsed < estimatedTime) {
+        setProgressMessage(
+          `Still generating... ${elapsed}s elapsed. ${selectedProvider.name} can take up to ${estimatedTime}s for 3 images.`
+        );
+      }
+    }, 10000); // Update every 10 seconds
     
     try {
       console.log("Starting image generation with:", { prompt: formData.prompt, provider: formData.aiProvider });
       await onGenerateImage(formData.prompt, formData.aiProvider);
       console.log("Image generation completed successfully");
+      setProgressMessage(""); // Clear progress message on success
     } catch (error) {
       console.error("Error generating image:", error);
       const errorMessage = error instanceof Error ? error.message : "Failed to generate image. Please try again.";
       setProviderError(errorMessage);
       
-      // Also show an alert for better user feedback
-      alert(`Image generation failed: ${errorMessage}`);
+      // Parent component (create/edit page) handles error display with AIErrorDisplay
+      // No need for browser alert() here
     } finally {
+      clearInterval(progressInterval);
       setIsGenerating(false);
+      setProgressMessage("");
+      setElapsedSeconds(0);
     }
   };
 
@@ -333,7 +363,7 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
             )}
             
             {/* Generate Button */}
-            <div className="pt-4">
+            <div className="pt-4 space-y-3">
               <Button
                 type="button"
                 onClick={handleGenerateImage}
@@ -370,6 +400,33 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
                   </>
                 )}
               </Button>
+              
+              {/* Progress Indicator */}
+              {isGenerating && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 animate-pulse">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-0.5">
+                      <svg className="w-5 h-5 text-blue-600 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-blue-900">
+                        {t.creation?.refinement?.form?.processing || "Processing your request..."}
+                        {elapsedSeconds > 0 && <span className="ml-2 text-blue-600">({elapsedSeconds}s)</span>}
+                      </p>
+                      <p className="text-xs text-blue-700 mt-1">
+                        {progressMessage || (t.creation?.refinement?.form?.processing_message || `Generating 3 AI images with ${selectedProvider?.name || "AI provider"}. This may take 20-90 seconds depending on the provider.`)}
+                      </p>
+                      <div className="mt-2 flex items-center gap-2 text-xs text-blue-600">
+                        <span>⏳</span>
+                        <span>Please wait while we create your images...</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Generated Images Display */}

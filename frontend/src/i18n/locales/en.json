@@ -136,6 +136,8 @@
     "min_length": "Must be at least {{min}} characters",
     "max_length": "Must be at most {{max}} characters",
     "server_error": "Server error. Please try again later.",
+    "stage_update_not_found": "⚠️ Stage update endpoint not available",
+    "stage_update_failed": "❌ Failed to update material stage",
     "ai": {
       "billing_limit_reached": "💳 Billing limit reached on {{provider}}",
       "invalid_api_key": "🔑 Invalid or expired API key for {{provider}}",
@@ -146,8 +148,8 @@
       "service_unavailable": "🔧 {{provider}} service is temporarily unavailable",
       "invalid_request": "❌ Invalid request parameters",
       "provider_not_configured": "⚙️ {{provider}} is not configured",
-      "timeout": "⏰ Request timed out",
-      "unknown_error": "⚠️ An unexpected error occurred"
+      "timeout": "⏰ Request Timeout - The AI image generation took too long to complete",
+      "unknown": "⚠️ An unexpected error occurred"
     }
   },
   "actions": {
@@ -166,9 +168,20 @@
     "wait_and_retry": "Wait {{seconds}} seconds and try again",
     "reduce_frequency": "Reduce request frequency",
     "try_again": "Try again",
+    "refresh_page": "Refresh the page",
+    "try_different_provider": "Try using a different provider",
+    "reduce_image_count": "Generate fewer images (1 instead of 3)",
+    "simplify_prompt": "Simplify your image description",
+    "reduce_image_complexity": "Reduce image complexity or quantity",
+    "use_lower_quality": "Use standard quality for faster generation",
+    "use_smaller_size": "Use smaller image size (faster)",
+    "reduce_complexity": "Remove complex details from prompt",
+    "use_free_test_provider": "Try free test provider for placeholder",
+    "save_draft_try_later": "Save as draft and try again later",
     "check_connection": "Check your internet connection",
     "contact_support": "Contact support with correlation ID: {{correlationId}}",
     "check_logs": "Check error logs for more details",
+    "check_console": "Check browser console for more details",
     "add_payment_method": "Add a payment method to your account"
   },
   "common": {

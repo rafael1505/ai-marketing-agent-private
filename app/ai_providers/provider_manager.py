@@ -18,6 +18,10 @@ from .errors import AIErrorClassifier, AIProviderError
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Provider Registry - Maps provider IDs to their implementation classes
+# Add new providers here when implementing new provider integrations
+PROVIDER_REGISTRY = {}  # Will be populated after class definitions
+
 class ProviderStatus(Enum):
     CONFIGURED = "configured"
     NOT_CONFIGURED = "not_configured"
@@ -48,20 +52,29 @@ class ImageGenerationResult:
 class AIProviderManager:
     """Manages multiple AI providers for image generation"""
     
-    def __init__(self):
+    def __init__(self, database_client=None):
         self.providers = {}
         self.provider_configs = {}
+        self.db = database_client
         self._load_provider_configs()
         self._initialize_providers()
     
     def _load_provider_configs(self):
-        """Load provider configurations from environment variables"""
-        self.provider_configs = {
+        """
+        Initialize provider configs dictionary
+        Configs will be loaded from database via refresh_provider_configs()
+        Environment variables are used ONLY as fallback if database is unavailable
+        """
+        # Start with empty configs - will be populated from database
+        self.provider_configs = {}
+        
+        # Fallback templates with environment variables (only used if DB unavailable)
+        self._env_fallback_configs = {
             "openai": {
                 "api_key": os.getenv("OPENAI_API_KEY"),
                 "base_url": "https://api.openai.com/v1",
                 "model": "dall-e-3",
-                "max_variations": 1,  # DALL-E 3 limitation
+                "max_variations": 1,
                 "supported_sizes": ["1024x1024", "1024x1792", "1792x1024"],
                 "pricing": {"standard": 0.04, "hd": 0.08}
             },
@@ -90,31 +103,180 @@ class AIProviderManager:
                 "pricing": {"free": 0.0}
             }
         }
+        
+        logger.info("Provider configuration system initialized (will load from database)")
+    
+    async def _load_provider_from_database(self, provider_id: str, user_id: str = "1") -> Optional[Dict[str, Any]]:
+        """
+        Load provider configuration from database
+        This is the PRIMARY method for getting provider configs
+        """
+        if self.db is None:
+            logger.warning(f"No database connection - using environment fallback for {provider_id}")
+            return None
+            
+        try:
+            providers_collection = self.db.ai_providers
+            provider_data = await providers_collection.find_one({
+                "id": provider_id,
+                "user_id": user_id
+            })
+            
+            if provider_data:
+                # Map database fields to internal config structure
+                config = {
+                    "api_key": provider_data.get("apiKey") or provider_data.get("api_key"),
+                    "model": provider_data.get("selectedModel") or provider_data.get("model"),
+                    "base_url": provider_data.get("baseUrl") or provider_data.get("base_url"),
+                    "max_tokens": provider_data.get("maxTokens") or provider_data.get("max_tokens"),
+                    "temperature": provider_data.get("temperature", 0.7),
+                    "configured": bool(provider_data.get("apiKey") or provider_data.get("api_key")),
+                }
+                
+                # Add fallback defaults from environment templates if needed
+                if provider_id in self._env_fallback_configs:
+                    fallback = self._env_fallback_configs[provider_id]
+                    config.setdefault("base_url", fallback.get("base_url"))
+                    config.setdefault("max_variations", fallback.get("max_variations"))
+                    config.setdefault("supported_sizes", fallback.get("supported_sizes"))
+                    config.setdefault("pricing", fallback.get("pricing"))
+                    # Only use environment API key if database has none
+                    if not config["api_key"]:
+                        config["api_key"] = fallback.get("api_key")
+                
+                if config["api_key"]:
+                    logger.info(f"✅ Loaded configuration for '{provider_id}' from database")
+                else:
+                    logger.debug(f"⚠️  Provider '{provider_id}' found in database but has no API key")
+                
+                return config
+            else:
+                logger.debug(f"Provider '{provider_id}' not found in database")
+                return None
+                
+        except Exception as e:
+            logger.error(f"Error loading provider '{provider_id}' from database: {e}")
+            return None
+    
+    async def _load_all_configs_from_database(self, user_id: str = "1"):
+        """
+        Load ALL provider configurations from database
+        This replaces hardcoded configs with database-driven configs
+        """
+        if self.db is None:
+            logger.warning("No database connection - using environment fallback configs")
+            # Use environment fallback
+            self.provider_configs = self._env_fallback_configs.copy()
+            return
+            
+        try:
+            self.provider_configs = {}
+            providers_collection = self.db.ai_providers
+            
+            # Load all providers for this user
+            db_providers = await providers_collection.find({"user_id": user_id}).to_list(1000)
+            
+            logger.info(f"Found {len(db_providers)} providers in database for user '{user_id}'")
+            
+            for provider_data in db_providers:
+                provider_id = provider_data["id"]
+                
+                # Map database fields to internal config structure
+                config = {
+                    "api_key": provider_data.get("apiKey") or provider_data.get("api_key"),
+                    "model": provider_data.get("selectedModel") or provider_data.get("model"),
+                    "base_url": provider_data.get("baseUrl") or provider_data.get("base_url"),
+                    "max_tokens": provider_data.get("maxTokens") or provider_data.get("max_tokens"),
+                    "temperature": provider_data.get("temperature", 0.7),
+                }
+                
+                # Add defaults from environment templates if available
+                if provider_id in self._env_fallback_configs:
+                    fallback = self._env_fallback_configs[provider_id]
+                    # Use fallback for missing or None values (not just missing keys)
+                    if not config.get("base_url"):
+                        config["base_url"] = fallback.get("base_url")
+                        logger.debug(f"  🔄 '{provider_id}' - using fallback base_url: {config['base_url']}")
+                    config.setdefault("max_variations", fallback.get("max_variations"))
+                    config.setdefault("supported_sizes", fallback.get("supported_sizes"))
+                    config.setdefault("pricing", fallback.get("pricing"))
+                    # Use environment API key as fallback if database has none
+                    if not config["api_key"]:
+                        config["api_key"] = fallback.get("api_key")
+                        if config["api_key"]:
+                            logger.debug(f"  🔄 '{provider_id}' - using fallback API key from environment")
+                
+                self.provider_configs[provider_id] = config
+                
+                if config.get("api_key"):
+                    logger.debug(f"  ✅ '{provider_id}' - configured with API key")
+                else:
+                    logger.debug(f"  ⚪ '{provider_id}' - no API key")
+            
+            logger.info(f"✅ Loaded {len(self.provider_configs)} provider configurations from database")
+            
+        except Exception as e:
+            logger.error(f"Error loading providers from database: {e}")
+            logger.warning("Falling back to environment variable configs")
+            self.provider_configs = self._env_fallback_configs.copy()
+
+    
+    async def refresh_provider_configs(self, user_id: str = "1"):
+        """
+        Refresh ALL provider configurations from database
+        This ensures we always have the latest API keys and settings
+        """
+        logger.info(f"♻️  Refreshing provider configurations from database for user '{user_id}'")
+        
+        # Load all configs from database
+        await self._load_all_configs_from_database(user_id)
+        
+        # Reinitialize providers with new configs
+        self._initialize_providers()
+        
+        configured_count = sum(1 for p in self.providers.values() if p.is_configured())
+        logger.info(f"✅ Refresh complete: {configured_count}/{len(self.providers)} providers configured")
     
     def _initialize_providers(self):
-        """Initialize available providers based on API keys"""
-        if self.provider_configs["openai"]["api_key"]:
-            self.providers["openai"] = OpenAIProvider(self.provider_configs["openai"])
+        """
+        Initialize providers based on registry and available configurations
+        Only providers with registered classes and API keys will be initialized
+        """
+        self.providers = {}
+        initialized_count = 0
         
-        if self.provider_configs["stability"]["api_key"]:
-            self.providers["stability"] = StabilityAIProvider(self.provider_configs["stability"])
+        # Iterate through all configs (from database or fallback)
+        for provider_id, config in self.provider_configs.items():
+            # Check if provider has a registered implementation class
+            if provider_id not in PROVIDER_REGISTRY:
+                logger.debug(f"⚪ Provider '{provider_id}' not in registry (no implementation class) - skipping")
+                continue
+            
+            # Check if provider has API key
+            if not config.get("api_key"):
+                logger.debug(f"⚪ Provider '{provider_id}' has no API key - skipping")
+                continue
+            
+            # Initialize the provider with its registered class
+            try:
+                provider_class = PROVIDER_REGISTRY[provider_id]
+                self.providers[provider_id] = provider_class(config)
+                initialized_count += 1
+                logger.info(f"✅ Initialized provider: '{provider_id}' ({provider_class.__name__})")
+            except Exception as e:
+                logger.error(f"❌ Failed to initialize provider '{provider_id}': {e}")
         
-        if self.provider_configs["replicate"]["api_key"]:
-            self.providers["replicate"] = ReplicateProvider(self.provider_configs["replicate"])
-        
-        if self.provider_configs["huggingface"]["api_key"]:
-            self.providers["huggingface"] = HuggingFaceProvider(self.provider_configs["huggingface"])
-        
-        # Always include the test provider
+        # Always include the test provider (no API key needed)
         self.providers["free-test-provider"] = TestProvider()
+        logger.info(f"✅ Initialized test provider: 'free-test-provider'")
         
-        logger.info(f"Initialized {len(self.providers)} AI providers: {list(self.providers.keys())}")
+        logger.info(f"🎯 Total providers initialized: {len(self.providers)} ({initialized_count} real + 1 test)")
     
     def get_provider_status(self) -> Dict[str, Dict[str, Any]]:
-        """Get status of all providers"""
+        """Get status of all providers (initialized and available in registry)"""
         status = {}
         
-        # Add initialized providers
+        # Add initialized providers (those currently running)
         for provider_id, provider in self.providers.items():
             status[provider_id] = {
                 "name": provider.get_name(),
@@ -128,22 +290,23 @@ class AIProviderManager:
                 "status": provider.get_status().value
             }
         
-        # Add non-initialized providers for visibility
-        all_provider_names = {
+        # Add registered providers that aren't initialized (for visibility)
+        provider_display_names = {
             "openai": "OpenAI DALL-E",
             "stability": "Stability AI",
             "replicate": "Replicate",
             "huggingface": "HuggingFace"
         }
         
-        for provider_id, provider_name in all_provider_names.items():
+        for provider_id in PROVIDER_REGISTRY.keys():
             if provider_id not in status:
                 config = self.provider_configs.get(provider_id, {})
                 has_api_key = bool(config.get("api_key"))
+                
                 status[provider_id] = {
-                    "name": provider_name,
+                    "name": provider_display_names.get(provider_id, provider_id.title()),
                     "configured": has_api_key,
-                    "available": False,
+                    "available": False,  # Not initialized, so not available
                     "model": config.get("model", "unknown"),
                     "max_variations": config.get("max_variations", 1),
                     "supported_sizes": config.get("supported_sizes", ["1024x1024"]),
@@ -725,5 +888,37 @@ class TestProvider(BaseProvider):
         </svg>
         '''.strip()
 
-# Global instance
-ai_provider_manager = AIProviderManager()
+# ==========================================
+# PROVIDER REGISTRY
+# ==========================================
+# Maps provider IDs to their implementation classes
+# Add new provider implementations here to make them available
+PROVIDER_REGISTRY = {
+    "openai": OpenAIProvider,
+    "stability": StabilityAIProvider,
+    "replicate": ReplicateProvider,
+    "huggingface": HuggingFaceProvider,
+}
+
+logger.info(f"📋 Provider Registry: {len(PROVIDER_REGISTRY)} implementations available")
+logger.info(f"   Registered providers: {', '.join(PROVIDER_REGISTRY.keys())}")
+
+# ==========================================
+# GLOBAL INSTANCE & FACTORY
+# ==========================================
+
+# Global instance - will be initialized with database connection in main.py
+ai_provider_manager = None
+
+def get_provider_manager(database_client=None):
+    """
+    Get or create the provider manager instance with database connection
+    This ensures the manager always has access to the database
+    """
+    global ai_provider_manager
+    if ai_provider_manager is None:
+        ai_provider_manager = AIProviderManager(database_client=database_client)
+    elif database_client is not None and ai_provider_manager.db is None:
+        # Update the database connection if it was None
+        ai_provider_manager.db = database_client
+    return ai_provider_manager

@@ -1,6 +1,31 @@
 import api from './api';
 import { Material, MaterialCreationFormData, MaterialStage, MaterialStatus } from '@/types';
 
+// Edge-compatible localStorage wrapper
+const safeLocalStorage = {
+  getItem: (key: string): string | null => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        return window.localStorage.getItem(key);
+      }
+    } catch (error) {
+      console.warn('localStorage access failed:', error);
+    }
+    return null;
+  },
+  setItem: (key: string, value: string): boolean => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(key, value);
+        return true;
+      }
+    } catch (error) {
+      console.warn('localStorage write failed:', error);
+    }
+    return false;
+  }
+};
+
 // Global cache that persists across module reloads
 declare global {
   var __materialsCache: {
@@ -63,15 +88,20 @@ const isCacheValid = () => {
 // Check if we're in development mode - Edge compatible
 const isDevelopmentMode = () => {
   try {
-    // Force development mode for demo materials (ensures demo mode always works)
-    // This is critical to prevent "Material not found" errors during development
-    return true;
+    // Check if we're in a browser environment and if backend is available
+    // Development mode should only activate when:
+    // 1. Running in development (NODE_ENV === 'development')
+    // 2. No backend connection available
     
-    // Note: If you're seeing API calls being made, there might be another service
-    // or component that's bypassing this function and calling the API directly.
+    // For now, disable forced development mode to allow real database usage
+    // This allows materials to persist to MongoDB
+    return false;
     
-    // Note: The code below would be the normal detection logic, but we're forcing
-    // development mode to ensure the demo workflow always works.
+    // Note: If backend API calls fail (404, network error), 
+    // the service functions will automatically fallback to demo mode
+    // in their catch blocks. This provides the best of both worlds:
+    // - Use database when available (production behavior)
+    // - Graceful degradation to demo mode when backend unavailable
     /*
     // Check NODE_ENV first (most reliable)
     if (process.env.NODE_ENV === 'development') {
@@ -212,7 +242,7 @@ export async function getMaterials(
   }
 
   try {
-    let url = `/materials?skip=${skip}&limit=${limit}`;
+    let url = `/api/v1/materials?skip=${skip}&limit=${limit}`;
     if (stage) {
       url += `&stage=${stage}`;
     }
@@ -220,16 +250,29 @@ export async function getMaterials(
       url += `&status=${status}`;
     }
     
-    console.log('Fetching materials from API');
+    console.log('[Materials Service] Fetching materials from API:', url);
     const response = await api.get(url);
+    console.log('[Materials Service] API response received:', response);
+    console.log('[Materials Service] Response data type:', typeof response.data);
+    console.log('[Materials Service] Response data is array?', Array.isArray(response.data));
+    console.log('[Materials Service] Response data:', response.data);
+    
+    // Defensive check: ensure response.data is an array
+    const materialsData = Array.isArray(response.data) ? response.data : [];
+    
+    if (!Array.isArray(response.data)) {
+      console.warn('[Materials Service] API returned non-array data for materials:', response.data);
+    }
     
     // Cache the results only if it's the default request (no filters)
     if (!stage && !status && skip === 0) {
-      materialsCache.data = response.data;
+      console.log('[Materials Service] Caching', materialsData.length, 'materials');
+      materialsCache.data = materialsData;
       materialsCache.timestamp = Date.now();
     }
     
-    return response.data;
+    console.log('[Materials Service] Returning', materialsData.length, 'materials');
+    return materialsData;
   } catch (error) {
     console.error('Error fetching materials:', error);
     
@@ -281,7 +324,7 @@ export async function getMaterial(id: string): Promise<Material> {
   }
 
   try {
-    const response = await api.get(`/materials/${id}`);
+    const response = await api.get(`/api/v1/materials/${id}`);
     return response.data;
   } catch (error) {
     console.error('Error fetching material:', error);
@@ -300,86 +343,82 @@ export async function createMaterial(data: MaterialCreationFormData): Promise<Ma
   const devMode = isDevelopmentMode();
   console.log('createMaterial - Development mode detected:', devMode);
   
-  // In development mode, simulate creating a material
-  if (devMode) {
-    console.log('Development mode: Simulating material creation');
-    
-    // Load cache from storage if available
-    loadCacheFromStorage();
-    
-    const newMaterial: Material = {
-      id: `demo-new-${Date.now()}`,
-      title: data.title,
-      description: data.description,
-      target_audience: data.target_audience,
-      campaign_objective: data.campaign_objective,
-      keywords: data.keywords,
-      stage: MaterialStage.IDEA,
-      status: MaterialStatus.DRAFT,
-      company_id: 'demo_company',
-      created_by: 'demo_user',
-      user_id: 'demo_user',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      generated_images: [],
-      feedback: []
-    };
-    
-    console.log('Created new material with ID:', newMaterial.id);
-    
-    // Initialize cache with demo materials if it doesn't exist
-    if (!materialsCache.data) {
-      console.log('Initializing cache with demo materials');
-      materialsCache.data = getDemoMaterials();
-      materialsCache.timestamp = Date.now();
-    }
-    
-    // Add new material to the beginning of the cache
-    materialsCache.data.unshift(newMaterial);
-    console.log('Added material to cache. Cache now has', materialsCache.data.length, 'materials');
-    console.log('Cache material IDs:', materialsCache.data.map(m => m.id));
-    
-    // Update global cache timestamp and save to storage
-    materialsCache.timestamp = Date.now();
-    saveCacheToStorage();
-    
-    return newMaterial;
-  }
-
-  try {
-    const response = await api.post('/materials', data);
-    
-    // Invalidate cache after creating new material
-    materialsCache.data = null;
-    
-    return response.data;
-  } catch (error) {
-    console.error('Error creating material:', error);
-    
-    // In development mode, still return simulated material
-    if (isDevelopmentMode()) {
-      console.log('Development mode: Returning simulated material after error');
-      return {
-        id: `demo-error-${Date.now()}`,
-        title: data.title,
-        description: data.description,
-        target_audience: data.target_audience,
-        campaign_objective: data.campaign_objective,
-        keywords: data.keywords,
-        stage: MaterialStage.IDEA,
-        status: MaterialStatus.DRAFT,
-        company_id: 'demo_company',
-        created_by: 'demo_user',
-        user_id: 'demo_user',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        generated_images: [],
-        feedback: []
+  // Try database first (unless forced development mode)
+  if (!devMode) {
+    try {
+      console.log('Attempting to create material in database...');
+      
+      // Add required fields for backend validation
+      const materialData = {
+        ...data,
+        stage: MaterialStage.IDEA,  // New materials always start in idea stage
+        status: MaterialStatus.DRAFT  // New materials always start as draft
       };
+      
+      const response = await api.post('/api/v1/materials', materialData);
+      
+      // Invalidate cache after creating new material
+      materialsCache.data = null;
+      
+      console.log('Material created successfully in database:', response.data);
+      return response.data;
+    } catch (error: any) {
+      console.error('Error creating material in database:', error);
+      const is404 = error?.response?.status === 404;
+      const isNetworkError = !error?.response;
+      
+      // Only fall back to demo mode if endpoint doesn't exist or network error
+      if (!is404 && !isNetworkError) {
+        throw error; // Re-throw other errors (auth, validation, etc.)
+      }
+      
+      console.warn('Database unavailable, falling back to development mode');
     }
-    
-    throw error;
   }
+  
+  // Development mode or fallback: simulate creating a material
+  console.log('Development mode: Simulating material creation');
+  
+  // Load cache from storage if available
+  loadCacheFromStorage();
+  
+  const newMaterial: Material = {
+    id: `demo-new-${Date.now()}`,
+    title: data.title,
+    description: data.description,
+    target_audience: data.target_audience,
+    campaign_objective: data.campaign_objective,
+    keywords: data.keywords,
+    stage: MaterialStage.IDEA,
+    status: MaterialStatus.DRAFT,
+    company_id: 'demo_company',
+    created_by: 'demo_user',
+    user_id: 'demo_user',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+    generated_images: [],
+    feedback: []
+  };
+  
+  console.log('Created new material with ID:', newMaterial.id);
+  
+  // Initialize cache with demo materials if it doesn't exist
+  if (!materialsCache.data) {
+    console.log('Initializing cache with demo materials');
+    materialsCache.data = getDemoMaterials();
+    materialsCache.timestamp = Date.now();
+  }
+  
+  // Add new material to the beginning of the cache
+  materialsCache.data.unshift(newMaterial);
+  console.log('Added material to cache. Cache now has', materialsCache.data.length, 'materials');
+  console.log('Cache material IDs:', materialsCache.data.map(m => m.id));
+  
+  // Update global cache timestamp and save to storage
+  materialsCache.timestamp = Date.now();
+  saveCacheToStorage();
+  
+  return newMaterial;
 }
 
 export async function updateMaterial(id: string, data: Partial<Material>): Promise<Material> {
@@ -408,7 +447,7 @@ export async function updateMaterial(id: string, data: Partial<Material>): Promi
   }
 
   try {
-    const response = await api.put(`/materials/${id}`, data);
+    const response = await api.put(`/api/v1/materials/${id}`, data);
     
     // Update cache if we have cached data
     if (materialsCache.data) {
@@ -454,7 +493,7 @@ export async function deleteMaterial(id: string): Promise<void> {
   }
 
   try {
-    await api.delete(`/materials/${id}`);
+    await api.delete(`/api/v1/materials/${id}`);
     
     // Remove from cache if we have cached data
     if (materialsCache.data) {
@@ -616,7 +655,7 @@ export async function addGeneratedImage(
 // Select image for material
 export async function selectImage(materialId: string, imageUrl: string): Promise<Material> {
   try {
-    const response = await api.post(`/materials/${materialId}/select-image`, {
+    const response = await api.post(`/api/v1/materials/${materialId}/select-image`, {
       image_url: imageUrl
     });
     
@@ -651,7 +690,7 @@ export async function selectImage(materialId: string, imageUrl: string): Promise
 // Add feedback to material
 export async function addFeedback(materialId: string, feedback: string): Promise<Material> {
   try {
-    const response = await api.post(`/materials/${materialId}/feedback`, {
+    const response = await api.post(`/api/v1/materials/${materialId}/feedback`, {
       feedback
     });
     
@@ -699,12 +738,15 @@ export async function updateStage(
     materialsCache.data = null;
     
     return response.data;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating stage:', error);
     
-    // In development mode, simulate stage update
-    if (isDevelopmentMode()) {
-      console.log('Development mode: Simulating stage update');
+    // Check if it's a 404 or network error - use development mode fallback
+    const is404 = error?.response?.status === 404;
+    const isNetworkError = !error?.response;
+    
+    if (is404 || isNetworkError || isDevelopmentMode()) {
+      console.log('Development mode: Simulating stage update (backend endpoint not available)');
       
       const materials = getDemoMaterials();
       const material = materials.find(m => m.id === materialId);
@@ -717,6 +759,16 @@ export async function updateStage(
           updated_at: new Date().toISOString()
         };
         
+        // Update in cache
+        const cachedMaterials = materialsCache.data || [];
+        const index = cachedMaterials.findIndex(m => m.id === materialId);
+        if (index >= 0) {
+          cachedMaterials[index] = updatedMaterial;
+          materialsCache.data = cachedMaterials;
+          saveCacheToStorage();
+        }
+        
+        console.log('Material updated:', updatedMaterial);
         return updatedMaterial;
       }
     }
@@ -724,28 +776,3 @@ export async function updateStage(
     throw error;
   }
 }
-
-// Edge-compatible localStorage wrapper
-const safeLocalStorage = {
-  getItem: (key: string): string | null => {
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        return window.localStorage.getItem(key);
-      }
-    } catch (error) {
-      console.warn('localStorage access failed:', error);
-    }
-    return null;
-  },
-  setItem: (key: string, value: string): boolean => {
-    try {
-      if (typeof window !== 'undefined' && window.localStorage) {
-        window.localStorage.setItem(key, value);
-        return true;
-      }
-    } catch (error) {
-      console.warn('localStorage write failed:', error);
-    }
-    return false;
-  }
-};

@@ -163,10 +163,10 @@ export default function EditMaterialPage({
         console.log(`Provider ${aiProvider} not active, using: ${providerToUse}`);
       }
       
-      // Generate 5 images as per SRS requirements using the new service
-      console.log(`Generating 5 images with provider: ${providerToUse}`);
+      // Generate 3 images (reduced from 5 to improve performance)
+      console.log(`Generating 3 images with provider: ${providerToUse}`);
       
-      const result = await generateMultipleImages(prompt, providerToUse, 5, '1024x1024');
+      const result = await generateMultipleImages(prompt, providerToUse, 3, '1024x1024');
       
       if (!result.success) {
         // Display enriched error if available
@@ -217,17 +217,42 @@ export default function EditMaterialPage({
       setGeneratedImages(updatedMaterial.generated_images || []);
       
       const costMessage = result.cost && result.cost > 0 ? ` (Cost: $${result.cost.toFixed(4)})` : '';
-      alert(`Successfully generated ${result.images.length} images using ${result.provider}!${costMessage}`);
+      console.log(`Successfully generated ${result.images.length} images using ${result.provider}!${costMessage}`);
       
     } catch (error: any) {
       console.error("Error generating images:", error);
       
-      // Check if error has enriched details (from network errors, etc.)
+      // Check if error has enriched details (from network errors, timeout, etc.)
       if (error.error_details) {
         setAiError(error.error_details);
+      } else if (error.isTimeout) {
+        // Handle timeout errors specifically
+        setAiError({
+          error_type: 'timeout',
+          message: error.userMessage || 'Request timeout',
+          user_message: 'errors.ai.timeout',
+          provider: aiProvider || 'unknown',
+          correlation_id: error.error_details?.correlation_id || `client-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          http_status: 408,
+          suggested_actions: [
+            'actions.try_again',
+            'actions.try_different_provider',
+            'actions.reduce_image_complexity'
+          ],
+          details: error.error_details?.details || {}
+        });
       } else {
-        // Show simple alert for unexpected errors (not from AI providers)
-        alert(`Failed to generate images: ${error.message || "Unknown error"}`);
+        // Set generic error for unexpected exceptions
+        setAiError({
+          error_type: 'unknown',
+          message: error.message || "Unknown error",
+          user_message: "errors.ai.unknown",
+          provider: aiProvider || 'unknown',
+          correlation_id: `client-${Date.now()}`,
+          timestamp: new Date().toISOString(),
+          suggested_actions: ["actions.try_again", "actions.check_console"]
+        });
       }
     }
   };
@@ -279,9 +304,33 @@ export default function EditMaterialPage({
       console.log("Material stage updated:", materialWithStage);
       setMaterial(materialWithStage);
       setCurrentStep(2);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating stage:", error);
-      alert(`Failed to proceed to finalization: ${error.message || "Unknown error"}`);
+      
+      // Enhanced error handling
+      const errorMessage = error?.response?.data?.detail || 
+                          error?.message || 
+                          "Unknown error occurred while updating stage";
+      const statusCode = error?.response?.status;
+      
+      // Set AI error state for better UX
+      setAiError({
+        error_type: statusCode === 404 ? 'not_found' : 'unknown',
+        message: errorMessage,
+        user_message: statusCode === 404 
+          ? 'errors.stage_update_not_found' 
+          : 'errors.stage_update_failed',
+        correlation_id: `stage-update-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        http_status: statusCode,
+        suggested_actions: ['actions.try_again', 'actions.refresh_page'],
+        details: {
+          materialId: material.id,
+          targetStage: MaterialStage.FINALIZATION,
+          error: errorMessage
+        }
+      });
+      
       throw error;
     }
   };

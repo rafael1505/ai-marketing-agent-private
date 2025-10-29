@@ -72,8 +72,9 @@ const api = axios.create({
   },
   // Disable proxy to use direct connection to local API
   proxy: false,
-  // Increase timeout for network issues
-  timeout: 15000,
+  // Base timeout for general API operations (can be overridden per request)
+  // AI image generation uses dynamic timeout based on provider and image count
+  timeout: 90000, // 90 seconds base timeout (increased from 60s)
 });
 
 // Add request interceptor to add the authorization token to the header
@@ -119,6 +120,39 @@ api.interceptors.response.use(
   },
   async (error) => {
     const correlationId = error.config?.headers?.['X-Correlation-ID'] || 'unknown';
+    
+    // Handle timeout errors specifically
+    if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+      console.error(`[${new Date().toISOString()}] Timeout Error [${correlationId}]:`, {
+        message: 'Request timed out',
+        url: error.config?.url,
+        timeout: error.config?.timeout,
+        isTimeout: true
+      });
+      
+      // Enrich error with timeout information for user-friendly display
+      error.isTimeout = true;
+      error.userMessage = 'The request took too long to complete. The AI provider may be experiencing high load.';
+      error.error_details = {
+        error_type: 'timeout',
+        message: `Request timeout after ${error.config?.timeout || 60000}ms`,
+        user_message: 'errors.ai.timeout',
+        provider: 'unknown',
+        correlation_id: correlationId,
+        timestamp: new Date().toISOString(),
+        http_status: 408,
+        suggested_actions: [
+          'actions.try_again',
+          'actions.try_different_provider',
+          'actions.reduce_image_complexity'
+        ],
+        details: {
+          timeout_seconds: (error.config?.timeout || 60000) / 1000,
+          url: error.config?.url
+        }
+      };
+      return Promise.reject(error);
+    }
     
     // Handle network errors like connection refused
     if (error.message === 'Network Error' || !error.response) {

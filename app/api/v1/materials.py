@@ -2,6 +2,7 @@ from typing import Any, List, Optional, Annotated
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Request, Query
 from motor.motor_asyncio import AsyncIOMotorClient
+from bson import ObjectId
 
 from app.core.config import settings
 from app.api.v1.deps import get_current_active_user
@@ -17,6 +18,17 @@ from app.db.material import MaterialDB
 
 router = APIRouter()
 
+def serialize_material(material: dict) -> dict:
+    """Convert MongoDB ObjectId to string for JSON serialization"""
+    if material and "_id" in material:
+        material["id"] = str(material["_id"])
+        del material["_id"]
+    return material
+
+def serialize_materials(materials: list) -> list:
+    """Convert list of MongoDB materials to JSON-serializable format"""
+    return [serialize_material(mat.copy()) for mat in materials]
+
 @router.post("")
 async def create_material(
     material: MaterialCreate,
@@ -31,8 +43,8 @@ async def create_material(
         str(current_user["_id"]),
         current_user["company_id"]
     )
-    # Return directly without validation through response_model
-    return created_material
+    # Convert ObjectId to string for JSON serialization
+    return serialize_material(created_material)
 
 @router.get("")
 async def list_materials(
@@ -61,8 +73,11 @@ async def list_materials(
     
     print(f"Found {len(materials)} materials")
     
-    # Return directly without validation through response_model
-    return materials
+    # Convert ObjectId to string for JSON serialization
+    serialized_materials = serialize_materials(materials)
+    
+    # Return serialized materials
+    return serialized_materials
 
 @router.get("/{material_id}")
 async def get_material(
@@ -78,8 +93,8 @@ async def get_material(
         raise HTTPException(status_code=404, detail="Material not found")
     if material["company_id"] != current_user["company_id"]:
         raise HTTPException(status_code=403, detail="Not enough permissions")
-    # Return directly without validation through response_model
-    return material
+    # Convert ObjectId to string for JSON serialization
+    return serialize_material(material)
 
 @router.put("/{material_id}")
 async def update_material(
@@ -100,8 +115,8 @@ async def update_material(
     updated_material = await material_db.update(material_id, material.model_dump())
     if not updated_material:
         raise HTTPException(status_code=404, detail="Material not found")
-    # Return directly without validation through response_model
-    return updated_material
+    # Convert ObjectId to string for JSON serialization
+    return serialize_material(updated_material)
 
 @router.post("/{material_id}/images")
 async def add_generated_image(
@@ -153,7 +168,8 @@ async def add_generated_image(
     )
     if not updated_material:
         raise HTTPException(status_code=404, detail="Material not found")
-    return updated_material
+    # Convert ObjectId to string for JSON serialization
+    return serialize_material(updated_material)
 
 @router.post("/{material_id}/select-image")
 async def select_image(
@@ -174,7 +190,8 @@ async def select_image(
     updated_material = await material_db.select_image(material_id, image_url)
     if not updated_material:
         raise HTTPException(status_code=404, detail="Material not found")
-    return updated_material
+    # Convert ObjectId to string for JSON serialization
+    return serialize_material(updated_material)
 
 @router.post("/{material_id}/feedback")
 async def add_feedback(
@@ -199,7 +216,8 @@ async def add_feedback(
     )
     if not updated_material:
         raise HTTPException(status_code=404, detail="Material not found")
-    return updated_material
+    # Convert ObjectId to string for JSON serialization
+    return serialize_material(updated_material)
 
 @router.post("/{material_id}/stage")
 async def update_stage(
@@ -221,5 +239,6 @@ async def update_stage(
     updated_material = await material_db.update_stage(material_id, stage, status)
     if not updated_material:
         raise HTTPException(status_code=404, detail="Material not found")
-    return updated_material
+    # Convert ObjectId to string for JSON serialization
+    return serialize_material(updated_material)
 

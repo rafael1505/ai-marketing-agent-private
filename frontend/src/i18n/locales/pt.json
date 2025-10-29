@@ -132,6 +132,8 @@
     "min_length": "Deve ter pelo menos {{min}} caracteres",
     "max_length": "Deve ter no máximo {{max}} caracteres",
     "server_error": "Erro no servidor. Por favor, tente novamente mais tarde.",
+    "stage_update_not_found": "⚠️ Endpoint de atualização de estágio não disponível",
+    "stage_update_failed": "❌ Falha ao atualizar estágio do material",
     "ai": {
       "billing_limit_reached": "💳 Limite de faturamento atingido em {{provider}}",
       "invalid_api_key": "🔑 Chave API inválida ou expirada para {{provider}}",
@@ -142,8 +144,8 @@
       "service_unavailable": "🔧 Serviço de {{provider}} temporariamente indisponível",
       "invalid_request": "❌ Parâmetros de solicitação inválidos",
       "provider_not_configured": "⚙️ {{provider}} não está configurado",
-      "timeout": "⏰ Tempo limite da solicitação excedido",
-      "unknown_error": "⚠️ Ocorreu um erro inesperado"
+      "timeout": "⏰ Tempo Limite Excedido - A geração de imagem AI demorou muito para concluir",
+      "unknown": "⚠️ Ocorreu um erro inesperado"
     }
   },
   "actions": {
@@ -162,9 +164,20 @@
     "wait_and_retry": "Aguarde {{seconds}} segundos e tente novamente",
     "reduce_frequency": "Reduza a frequência de solicitações",
     "try_again": "Tente novamente",
+    "refresh_page": "Atualize a página",
+    "try_different_provider": "Tente usar um provedor diferente",
+    "reduce_image_count": "Gerar menos imagens (1 em vez de 3)",
+    "simplify_prompt": "Simplifique a descrição da imagem",
+    "reduce_image_complexity": "Reduza a complexidade ou quantidade de imagens",
+    "use_lower_quality": "Usar qualidade padrão para geração mais rápida",
+    "use_smaller_size": "Usar tamanho menor de imagem (mais rápido)",
+    "reduce_complexity": "Remover detalhes complexos do prompt",
+    "use_free_test_provider": "Testar provedor gratuito para placeholder",
+    "save_draft_try_later": "Salvar como rascunho e tentar mais tarde",
     "check_connection": "Verifique sua conexão com a internet",
     "contact_support": "Entre em contato com o suporte com o ID de correlação: {{correlationId}}",
     "check_logs": "Verifique os logs de erro para mais detalhes",
+    "check_console": "Verifique o console do navegador para mais detalhes",
     "add_payment_method": "Adicione um método de pagamento à sua conta"
   },
   "common": {
