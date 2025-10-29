@@ -1,0 +1,158 @@
+# 🧠 Instruction: Architecture & Development Guidelines
+
+## 🎯 Goal
+Ensure technical consistency, maintainability, and compliance with the architectural principles of the **AI Marketing Agent** project.  
+This instruction defines how to structure the code, where business logic should reside, and how frontend, backend, and AI providers interact harmoniously.
+
+---
+
+## 🏗️ Stack Overview
+
+- **Frontend:** Next.js (React + TypeScript)
+- **Backend:** FastAPI (Python)
+- **Database:** MongoDB (Docker container)
+- **Infra:** Docker Compose
+- **AI Providers:** DALL·E, Hugging Face, Replicate (and similar APIs)
+- **i18n:** English and Portuguese (automatic detection)
+
+---
+
+## ⚙️ Environment Rules
+
+- **Frontend port:** `3001`  
+- **Backend port:** `8088`  
+- **Database port:** managed by Docker (`27017` internal)
+- **No automatic port switching is allowed.**
+- **Never create new placeholders or pages unless explicitly requested.**
+- Always debug and fix the existing component first.
+
+---
+
+## 🧩 Architectural Guidelines
+
+### 1. Clean Architecture & Responsibility Separation
+- **Frontend:** UI rendering, input validation, and i18n messages only.  
+  ❌ No business logic or AI API integration logic.  
+  ✅ Uses centralized service layer for data access (API clients).
+- **Backend:** Core business rules, API endpoints, AI provider orchestration, authentication, and persistence logic.  
+- **Database:** Stores normalized entities (Users, Companies, Materials, etc.) with clear schema definitions.
+- **AI Providers:** Modularized and database-driven configuration.  
+  Never hardcode provider settings in the frontend or backend code.
+
+---
+
+### 2. Directory and Code Structure
+Maintain the following logical boundaries:
+
+AI-MARKETING-AGENT/  
+├── .github/  
+│ └── instructions/
+│ └── prompts/  
+├── .vscode/  
+│ ├── launch.json  
+│ ├── settings.json  
+│ └── tasks.json  
+├── app/ # FastAPI backend core
+├── archive/  
+├── database/ # MongoDB data scripts and schemas
+├── debug/  
+├── docs/  
+├── frontend/ # Next.js app
+│ ├── .next/  
+│ ├── certificates/  
+│ ├── node_modules/  
+│ ├── pages/  
+│ ├── public/  
+│ ├── src/  
+│ └── tmp/  
+├── logs/  
+├── scripts/ # Maintenance or build scripts
+├── tests/ # Automated tests for backend and frontend
+├── venv/  
+└── volumes/  
+
+---
+
+### 3. AI Provider Integration
+
+- All AI providers (e.g., DALL·E, Hugging Face, Replicate) must be **defined in the database** with:
+  - Name, API key reference, endpoint, and capability metadata.
+  - Dynamically loaded into the system (no hardcoded providers).
+- Use a centralized **AI Provider Service** class to handle requests, caching, and fallback logic.
+- When generating tests or docs, store outputs in:
+  - `/tests/` → for test files  
+  - `/frontend/docs/` → for documentation (`.md` or `.pdf`)
+
+---
+
+### 4. i18n and Localization
+
+- Always wrap user-facing text with i18n functions.  
+- Support both English and Portuguese translations.  
+- Use language auto-detection from the browser or user profile.  
+- Backend messages returned to the frontend should also be i18n-aware.
+
+---
+
+### 5. Quality and Test Rules
+
+- All new features must include at least **unit tests** or **integration tests**.
+- Always prefer **test-driven development (TDD)** when possible.
+- Test scripts must be placed under `/tests/` and named following the convention:
+  - `test_[module]_[feature].py` (backend)
+  - `[feature].spec.tsx` (frontend)
+- No test or documentation file should ever be created in the project root.
+
+---
+
+### 6. Code Style and Consistency
+
+- **Frontend:**  
+  - TypeScript strict mode enabled.  
+  - Use React Hooks, functional components, and Next.js routing.  
+  - Keep components small and reusable.  
+  - Centralize API calls under `/frontend/src/services/`.
+
+- **Backend:**  
+  - Use Pydantic models for validation.  
+  - Separate routers, models, and services by domain.  
+  - Keep routes thin and business logic inside services.  
+  - Follow clean and modular architecture principles.
+
+---
+
+### 7. Collaboration & Documentation
+
+- Use Markdown (`.md`) for all internal docs under `/frontend/docs/`.  
+- Automatically include code snippets or API references when describing features.  
+- When generating or editing documentation, always save in the correct subfolder (never at project root).
+
+---
+
+### 8. Copilot Behavior Overrides
+
+To guide AI-generated outputs consistently:
+- Never move or rename core folders.
+- Never change ports (keep `3001` / `8088`).
+- Never create temporary files outside their intended directories.
+- Always debug existing code instead of recreating it.
+- Always respect i18n, architecture, and folder conventions.
+
+---
+
+## ✅ Summary
+
+This instruction ensures:
+- Technical discipline and clean separation of concerns.  
+- Predictable and stable system behavior.  
+- Database-driven AI provider configuration.  
+- Strong adherence to clean code and maintainability principles.
+
+---
+
+**File name:**  
+`.github/instructions/architecture-and-development-guidelines.instruction.md`
+
+**Applies to:**  
+All chats and code generation within the AI Marketing Agent project.
+

@@ -20,6 +20,7 @@ The system must provide a **modern, fluid, and clean interface** with:
 
 AI-MARKETING-AGENT/  
 ├── .github/  
+│ └── instructions/
 │ └── prompts/  
 │ └── ai-marketing-agent.system.prompt.md  
 ├── .vscode/  
