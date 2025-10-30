@@ -168,7 +168,7 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
       setSaving(true);
       
       if (!editingProvider.id) {
-        throw new Error(getT("pages.ai_providers.errors.provider_id_required"));
+        throw new Error(getT("settings.ai_providers.errors.provider_id_required"));
       }
 
       // Only send API key if it was actually changed
@@ -193,7 +193,7 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
       await loadProviders();
     } catch (error) {
       console.error("Error saving provider:", error);
-      alert(getT("pages.ai_providers.errors.saving"));
+      alert(getT("settings.ai_providers.errors.saving"));
     } finally {
       setSaving(false);
     }
@@ -212,7 +212,7 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
       await loadProviders();
     } catch (error) {
       console.error("Error deleting provider:", error);
-      alert(getT("pages.ai_providers.errors.deleting"));
+      alert(getT("settings.ai_providers.errors.deleting"));
     }
   };
 
@@ -224,7 +224,7 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
       if (!editingProvider.apiKey || editingProvider.apiKey.includes("••••")) {
         setTestResult({
           success: false,
-          message: getT("pages.ai_providers.dialog.enter_api_key")
+          message: getT("settings.ai_providers.dialog.enter_api_key")
         });
         return;
       }
@@ -234,14 +234,14 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
       setTestResult({
         success: result.valid,
         message: result.message || (result.valid 
-          ? getT("pages.ai_providers.dialog.connection_successful")
-          : getT("pages.ai_providers.dialog.connection_failed")
+          ? getT("settings.ai_providers.dialog.connection_successful")
+          : getT("settings.ai_providers.dialog.connection_failed")
         )
       });
     } catch (error) {
       setTestResult({
         success: false,
-        message: getT("pages.ai_providers.dialog.error_testing")
+        message: getT("settings.ai_providers.dialog.error_testing")
       });
     } finally {
       setTesting(false);
@@ -279,10 +279,10 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <h1 className="text-3xl font-semibold tracking-tight text-gray-900">
-            {getT("pages.ai_providers.title")}
+            {getT("settings.ai_providers.title")}
           </h1>
           <p className="text-base text-gray-500 leading-relaxed">
-            {getT("pages.ai_providers.subtitle")}
+            {getT("settings.ai_providers.subtitle")}
           </p>
         </div>
         <Button 
@@ -290,7 +290,7 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
           className="bg-blue-500 hover:bg-blue-600 text-white rounded-xl px-4 py-2 transition-all ease-in-out duration-200 flex items-center gap-2"
         >
           <PlusIcon />
-          {getT("pages.ai_providers.add")}
+          {getT("settings.ai_providers.add")}
         </Button>
       </div>
 
@@ -299,12 +299,12 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
         <CardHeader className="pb-3">
           <CardTitle className="text-lg font-medium flex items-center gap-2 text-blue-900">
             <LightbulbIcon />
-            {getT("pages.ai_providers.tip_title")}
+            {getT("settings.ai_providers.tip_title")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-sm text-blue-700 leading-relaxed">
-            {getT("pages.ai_providers.tip_description")}
+            {getT("settings.ai_providers.tip_description")}
           </p>
         </CardContent>
       </Card>
@@ -354,8 +354,8 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                     }
                   >
                     {provider.isActive
-                      ? getT("pages.ai_providers.active")
-                      : getT("pages.ai_providers.inactive")}
+                      ? getT("settings.ai_providers.active")
+                      : getT("settings.ai_providers.inactive")}
                   </Badge>
                 </div>
               </CardHeader>
@@ -364,21 +364,21 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                 {/* Configuration Status */}
                 <div className="flex items-center justify-between text-sm py-2 px-3 bg-gray-50 rounded-xl">
                   <span className="text-gray-600 font-medium">
-                    {getT("pages.ai_providers.status")}:
+                    {getT("settings.ai_providers.status")}:
                   </span>
                   <span className="flex items-center gap-1.5">
                     {isConfigured ? (
                       <>
                         <Check className="h-4 w-4 text-green-600" />
                         <span className="text-green-700 font-medium">
-                          {getT("pages.ai_providers.configured")}
+                          {getT("settings.ai_providers.configured")}
                         </span>
                       </>
                     ) : (
                       <>
                         <X className="h-4 w-4 text-red-600" />
                         <span className="text-red-700 font-medium">
-                          {getT("pages.ai_providers.not_configured")}
+                          {getT("settings.ai_providers.not_configured")}
                         </span>
                       </>
                     )}
@@ -412,7 +412,7 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                     className="flex-1 gap-2 rounded-xl transition-all"
                   >
                     <SettingsIcon />
-                    {getT("pages.ai_providers.configure")}
+                    {getT("settings.ai_providers.configure")}
                   </Button>
                   {isConfigured && (
                     <Button
@@ -423,8 +423,8 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                     >
                       <PowerIcon />
                       {provider.isActive
-                        ? getT("pages.ai_providers.deactivate")
-                        : getT("pages.ai_providers.activate")}
+                        ? getT("settings.ai_providers.deactivate")
+                        : getT("settings.ai_providers.activate")}
                     </Button>
                   )}
                   {provider.id !== "openai" && provider.id !== "anthropic" && (
@@ -436,7 +436,7 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                     >
                       {deleteConfirm === provider.id ? (
                         <span className="text-xs font-medium">
-                          {getT("pages.ai_providers.confirm_delete")}
+                          {getT("settings.ai_providers.confirm_delete")}
                         </span>
                       ) : (
                         <TrashIcon />
@@ -456,24 +456,24 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
           <DialogHeader className="space-y-2">
             <DialogTitle className="text-2xl font-semibold text-gray-900">
               {selectedProvider
-                ? getT("pages.ai_providers.dialog.edit_title", { name: selectedProvider.name })
-                : getT("pages.ai_providers.dialog.add_title")}
+                ? getT("settings.ai_providers.dialog.edit_title", { name: selectedProvider.name })
+                : getT("settings.ai_providers.dialog.add_title")}
             </DialogTitle>
             <DialogDescription className="text-base text-gray-500">
-              {getT("pages.ai_providers.dialog.description")}
+              {getT("settings.ai_providers.dialog.description")}
             </DialogDescription>
           </DialogHeader>
 
           <Tabs defaultValue="basic" className="w-full mt-6">
             <TabsList className="grid w-full grid-cols-3 bg-gray-100 rounded-xl p-1">
               <TabsTrigger value="basic" className="rounded-lg transition-all">
-                {getT("pages.ai_providers.dialog.tabs.basic")}
+                {getT("settings.ai_providers.dialog.tabs.basic")}
               </TabsTrigger>
               <TabsTrigger value="advanced" className="rounded-lg transition-all">
-                {getT("pages.ai_providers.dialog.tabs.advanced")}
+                {getT("settings.ai_providers.dialog.tabs.advanced")}
               </TabsTrigger>
               <TabsTrigger value="test" className="rounded-lg transition-all">
-                {getT("pages.ai_providers.dialog.tabs.test")}
+                {getT("settings.ai_providers.dialog.tabs.test")}
               </TabsTrigger>
             </TabsList>
 
@@ -483,7 +483,7 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="provider-id" className="text-sm font-medium text-gray-700">
-                      {getT("pages.ai_providers.dialog.provider_id")}
+                      {getT("settings.ai_providers.dialog.provider_id")}
                     </Label>
                     <Input
                       id="provider-id"
@@ -498,7 +498,7 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
 
                   <div className="space-y-2">
                     <Label htmlFor="provider-name" className="text-sm font-medium text-gray-700">
-                      {getT("pages.ai_providers.dialog.provider_name")}
+                      {getT("settings.ai_providers.dialog.provider_name")}
                     </Label>
                     <Input
                       id="provider-name"
@@ -515,7 +515,7 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
 
               <div className="space-y-2">
                 <Label htmlFor="api-key" className="text-sm font-medium text-gray-700">
-                  {getT("pages.ai_providers.api_key")}
+                  {getT("settings.ai_providers.api_key")}
                 </Label>
                 <div className="relative">
                   <Input
@@ -527,8 +527,8 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                     }
                     placeholder={
                       selectedProvider?.apiKey?.includes("••••")
-                        ? getT("pages.ai_providers.dialog.api_key_configured")
-                        : getT("pages.ai_providers.dialog.api_key_placeholder")
+                        ? getT("settings.ai_providers.dialog.api_key_configured")
+                        : getT("settings.ai_providers.dialog.api_key_placeholder")
                     }
                     className="border-gray-300 rounded-xl px-3 py-2 pr-12 focus:ring-2 focus:ring-blue-500 transition-all"
                   />
@@ -546,7 +546,7 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
 
               <div className="space-y-2">
                 <Label htmlFor="model" className="text-sm font-medium text-gray-700">
-                  {getT("pages.ai_providers.dialog.model")}
+                  {getT("settings.ai_providers.dialog.model")}
                 </Label>
                 <Select
                   value={editingProvider.selectedModel || ""}
@@ -555,7 +555,7 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                   }
                 >
                   <SelectTrigger className="rounded-xl border-gray-300 focus:ring-2 focus:ring-blue-500">
-                    <SelectValue placeholder={getT("pages.ai_providers.dialog.select_model")} />
+                    <SelectValue placeholder={getT("settings.ai_providers.dialog.select_model")} />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl">
                     {(availableModels.length > 0 ? availableModels : editingProvider.modelOptions || []).map((model) => (
@@ -573,7 +573,7 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Label htmlFor="temperature" className="text-sm font-medium text-gray-700">
-                    {getT("pages.ai_providers.dialog.temperature")}
+                    {getT("settings.ai_providers.dialog.temperature")}
                   </Label>
                   <span className="text-sm font-semibold text-blue-600">
                     {editingProvider.temperature || 0.7}
@@ -591,13 +591,13 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                   className="py-2"
                 />
                 <p className="text-xs text-gray-500 leading-relaxed">
-                  {getT("pages.ai_providers.dialog.temperature_description")}
+                  {getT("settings.ai_providers.dialog.temperature_description")}
                 </p>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="max-tokens" className="text-sm font-medium text-gray-700">
-                  {getT("pages.ai_providers.dialog.max_tokens")}
+                  {getT("settings.ai_providers.dialog.max_tokens")}
                 </Label>
                 <Input
                   id="max-tokens"
@@ -614,13 +614,13 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                   className="border-gray-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 transition-all"
                 />
                 <p className="text-xs text-gray-500 leading-relaxed">
-                  {getT("pages.ai_providers.dialog.max_tokens_description")}
+                  {getT("settings.ai_providers.dialog.max_tokens_description")}
                 </p>
               </div>
 
               <div className="space-y-2">
                 <Label htmlFor="base-url" className="text-sm font-medium text-gray-700">
-                  {getT("pages.ai_providers.dialog.base_url")}
+                  {getT("settings.ai_providers.dialog.base_url")}
                 </Label>
                 <Input
                   id="base-url"
@@ -632,7 +632,7 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                   className="border-gray-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 transition-all"
                 />
                 <p className="text-xs text-gray-500 leading-relaxed">
-                  {getT("pages.ai_providers.dialog.base_url_description")}
+                  {getT("settings.ai_providers.dialog.base_url_description")}
                 </p>
               </div>
             </TabsContent>
@@ -641,7 +641,7 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
             <TabsContent value="test" className="space-y-6 mt-6">
               <Alert className="rounded-xl bg-blue-50 border-blue-100">
                 <AlertDescription className="text-sm text-blue-700 leading-relaxed">
-                  {getT("pages.ai_providers.dialog.test_description")}
+                  {getT("settings.ai_providers.dialog.test_description")}
                 </AlertDescription>
               </Alert>
 
@@ -653,12 +653,12 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                 {testing ? (
                   <>
                     <LoaderIcon />
-                    {getT("pages.ai_providers.dialog.testing")}
+                    {getT("settings.ai_providers.dialog.testing")}
                   </>
                 ) : (
                   <>
                     <TestTubeIcon />
-                    {getT("pages.ai_providers.dialog.test_connection")}
+                    {getT("settings.ai_providers.dialog.test_connection")}
                   </>
                 )}
               </Button>
@@ -702,7 +702,7 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
               {saving ? (
                 <>
                   <LoaderIcon />
-                  {getT("pages.ai_providers.dialog.saving")}
+                  {getT("settings.ai_providers.dialog.saving")}
                 </>
               ) : (
                 getT("common.save")
