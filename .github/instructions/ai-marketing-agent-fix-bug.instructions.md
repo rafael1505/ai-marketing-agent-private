@@ -4,8 +4,8 @@ applyTo: "*"
 
 # AI Marketing Agent — Bug Fixing & QA Specialist Instructions
 
-**Version**: 1.0.0  
-**Last Updated**: January 28, 2025  
+**Version**: 2.0.0  
+**Last Updated**: January 29, 2025  
 **Applies To**: All bug fixing and debugging tasks
 
 ## Purpose
@@ -55,6 +55,116 @@ Before applying a fix, verify:
 - [ ] Commit message follows convention (e.g., `fix: correct null handling in X`)
 - [ ] Error handling uses `AIErrorDisplay` component (not `alert()`)
 - [ ] Changes don't break existing functionality
+
+## 🔍 Common Bug Patterns to Check
+
+### React Hooks Violations
+
+**Symptoms:**
+- "Rendered more hooks than during the previous render"
+- "Invalid hook call"
+- "Failed to call `useTranslations` because the context from `NextIntlClientProvider` was not found"
+- Inconsistent component behavior
+
+**Root causes:**
+1. Hooks inside conditional statements (`if`, `switch`, ternary)
+2. Hooks inside loops (`for`, `while`, `map`)
+3. Hooks in non-component functions (helpers, utilities)
+4. Hooks called after early returns
+5. Using `next-intl` hooks instead of project's custom `@/i18n` pattern
+
+**Fix pattern:**
+
+```tsx
+// ❌ BAD - Hook after conditional return
+function Component() {
+  if (error) return <Error />;
+  const [state, setState] = useState(false); // WRONG ORDER
+}
+
+// ✅ GOOD - Hooks first, then conditional logic
+function Component() {
+  const [state, setState] = useState(false);
+  if (error) return <Error />;
+}
+
+// ❌ BAD - Using next-intl (not configured in this project)
+import { useTranslations } from "next-intl";
+const t = useTranslations();
+
+// ✅ GOOD - Using project's custom i18n
+import { getTranslations } from "@/i18n";
+const [t, setT] = useState<Record<string, any>>({});
+useEffect(() => {
+  const loadTranslations = async () => {
+    const translations = await getTranslations(locale === "pt" ? "pt" : "en");
+    setT(translations);
+  };
+  loadTranslations();
+}, [locale]);
+```
+
+**When refactoring UX:**
+1. Identify all hooks in the component
+2. Move them to the **very top** of the function (before any conditional logic)
+3. Extract non-UI logic to **separate helper functions** (without hooks)
+4. Ensure translation loading uses `getTranslations()` from `@/i18n`
+5. Add loading guard: `if (loading || !t.pages) return <LoadingState />;`
+6. Test the component in isolation
+
+### TypeScript Type Safety
+
+**Before fixing, check:**
+- [ ] No `any` types (use proper interfaces from `@/types`)
+- [ ] All props have defined types
+- [ ] Optional chaining (`?.`) used for nullable objects
+- [ ] Nullish coalescing (`??`) used for default values
+- [ ] Imported types exist and are up to date
+
+**Common type issues:**
+```tsx
+// ❌ BAD - Using any
+const handleClick = (data: any) => { ... }
+
+// ✅ GOOD - Proper typing
+import { AIProviderConfig } from "@/types";
+const handleClick = (data: AIProviderConfig) => { ... }
+```
+
+### Performance Issues
+
+**Check before committing:**
+- [ ] No inline object/array creation in JSX (use `useMemo`)
+- [ ] No inline functions in props (use `useCallback`)
+- [ ] Large lists use `key` prop correctly
+- [ ] Heavy computations wrapped in `useMemo`
+- [ ] Event handlers wrapped in `useCallback`
+
+**Example fixes:**
+```tsx
+// ❌ BAD - Inline object creation (re-renders every time)
+<Component style={{ margin: 10 }} />
+
+// ✅ GOOD - Memoized object
+const style = useMemo(() => ({ margin: 10 }), []);
+<Component style={style} />
+
+// ❌ BAD - Inline function (new reference every render)
+<Button onClick={() => handleClick(id)} />
+
+// ✅ GOOD - Memoized callback
+const handleButtonClick = useCallback(() => handleClick(id), [id]);
+<Button onClick={handleButtonClick} />
+```
+
+### API Integration Issues
+
+**Common patterns:**
+- [ ] Check correlation IDs in error responses
+- [ ] Verify axios timeout is 60 seconds (for DALL-E)
+- [ ] Ensure masked API keys aren't sent (`sk-****`)
+- [ ] Use `AIErrorDisplay` for error rendering
+- [ ] Check provider is database-driven (not hardcoded)
 
 ## Example Workflow
 When prompted to fix a bug:

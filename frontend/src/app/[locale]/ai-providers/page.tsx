@@ -14,7 +14,21 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getUserAIProviders, updateAIProvider, deleteAIProvider, saveAIProvider, validateAPIKey, getProviderOptions } from "@/services/ai-providers";
 import { AIProviderConfig } from "@/types";
 import Image from "next/image";
-// Using standard emoji/text instead of lucide-react icons for compatibility
+import { getTranslations } from "@/i18n";
+import { Check, X } from "lucide-react";
+
+// Icon components for consistent styling
+const PlusIcon = () => <span className="text-lg">➕</span>;
+const SettingsIcon = () => <span className="text-lg">⚙️</span>;
+const PowerIcon = () => <span className="text-lg">⚡</span>;
+const TrashIcon = () => <span className="text-lg">🗑️</span>;
+const EyeIcon = () => <span className="text-lg">👁️</span>;
+const EyeOffIcon = () => <span className="text-lg">🙈</span>;
+const LightbulbIcon = () => <span className="text-lg">💡</span>;
+const TestTubeIcon = () => <span className="text-lg">🧪</span>;
+const LoaderIcon = () => (
+  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current inline-block" />
+);
 
 interface AIProvidersPageProps {
   params: {
@@ -35,6 +49,8 @@ const PROVIDER_LOGOS: Record<string, string> = {
 };
 
 export default function AIProvidersPage({ params }: AIProvidersPageProps) {
+  const locale = params.locale || "en";
+  const [t, setT] = useState<Record<string, any>>({});
   const [providers, setProviders] = useState<AIProviderConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProvider, setSelectedProvider] = useState<AIProviderConfig | null>(null);
@@ -47,11 +63,41 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-  const isPortuguese = params.locale === "pt";
-
   useEffect(() => {
+    const loadTranslations = async () => {
+      try {
+        const translations = await getTranslations(locale === "pt" ? "pt" : "en");
+        setT(translations);
+      } catch (error) {
+        console.error("Error loading translations:", error);
+      }
+    };
+    loadTranslations();
     loadProviders();
-  }, []);
+  }, [locale]);
+
+  // Helper function to safely get nested translation keys
+  const getT = (key: string, replacements?: Record<string, string>): string => {
+    const keys = key.split('.');
+    let value: any = t;
+    for (const k of keys) {
+      if (value && typeof value === 'object') {
+        value = value[k];
+      } else {
+        return key; // Return key if translation not found
+      }
+    }
+    
+    if (typeof value === 'string' && replacements) {
+      // Replace placeholders like {{name}}
+      return Object.entries(replacements).reduce(
+        (str, [k, v]) => str.replace(new RegExp(`{{${k}}}`, 'g'), v),
+        value
+      );
+    }
+    
+    return typeof value === 'string' ? value : key;
+  };
 
   const loadProviders = async () => {
     try {
@@ -119,7 +165,7 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
       setSaving(true);
       
       if (!editingProvider.id) {
-        throw new Error(isPortuguese ? "ID do provedor é obrigatório" : "Provider ID is required");
+        throw new Error(getT("pages.ai_providers.errors.provider_id_required"));
       }
 
       // Only send API key if it was actually changed
@@ -144,7 +190,7 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
       await loadProviders();
     } catch (error) {
       console.error("Error saving provider:", error);
-      alert(isPortuguese ? "Erro ao salvar provedor" : "Error saving provider");
+      alert(getT("pages.ai_providers.errors.saving"));
     } finally {
       setSaving(false);
     }
@@ -163,7 +209,7 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
       await loadProviders();
     } catch (error) {
       console.error("Error deleting provider:", error);
-      alert(isPortuguese ? "Erro ao deletar provedor" : "Error deleting provider");
+      alert(getT("pages.ai_providers.errors.deleting"));
     }
   };
 
@@ -175,7 +221,7 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
       if (!editingProvider.apiKey || editingProvider.apiKey.includes("••••")) {
         setTestResult({
           success: false,
-          message: isPortuguese ? "Por favor, insira uma chave de API" : "Please enter an API key"
+          message: getT("pages.ai_providers.dialog.enter_api_key")
         });
         return;
       }
@@ -185,14 +231,14 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
       setTestResult({
         success: result.valid,
         message: result.message || (result.valid 
-          ? (isPortuguese ? "Conexão bem-sucedida!" : "Connection successful!")
-          : (isPortuguese ? "Falha na conexão" : "Connection failed")
+          ? getT("pages.ai_providers.dialog.connection_successful")
+          : getT("pages.ai_providers.dialog.connection_failed")
         )
       });
     } catch (error) {
       setTestResult({
         success: false,
-        message: isPortuguese ? "Erro ao testar conexão" : "Error testing connection"
+        message: getT("pages.ai_providers.dialog.error_testing")
       });
     } finally {
       setTesting(false);
@@ -211,13 +257,13 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
     }
   };
 
-  if (loading) {
+  if (loading || !t.pages) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">
-            {isPortuguese ? "Carregando provedores..." : "Loading providers..."}
+        <div className="text-center space-y-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto" />
+          <p className="text-base text-gray-500">
+            {getT("pages.ai_providers.loading")}
           </p>
         </div>
       </div>
@@ -225,43 +271,43 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="max-w-7xl mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            {isPortuguese ? "Provedores de IA" : "AI Providers"}
+        <div className="space-y-1">
+          <h1 className="text-3xl font-semibold tracking-tight text-gray-900">
+            {getT("pages.ai_providers.title")}
           </h1>
-          <p className="text-muted-foreground mt-1">
-            {isPortuguese
-              ? "Configure e gerencie seus provedores de IA"
-              : "Configure and manage your AI providers"}
+          <p className="text-base text-gray-500 leading-relaxed">
+            {getT("pages.ai_providers.subtitle")}
           </p>
         </div>
-        <Button onClick={handleAddProvider} className="gap-2">
-          <span>➕</span>
-          {isPortuguese ? "Adicionar Provedor" : "Add Provider"}
+        <Button 
+          onClick={handleAddProvider} 
+          className="bg-blue-500 hover:bg-blue-600 text-white rounded-xl px-4 py-2 transition-all ease-in-out duration-200 flex items-center gap-2"
+        >
+          <PlusIcon />
+          {getT("pages.ai_providers.add")}
         </Button>
       </div>
 
       {/* Info Card */}
-      <Card className="bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            💡 {isPortuguese ? "Dica" : "Tip"}
+      <Card className="rounded-2xl bg-blue-50 border border-blue-100 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg font-medium flex items-center gap-2 text-blue-900">
+            <LightbulbIcon />
+            {getT("pages.ai_providers.tip_title")}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="text-sm text-muted-foreground">
-            {isPortuguese
-              ? "Clique no botão de configurações para editar todas as opções do provedor. Use o botão de teste para verificar se sua chave de API está funcionando."
-              : "Click the settings button to edit all provider options. Use the test button to verify your API key is working."}
+          <p className="text-sm text-blue-700 leading-relaxed">
+            {getT("pages.ai_providers.tip_description")}
           </p>
         </CardContent>
       </Card>
 
       {/* Providers Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {providers.map((provider) => {
           // A masked API key (••••) means an API key IS configured
           const hasApiKey = provider.apiKey && provider.apiKey.length > 0;
@@ -270,15 +316,15 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
           return (
             <Card
               key={provider.id}
-              className={`hover:shadow-md transition-shadow ${
-                provider.isActive ? "border-green-500" : ""
+              className={`rounded-2xl bg-white shadow-sm border transition-all ease-in-out duration-200 hover:shadow-md ${
+                provider.isActive ? "border-green-200" : "border-gray-100"
               }`}
             >
-              <CardHeader>
+              <CardHeader className="pb-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     {PROVIDER_LOGOS[provider.id] && (
-                      <div className="w-10 h-10 relative">
+                      <div className="w-10 h-10 relative flex-shrink-0">
                         <Image
                           src={PROVIDER_LOGOS[provider.id]}
                           alt={provider.name}
@@ -288,9 +334,11 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                         />
                       </div>
                     )}
-                    <div>
-                      <CardTitle className="text-lg">{provider.name}</CardTitle>
-                      <p className="text-xs text-muted-foreground">
+                    <div className="min-w-0">
+                      <CardTitle className="text-lg font-medium text-gray-900 truncate">
+                        {provider.name}
+                      </CardTitle>
+                      <p className="text-xs text-gray-500 truncate">
                         {provider.selectedModel || "No model selected"}
                       </p>
                     </div>
@@ -298,50 +346,56 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                   <Badge
                     className={
                       provider.isActive
-                        ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100"
-                        : "bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-100"
+                        ? "bg-green-100 text-green-700 border-green-200"
+                        : "bg-gray-100 text-gray-600 border-gray-200"
                     }
                   >
                     {provider.isActive
-                      ? isPortuguese
-                        ? "Ativo"
-                        : "Active"
-                      : isPortuguese
-                      ? "Inativo"
-                      : "Inactive"}
+                      ? getT("pages.ai_providers.active")
+                      : getT("pages.ai_providers.inactive")}
                   </Badge>
                 </div>
               </CardHeader>
 
-              <CardContent className="space-y-3">
+              <CardContent className="space-y-4">
                 {/* Configuration Status */}
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground">
-                    {isPortuguese ? "Status" : "Status"}:
+                <div className="flex items-center justify-between text-sm py-2 px-3 bg-gray-50 rounded-xl">
+                  <span className="text-gray-600 font-medium">
+                    {getT("pages.ai_providers.status")}:
                   </span>
-                  <span className="font-medium">
+                  <span className="flex items-center gap-1.5">
                     {isConfigured ? (
-                      <span className="text-green-600 flex items-center gap-1">
-                        <span>✓</span>
-                        {isPortuguese ? "Configurado" : "Configured"}
-                      </span>
+                      <>
+                        <Check className="h-4 w-4 text-green-600" />
+                        <span className="text-green-700 font-medium">
+                          {getT("pages.ai_providers.configured")}
+                        </span>
+                      </>
                     ) : (
-                      <span className="text-red-600 flex items-center gap-1">
-                        <span>✗</span>
-                        {isPortuguese ? "Não Configurado" : "Not Configured"}
-                      </span>
+                      <>
+                        <X className="h-4 w-4 text-red-600" />
+                        <span className="text-red-700 font-medium">
+                          {getT("pages.ai_providers.not_configured")}
+                        </span>
+                      </>
                     )}
                   </span>
                 </div>
 
                 {/* Configuration Details */}
                 {isConfigured && (
-                  <div className="text-xs text-muted-foreground space-y-1">
+                  <div className="text-xs text-gray-500 space-y-1 px-3">
                     {provider.temperature !== undefined && (
-                      <div>Temperature: {provider.temperature}</div>
+                      <div className="flex justify-between">
+                        <span>Temperature:</span>
+                        <span className="font-medium">{provider.temperature}</span>
+                      </div>
                     )}
                     {provider.maxTokens !== undefined && (
-                      <div>Max Tokens: {provider.maxTokens}</div>
+                      <div className="flex justify-between">
+                        <span>Max Tokens:</span>
+                        <span className="font-medium">{provider.maxTokens}</span>
+                      </div>
                     )}
                   </div>
                 )}
@@ -352,25 +406,22 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                     size="sm"
                     variant="outline"
                     onClick={() => handleEditProvider(provider)}
-                    className="flex-1 gap-2"
+                    className="flex-1 gap-2 rounded-xl transition-all"
                   >
-                    <span>⚙️</span>
-                    {isPortuguese ? "Configurar" : "Configure"}
+                    <SettingsIcon />
+                    {getT("pages.ai_providers.configure")}
                   </Button>
                   {isConfigured && (
                     <Button
                       size="sm"
                       variant={provider.isActive ? "destructive" : "default"}
                       onClick={() => toggleActive(provider)}
-                      className="gap-2"
+                      className="gap-2 rounded-xl transition-all"
                     >
+                      <PowerIcon />
                       {provider.isActive
-                        ? isPortuguese
-                          ? "Desativar"
-                          : "Deactivate"
-                        : isPortuguese
-                        ? "Ativar"
-                        : "Activate"}
+                        ? getT("pages.ai_providers.deactivate")
+                        : getT("pages.ai_providers.activate")}
                     </Button>
                   )}
                   {provider.id !== "openai" && provider.id !== "anthropic" && (
@@ -378,14 +429,14 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                       size="sm"
                       variant="ghost"
                       onClick={() => handleDelete(provider.id)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-all"
                     >
                       {deleteConfirm === provider.id ? (
-                        <span className="text-xs">
-                          {isPortuguese ? "Confirmar?" : "Confirm?"}
+                        <span className="text-xs font-medium">
+                          {getT("pages.ai_providers.confirm_delete")}
                         </span>
                       ) : (
-                        <span>🗑️</span>
+                        <TrashIcon />
                       )}
                     </Button>
                   )}
@@ -398,44 +449,38 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
 
       {/* Edit Provider Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl">
+          <DialogHeader className="space-y-2">
+            <DialogTitle className="text-2xl font-semibold text-gray-900">
               {selectedProvider
-                ? isPortuguese
-                  ? `Configurar ${selectedProvider.name}`
-                  : `Configure ${selectedProvider.name}`
-                : isPortuguese
-                ? "Adicionar Novo Provedor"
-                : "Add New Provider"}
+                ? getT("pages.ai_providers.dialog.edit_title", { name: selectedProvider.name })
+                : getT("pages.ai_providers.dialog.add_title")}
             </DialogTitle>
-            <DialogDescription>
-              {isPortuguese
-                ? "Configure as opções do provedor de IA"
-                : "Configure AI provider options"}
+            <DialogDescription className="text-base text-gray-500">
+              {getT("pages.ai_providers.dialog.description")}
             </DialogDescription>
           </DialogHeader>
 
-          <Tabs defaultValue="basic" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="basic">
-                {isPortuguese ? "Básico" : "Basic"}
+          <Tabs defaultValue="basic" className="w-full mt-6">
+            <TabsList className="grid w-full grid-cols-3 bg-gray-100 rounded-xl p-1">
+              <TabsTrigger value="basic" className="rounded-lg transition-all">
+                {getT("pages.ai_providers.dialog.tabs.basic")}
               </TabsTrigger>
-              <TabsTrigger value="advanced">
-                {isPortuguese ? "Avançado" : "Advanced"}
+              <TabsTrigger value="advanced" className="rounded-lg transition-all">
+                {getT("pages.ai_providers.dialog.tabs.advanced")}
               </TabsTrigger>
-              <TabsTrigger value="test">
-                {isPortuguese ? "Testar" : "Test"}
+              <TabsTrigger value="test" className="rounded-lg transition-all">
+                {getT("pages.ai_providers.dialog.tabs.test")}
               </TabsTrigger>
             </TabsList>
 
             {/* Basic Tab */}
-            <TabsContent value="basic" className="space-y-4 mt-4">
+            <TabsContent value="basic" className="space-y-6 mt-6">
               {!selectedProvider && (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="provider-id">
-                      {isPortuguese ? "ID do Provedor" : "Provider ID"}
+                    <Label htmlFor="provider-id" className="text-sm font-medium text-gray-700">
+                      {getT("pages.ai_providers.dialog.provider_id")}
                     </Label>
                     <Input
                       id="provider-id"
@@ -444,12 +489,13 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                         setEditingProvider({ ...editingProvider, id: e.target.value })
                       }
                       placeholder="e.g., custom-provider"
+                      className="border-gray-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 transition-all"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="provider-name">
-                      {isPortuguese ? "Nome do Provedor" : "Provider Name"}
+                    <Label htmlFor="provider-name" className="text-sm font-medium text-gray-700">
+                      {getT("pages.ai_providers.dialog.provider_name")}
                     </Label>
                     <Input
                       id="provider-name"
@@ -458,14 +504,15 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                         setEditingProvider({ ...editingProvider, name: e.target.value })
                       }
                       placeholder="e.g., Custom AI Provider"
+                      className="border-gray-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 transition-all"
                     />
                   </div>
                 </>
               )}
 
               <div className="space-y-2">
-                <Label htmlFor="api-key">
-                  {isPortuguese ? "Chave de API" : "API Key"}
+                <Label htmlFor="api-key" className="text-sm font-medium text-gray-700">
+                  {getT("pages.ai_providers.api_key")}
                 </Label>
                 <div className="relative">
                   <Input
@@ -477,29 +524,26 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                     }
                     placeholder={
                       selectedProvider?.apiKey?.includes("••••")
-                        ? isPortuguese
-                          ? "✓ API Key configurada - Digite para alterar"
-                          : "✓ API Key configured - Enter to change"
-                        : isPortuguese
-                        ? "Digite sua API Key"
-                        : "Enter your API Key"
+                        ? getT("pages.ai_providers.dialog.api_key_configured")
+                        : getT("pages.ai_providers.dialog.api_key_placeholder")
                     }
+                    className="border-gray-300 rounded-xl px-3 py-2 pr-12 focus:ring-2 focus:ring-blue-500 transition-all"
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
                     onClick={() => setShowApiKey(!showApiKey)}
                   >
-                    {showApiKey ? <span>🙈</span> : <span>👁️</span>}
+                    {showApiKey ? <EyeOffIcon /> : <EyeIcon />}
                   </Button>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="model">
-                  {isPortuguese ? "Modelo" : "Model"}
+                <Label htmlFor="model" className="text-sm font-medium text-gray-700">
+                  {getT("pages.ai_providers.dialog.model")}
                 </Label>
                 <Select
                   value={editingProvider.selectedModel || ""}
@@ -507,12 +551,12 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                     setEditingProvider({ ...editingProvider, selectedModel: value })
                   }
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder={isPortuguese ? "Selecione um modelo" : "Select a model"} />
+                  <SelectTrigger className="rounded-xl border-gray-300 focus:ring-2 focus:ring-blue-500">
+                    <SelectValue placeholder={getT("pages.ai_providers.dialog.select_model")} />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="rounded-xl">
                     {(availableModels.length > 0 ? availableModels : editingProvider.modelOptions || []).map((model) => (
-                      <SelectItem key={model} value={model}>
+                      <SelectItem key={model} value={model} className="rounded-lg">
                         {model}
                       </SelectItem>
                     ))}
@@ -522,11 +566,16 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
             </TabsContent>
 
             {/* Advanced Tab */}
-            <TabsContent value="advanced" className="space-y-4 mt-4">
-              <div className="space-y-2">
-                <Label htmlFor="temperature">
-                  {isPortuguese ? "Temperatura" : "Temperature"}: {editingProvider.temperature || 0.7}
-                </Label>
+            <TabsContent value="advanced" className="space-y-6 mt-6">
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="temperature" className="text-sm font-medium text-gray-700">
+                    {getT("pages.ai_providers.dialog.temperature")}
+                  </Label>
+                  <span className="text-sm font-semibold text-blue-600">
+                    {editingProvider.temperature || 0.7}
+                  </span>
+                </div>
                 <Slider
                   id="temperature"
                   min={0}
@@ -536,17 +585,16 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                   onValueChange={(value) =>
                     setEditingProvider({ ...editingProvider, temperature: value[0] })
                   }
+                  className="py-2"
                 />
-                <p className="text-xs text-muted-foreground">
-                  {isPortuguese
-                    ? "Controla a aleatoriedade da saída. Valores mais altos geram saídas mais criativas."
-                    : "Controls output randomness. Higher values make output more creative."}
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  {getT("pages.ai_providers.dialog.temperature_description")}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="max-tokens">
-                  {isPortuguese ? "Máximo de Tokens" : "Max Tokens"}
+                <Label htmlFor="max-tokens" className="text-sm font-medium text-gray-700">
+                  {getT("pages.ai_providers.dialog.max_tokens")}
                 </Label>
                 <Input
                   id="max-tokens"
@@ -560,17 +608,16 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                   }
                   min={1}
                   max={32000}
+                  className="border-gray-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 transition-all"
                 />
-                <p className="text-xs text-muted-foreground">
-                  {isPortuguese
-                    ? "Limite máximo de tokens para geração"
-                    : "Maximum token limit for generation"}
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  {getT("pages.ai_providers.dialog.max_tokens_description")}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="base-url">
-                  {isPortuguese ? "URL Base (Opcional)" : "Base URL (Optional)"}
+                <Label htmlFor="base-url" className="text-sm font-medium text-gray-700">
+                  {getT("pages.ai_providers.dialog.base_url")}
                 </Label>
                 <Input
                   id="base-url"
@@ -579,50 +626,56 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                     setEditingProvider({ ...editingProvider, baseUrl: e.target.value })
                   }
                   placeholder="https://api.example.com/v1"
+                  className="border-gray-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 transition-all"
                 />
-                <p className="text-xs text-muted-foreground">
-                  {isPortuguese
-                    ? "Para APIs customizadas ou auto-hospedadas"
-                    : "For custom or self-hosted APIs"}
+                <p className="text-xs text-gray-500 leading-relaxed">
+                  {getT("pages.ai_providers.dialog.base_url_description")}
                 </p>
               </div>
             </TabsContent>
 
             {/* Test Tab */}
-            <TabsContent value="test" className="space-y-4 mt-4">
-              <Alert>
-                <AlertDescription>
-                  {isPortuguese
-                    ? "Teste a conexão com o provedor de IA para verificar se a chave de API está válida."
-                    : "Test the connection to the AI provider to verify your API key is valid."}
+            <TabsContent value="test" className="space-y-6 mt-6">
+              <Alert className="rounded-xl bg-blue-50 border-blue-100">
+                <AlertDescription className="text-sm text-blue-700 leading-relaxed">
+                  {getT("pages.ai_providers.dialog.test_description")}
                 </AlertDescription>
               </Alert>
 
               <Button
                 onClick={handleTestConnection}
                 disabled={testing || !editingProvider.apiKey}
-                className="w-full gap-2"
+                className="w-full gap-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white transition-all"
               >
-                <span>🧪</span>
-                {testing
-                  ? isPortuguese
-                    ? "Testando..."
-                    : "Testing..."
-                  : isPortuguese
-                  ? "Testar Conexão"
-                  : "Test Connection"}
+                {testing ? (
+                  <>
+                    <LoaderIcon />
+                    {getT("pages.ai_providers.dialog.testing")}
+                  </>
+                ) : (
+                  <>
+                    <TestTubeIcon />
+                    {getT("pages.ai_providers.dialog.test_connection")}
+                  </>
+                )}
               </Button>
 
               {testResult && (
                 <Alert
                   className={
                     testResult.success
-                      ? "bg-green-50 border-green-200 text-green-800"
-                      : "bg-red-50 border-red-200 text-red-800"
+                      ? "rounded-xl bg-green-50 border-green-200"
+                      : "rounded-xl bg-red-50 border-red-200"
                   }
                 >
-                  <AlertDescription className="flex items-center gap-2">
-                    {testResult.success ? <span>✓</span> : <span>✗</span>}
+                  <AlertDescription className={`flex items-center gap-2 text-sm font-medium ${
+                    testResult.success ? "text-green-700" : "text-red-700"
+                  }`}>
+                    {testResult.success ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <X className="h-4 w-4" />
+                    )}
                     {testResult.message}
                   </AlertDescription>
                 </Alert>
@@ -630,18 +683,27 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
             </TabsContent>
           </Tabs>
 
-          <div className="flex gap-3 justify-end pt-4 border-t">
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              {isPortuguese ? "Cancelar" : "Cancel"}
+          <div className="flex gap-3 justify-end pt-6 mt-6 border-t border-gray-100">
+            <Button 
+              variant="outline" 
+              onClick={() => setIsDialogOpen(false)}
+              className="rounded-xl px-6 transition-all"
+            >
+              {getT("common.cancel")}
             </Button>
-            <Button onClick={handleSave} disabled={saving}>
-              {saving
-                ? isPortuguese
-                  ? "Salvando..."
-                  : "Saving..."
-                : isPortuguese
-                ? "Salvar"
-                : "Save"}
+            <Button 
+              onClick={handleSave} 
+              disabled={saving}
+              className="rounded-xl px-6 bg-blue-500 hover:bg-blue-600 text-white transition-all flex items-center gap-2"
+            >
+              {saving ? (
+                <>
+                  <LoaderIcon />
+                  {getT("pages.ai_providers.dialog.saving")}
+                </>
+              ) : (
+                getT("common.save")
+              )}
             </Button>
           </div>
         </DialogContent>
