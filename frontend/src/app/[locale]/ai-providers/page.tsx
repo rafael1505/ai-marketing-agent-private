@@ -51,6 +51,7 @@ const PROVIDER_LOGOS: Record<string, string> = {
 export default function AIProvidersPage({ params }: AIProvidersPageProps) {
   const locale = params.locale || "en";
   const [t, setT] = useState<Record<string, any>>({});
+  const [translationsLoaded, setTranslationsLoaded] = useState(false);
   const [providers, setProviders] = useState<AIProviderConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedProvider, setSelectedProvider] = useState<AIProviderConfig | null>(null);
@@ -68,8 +69,10 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
       try {
         const translations = await getTranslations(locale === "pt" ? "pt" : "en");
         setT(translations);
+        setTranslationsLoaded(true);
       } catch (error) {
         console.error("Error loading translations:", error);
+        setTranslationsLoaded(true); // Set to true even on error to prevent infinite loading
       }
     };
     loadTranslations();
@@ -257,13 +260,13 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
     }
   };
 
-  if (loading || !t.pages) {
+  if (loading || !translationsLoaded) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto" />
           <p className="text-base text-gray-500">
-            {getT("pages.ai_providers.loading")}
+            {locale === "pt" ? "Carregando..." : "Loading..."}
           </p>
         </div>
       </div>
