@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,12 +48,38 @@ const PROVIDER_LOGOS: Record<string, string> = {
   lmstudio: "/ai-providers/lmstudio.svg",
 };
 
+// Helper function to safely get nested translation keys (pure function, no hooks)
+function getTranslationValue(t: Record<string, any>, key: string, replacements?: Record<string, string>): string {
+  const keys = key.split('.');
+  let value: any = t;
+  
+  for (const k of keys) {
+    if (value && typeof value === 'object') {
+      value = value[k];
+    } else {
+      return key; // Return key if translation not found
+    }
+  }
+  
+  if (typeof value === 'string' && replacements) {
+    // Replace placeholders like {{name}}
+    return Object.entries(replacements).reduce(
+      (str, [k, v]) => str.replace(new RegExp(`{{${k}}}`, 'g'), v),
+      value
+    );
+  }
+  
+  return typeof value === 'string' ? value : key;
+}
+
 export default function AIProvidersPage({ params }: AIProvidersPageProps) {
+  // ALL HOOKS AT TOP LEVEL - NO EXCEPTIONS
   const locale = params.locale || "en";
   const [t, setT] = useState<Record<string, any>>({});
   const [translationsLoaded, setTranslationsLoaded] = useState(false);
   const [providers, setProviders] = useState<AIProviderConfig[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedProvider, setSelectedProvider] = useState<AIProviderConfig | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProvider, setEditingProvider] = useState<Partial<AIProviderConfig>>({});
@@ -64,6 +90,12 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
   const [availableModels, setAvailableModels] = useState<string[]>([]);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
+  // Helper function (uses state, so defined as useCallback)
+  const getT = useCallback((key: string, replacements?: Record<string, string>): string => {
+    return getTranslationValue(t, key, replacements);
+  }, [t]);
+
+  // Load translations effect
   useEffect(() => {
     const loadTranslations = async () => {
       try {
@@ -72,69 +104,52 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
         setTranslationsLoaded(true);
       } catch (error) {
         console.error("Error loading translations:", error);
-        setTranslationsLoaded(true); // Set to true even on error to prevent infinite loading
+        setError("Failed to load translations");
+        setTranslationsLoaded(true); // Prevent infinite loading
       }
     };
     loadTranslations();
-    loadProviders();
   }, [locale]);
 
-  // Helper function to safely get nested translation keys
-  const getT = (key: string, replacements?: Record<string, string>): string => {
-    const keys = key.split('.');
-    let value: any = t;
-    for (const k of keys) {
-      if (value && typeof value === 'object') {
-        value = value[k];
-      } else {
-        return key; // Return key if translation not found
-      }
-    }
-    
-    if (typeof value === 'string' && replacements) {
-      // Replace placeholders like {{name}}
-      return Object.entries(replacements).reduce(
-        (str, [k, v]) => str.replace(new RegExp(`{{${k}}}`, 'g'), v),
-        value
-      );
-    }
-    
-    return typeof value === 'string' ? value : key;
-  };
-
-  const loadProviders = async () => {
-    try {
-      setLoading(true);
-      const data = await getUserAIProviders();
-      
-      // Use only database-driven providers - no fallback, no merge
-      if (data && Array.isArray(data)) {
-        setProviders(data);
-      } else {
-        // If API returns invalid data, show empty state
+  // Load providers effect
+  useEffect(() => {
+    const loadProviders = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await getUserAIProviders();
+        
+        if (data && Array.isArray(data)) {
+          setProviders(data);
+        } else {
+          setProviders([]);
+          console.warn("getUserAIProviders returned invalid data:", data);
+        }
+      } catch (error) {
+        console.error("Error loading providers:", error);
+        setError("Failed to load AI providers");
         setProviders([]);
-        console.warn("getUserAIProviders returned invalid data:", data);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Error loading providers:", error);
-      // On error, show empty state - no fallback
-      setProviders([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
 
-  const handleEditProvider = async (provider: AIProviderConfig) => {
+    // Only load providers after translations are loaded
+    if (translationsLoaded) {
+      loadProviders();
+    }
+  }, [translationsLoaded]);
+
+  // Handler functions (all defined with useCallback for optimization)
+  const handleEditProvider = useCallback(async (provider: AIProviderConfig) => {
     setSelectedProvider(provider);
     setEditingProvider({
       ...provider,
-      // Don't pre-fill API key if it's masked
       apiKey: provider.apiKey?.includes("••••") ? "" : provider.apiKey,
     });
     setShowApiKey(false);
     setTestResult(null);
     
-    // Load available models for this provider
     try {
       const options = await getProviderOptions(provider.id);
       setAvailableModels(options.models || provider.modelOptions || []);
@@ -144,62 +159,52 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
     }
     
     setIsDialogOpen(true);
-  };
+  }, []);
 
-  const handleAddProvider = () => {
+  const handleAddProvider = useCallback(() => {
     setSelectedProvider(null);
-    setEditingProvider({
-      id: "",
-      name: "",
-      apiKey: "",
-      isActive: false,
-      selectedModel: "",
-      temperature: 0.7,
-      maxTokens: 1000,
-    });
+    setEditingProvider({});
     setShowApiKey(false);
     setTestResult(null);
     setAvailableModels([]);
     setIsDialogOpen(true);
-  };
+  }, []);
 
-  const handleSave = async () => {
+  const handleSaveProvider = useCallback(async () => {
+    if (!editingProvider.id) {
+      alert(getTranslationValue(t, "settings.ai_providers.errors.provider_id_required"));
+      return;
+    }
+
     try {
       setSaving(true);
       
-      if (!editingProvider.id) {
-        throw new Error(getT("settings.ai_providers.errors.provider_id_required"));
-      }
-
-      // Only send API key if it was actually changed
-      const updates: any = {
+      // Check if API key is masked (not changed)
+      const isMaskedKey = editingProvider.apiKey?.includes("••••");
+      
+      // Don't send masked API key to backend
+      const providerData = {
         ...editingProvider,
+        apiKey: isMaskedKey ? undefined : editingProvider.apiKey,
       };
 
-      // Don't send empty or masked API keys
-      if (!updates.apiKey || updates.apiKey.includes("••••")) {
-        delete updates.apiKey;
-      }
-
-      if (selectedProvider) {
-        // Update existing provider
-        await updateAIProvider(selectedProvider.id, updates);
-      } else {
-        // Create new provider
-        await saveAIProvider(updates as AIProviderConfig);
-      }
-      
+      await saveAIProvider(providerData as AIProviderConfig);
       setIsDialogOpen(false);
-      await loadProviders();
+      
+      // Reload providers
+      const data = await getUserAIProviders();
+      if (data && Array.isArray(data)) {
+        setProviders(data);
+      }
     } catch (error) {
       console.error("Error saving provider:", error);
-      alert(getT("settings.ai_providers.errors.saving"));
+      alert(getTranslationValue(t, "settings.ai_providers.errors.saving"));
     } finally {
       setSaving(false);
     }
-  };
+  }, [editingProvider, t]);
 
-  const handleDelete = async (providerId: string) => {
+  const handleDeleteProvider = useCallback(async (providerId: string) => {
     if (deleteConfirm !== providerId) {
       setDeleteConfirm(providerId);
       setTimeout(() => setDeleteConfirm(null), 3000);
@@ -209,14 +214,19 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
     try {
       await deleteAIProvider(providerId);
       setDeleteConfirm(null);
-      await loadProviders();
+      
+      // Reload providers
+      const data = await getUserAIProviders();
+      if (data && Array.isArray(data)) {
+        setProviders(data);
+      }
     } catch (error) {
       console.error("Error deleting provider:", error);
-      alert(getT("settings.ai_providers.errors.deleting"));
+      alert(getTranslationValue(t, "settings.ai_providers.errors.deleting"));
     }
-  };
+  }, [deleteConfirm, t]);
 
-  const handleTestConnection = async () => {
+  const handleTestConnection = useCallback(async () => {
     try {
       setTesting(true);
       setTestResult(null);
@@ -224,7 +234,7 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
       if (!editingProvider.apiKey || editingProvider.apiKey.includes("••••")) {
         setTestResult({
           success: false,
-          message: getT("settings.ai_providers.dialog.enter_api_key")
+          message: getTranslationValue(t, "settings.ai_providers.dialog.enter_api_key")
         });
         return;
       }
@@ -234,32 +244,38 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
       setTestResult({
         success: result.valid,
         message: result.message || (result.valid 
-          ? getT("settings.ai_providers.dialog.connection_successful")
-          : getT("settings.ai_providers.dialog.connection_failed")
+          ? getTranslationValue(t, "settings.ai_providers.dialog.connection_successful")
+          : getTranslationValue(t, "settings.ai_providers.dialog.connection_failed")
         )
       });
     } catch (error) {
       setTestResult({
         success: false,
-        message: getT("settings.ai_providers.dialog.error_testing")
+        message: getTranslationValue(t, "settings.ai_providers.dialog.error_testing")
       });
     } finally {
       setTesting(false);
     }
-  };
+  }, [editingProvider, t]);
 
-  const toggleActive = async (provider: AIProviderConfig) => {
+  const toggleActive = useCallback(async (provider: AIProviderConfig) => {
     try {
       await updateAIProvider(provider.id, {
+        ...provider,
         isActive: !provider.isActive,
       });
       
-      await loadProviders();
+      // Reload providers
+      const data = await getUserAIProviders();
+      if (data && Array.isArray(data)) {
+        setProviders(data);
+      }
     } catch (error) {
       console.error("Error toggling provider:", error);
     }
-  };
+  }, []);
 
+  // Loading state - show before translations and providers are loaded
   if (loading || !translationsLoaded) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -269,6 +285,19 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
             {locale === "pt" ? "Carregando..." : "Loading..."}
           </p>
         </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto p-6">
+        <Alert className="rounded-2xl border-red-200 bg-red-50">
+          <AlertDescription className="text-red-700">
+            {error}
+          </AlertDescription>
+        </Alert>
       </div>
     );
   }
@@ -312,7 +341,6 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
       {/* Providers Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {providers.map((provider) => {
-          // A masked API key (••••) means an API key IS configured
           const hasApiKey = provider.apiKey && provider.apiKey.length > 0;
           const isConfigured = provider.isConfigured || hasApiKey;
 
@@ -323,126 +351,87 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                 provider.isActive ? "border-green-200" : "border-gray-100"
               }`}
             >
-              <CardHeader className="pb-4">
+              <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     {PROVIDER_LOGOS[provider.id] && (
-                      <div className="w-10 h-10 relative flex-shrink-0">
-                        <Image
-                          src={PROVIDER_LOGOS[provider.id]}
-                          alt={provider.name}
-                          width={40}
-                          height={40}
-                          className="object-contain"
-                        />
-                      </div>
+                      <Image
+                        src={PROVIDER_LOGOS[provider.id]}
+                        alt={provider.name}
+                        width={32}
+                        height={32}
+                        className="rounded"
+                      />
                     )}
-                    <div className="min-w-0">
-                      <CardTitle className="text-lg font-medium text-gray-900 truncate">
-                        {provider.name}
-                      </CardTitle>
-                      <p className="text-xs text-gray-500 truncate">
-                        {provider.selectedModel || "No model selected"}
-                      </p>
-                    </div>
+                    <CardTitle className="text-lg font-medium">{provider.name}</CardTitle>
                   </div>
                   <Badge
-                    className={
+                    variant={provider.isActive ? "default" : "secondary"}
+                    className={`rounded-full px-3 py-1 text-xs font-medium ${
                       provider.isActive
-                        ? "bg-green-100 text-green-700 border-green-200"
-                        : "bg-gray-100 text-gray-600 border-gray-200"
-                    }
+                        ? "bg-green-100 text-green-700 hover:bg-green-100"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-100"
+                    }`}
                   >
-                    {provider.isActive
-                      ? getT("settings.ai_providers.active")
-                      : getT("settings.ai_providers.inactive")}
+                    {provider.isActive ? getT("settings.ai_providers.active") : getT("settings.ai_providers.inactive")}
                   </Badge>
                 </div>
               </CardHeader>
 
               <CardContent className="space-y-4">
-                {/* Configuration Status */}
-                <div className="flex items-center justify-between text-sm py-2 px-3 bg-gray-50 rounded-xl">
-                  <span className="text-gray-600 font-medium">
-                    {getT("settings.ai_providers.status")}:
-                  </span>
-                  <span className="flex items-center gap-1.5">
-                    {isConfigured ? (
-                      <>
-                        <Check className="h-4 w-4 text-green-600" />
-                        <span className="text-green-700 font-medium">
-                          {getT("settings.ai_providers.configured")}
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <X className="h-4 w-4 text-red-600" />
-                        <span className="text-red-700 font-medium">
-                          {getT("settings.ai_providers.not_configured")}
-                        </span>
-                      </>
-                    )}
-                  </span>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">{getT("settings.ai_providers.status")}:</span>
+                  {isConfigured ? (
+                    <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 rounded-full">
+                      <Check className="w-3 h-3 mr-1" />
+                      {getT("settings.ai_providers.configured")}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200 rounded-full">
+                      <X className="w-3 h-3 mr-1" />
+                      {getT("settings.ai_providers.not_configured")}
+                    </Badge>
+                  )}
                 </div>
 
-                {/* Configuration Details */}
-                {isConfigured && (
-                  <div className="text-xs text-gray-500 space-y-1 px-3">
-                    {provider.temperature !== undefined && (
-                      <div className="flex justify-between">
-                        <span>Temperature:</span>
-                        <span className="font-medium">{provider.temperature}</span>
-                      </div>
-                    )}
-                    {provider.maxTokens !== undefined && (
-                      <div className="flex justify-between">
-                        <span>Max Tokens:</span>
-                        <span className="font-medium">{provider.maxTokens}</span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                <div className="flex gap-2 pt-2">
+                <div className="flex gap-2">
                   <Button
-                    size="sm"
-                    variant="outline"
                     onClick={() => handleEditProvider(provider)}
-                    className="flex-1 gap-2 rounded-xl transition-all"
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 rounded-xl border-gray-200 hover:bg-gray-50 transition-all"
                   >
                     <SettingsIcon />
                     {getT("settings.ai_providers.configure")}
                   </Button>
+                  
                   {isConfigured && (
                     <Button
-                      size="sm"
-                      variant={provider.isActive ? "destructive" : "default"}
                       onClick={() => toggleActive(provider)}
-                      className="gap-2 rounded-xl transition-all"
+                      variant="outline"
+                      size="sm"
+                      className={`rounded-xl transition-all ${
+                        provider.isActive
+                          ? "border-green-200 bg-green-50 hover:bg-green-100 text-green-700"
+                          : "border-gray-200 hover:bg-gray-50"
+                      }`}
                     >
                       <PowerIcon />
-                      {provider.isActive
-                        ? getT("settings.ai_providers.deactivate")
-                        : getT("settings.ai_providers.activate")}
                     </Button>
                   )}
-                  {provider.id !== "openai" && provider.id !== "anthropic" && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleDelete(provider.id)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-all"
-                    >
-                      {deleteConfirm === provider.id ? (
-                        <span className="text-xs font-medium">
-                          {getT("settings.ai_providers.confirm_delete")}
-                        </span>
-                      ) : (
-                        <TrashIcon />
-                      )}
-                    </Button>
-                  )}
+                  
+                  <Button
+                    onClick={() => handleDeleteProvider(provider.id)}
+                    variant="outline"
+                    size="sm"
+                    className={`rounded-xl transition-all ${
+                      deleteConfirm === provider.id
+                        ? "border-red-200 bg-red-50 hover:bg-red-100 text-red-700"
+                        : "border-gray-200 hover:bg-gray-50"
+                    }`}
+                  >
+                    {deleteConfirm === provider.id ? getT("settings.ai_providers.confirm_delete") : <TrashIcon />}
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -450,71 +439,62 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
         })}
       </div>
 
-      {/* Edit Provider Dialog */}
+      {/* Configuration Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl">
-          <DialogHeader className="space-y-2">
-            <DialogTitle className="text-2xl font-semibold text-gray-900">
+        <DialogContent className="max-w-2xl rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-semibold">
               {selectedProvider
                 ? getT("settings.ai_providers.dialog.edit_title", { name: selectedProvider.name })
                 : getT("settings.ai_providers.dialog.add_title")}
             </DialogTitle>
-            <DialogDescription className="text-base text-gray-500">
+            <DialogDescription className="text-gray-500">
               {getT("settings.ai_providers.dialog.description")}
             </DialogDescription>
           </DialogHeader>
 
-          <Tabs defaultValue="basic" className="w-full mt-6">
-            <TabsList className="grid w-full grid-cols-3 bg-gray-100 rounded-xl p-1">
-              <TabsTrigger value="basic" className="rounded-lg transition-all">
+          <Tabs defaultValue="basic" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 rounded-xl bg-gray-100 p-1">
+              <TabsTrigger value="basic" className="rounded-lg">
                 {getT("settings.ai_providers.dialog.tabs.basic")}
               </TabsTrigger>
-              <TabsTrigger value="advanced" className="rounded-lg transition-all">
+              <TabsTrigger value="advanced" className="rounded-lg">
                 {getT("settings.ai_providers.dialog.tabs.advanced")}
               </TabsTrigger>
-              <TabsTrigger value="test" className="rounded-lg transition-all">
+              <TabsTrigger value="test" className="rounded-lg">
                 {getT("settings.ai_providers.dialog.tabs.test")}
               </TabsTrigger>
             </TabsList>
 
             {/* Basic Tab */}
-            <TabsContent value="basic" className="space-y-6 mt-6">
-              {!selectedProvider && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="provider-id" className="text-sm font-medium text-gray-700">
-                      {getT("settings.ai_providers.dialog.provider_id")}
-                    </Label>
-                    <Input
-                      id="provider-id"
-                      value={editingProvider.id || ""}
-                      onChange={(e) =>
-                        setEditingProvider({ ...editingProvider, id: e.target.value })
-                      }
-                      placeholder="e.g., custom-provider"
-                      className="border-gray-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 transition-all"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="provider-name" className="text-sm font-medium text-gray-700">
-                      {getT("settings.ai_providers.dialog.provider_name")}
-                    </Label>
-                    <Input
-                      id="provider-name"
-                      value={editingProvider.name || ""}
-                      onChange={(e) =>
-                        setEditingProvider({ ...editingProvider, name: e.target.value })
-                      }
-                      placeholder="e.g., Custom AI Provider"
-                      className="border-gray-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 transition-all"
-                    />
-                  </div>
-                </>
-              )}
+            <TabsContent value="basic" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <Label htmlFor="provider-id" className="text-sm font-medium">
+                  {getT("settings.ai_providers.dialog.provider_id")}
+                </Label>
+                <Input
+                  id="provider-id"
+                  value={editingProvider.id || ""}
+                  onChange={(e) => setEditingProvider({ ...editingProvider, id: e.target.value })}
+                  disabled={!!selectedProvider}
+                  className="rounded-xl border-gray-300 focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
 
               <div className="space-y-2">
-                <Label htmlFor="api-key" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="provider-name" className="text-sm font-medium">
+                  {getT("settings.ai_providers.dialog.provider_name")}
+                </Label>
+                <Input
+                  id="provider-name"
+                  value={editingProvider.name || ""}
+                  onChange={(e) => setEditingProvider({ ...editingProvider, name: e.target.value })}
+                  className="rounded-xl border-gray-300 focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="api-key" className="text-sm font-medium">
                   {getT("settings.ai_providers.api_key")}
                 </Label>
                 <div className="relative">
@@ -522,62 +502,58 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                     id="api-key"
                     type={showApiKey ? "text" : "password"}
                     value={editingProvider.apiKey || ""}
-                    onChange={(e) =>
-                      setEditingProvider({ ...editingProvider, apiKey: e.target.value })
-                    }
+                    onChange={(e) => setEditingProvider({ ...editingProvider, apiKey: e.target.value })}
                     placeholder={
                       selectedProvider?.apiKey?.includes("••••")
                         ? getT("settings.ai_providers.dialog.api_key_configured")
                         : getT("settings.ai_providers.dialog.api_key_placeholder")
                     }
-                    className="border-gray-300 rounded-xl px-3 py-2 pr-12 focus:ring-2 focus:ring-blue-500 transition-all"
+                    className="rounded-xl border-gray-300 focus:ring-2 focus:ring-blue-500 pr-10"
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
                     onClick={() => setShowApiKey(!showApiKey)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2"
                   >
                     {showApiKey ? <EyeOffIcon /> : <EyeIcon />}
                   </Button>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="model" className="text-sm font-medium text-gray-700">
-                  {getT("settings.ai_providers.dialog.model")}
-                </Label>
-                <Select
-                  value={editingProvider.selectedModel || ""}
-                  onValueChange={(value) =>
-                    setEditingProvider({ ...editingProvider, selectedModel: value })
-                  }
-                >
-                  <SelectTrigger className="rounded-xl border-gray-300 focus:ring-2 focus:ring-blue-500">
-                    <SelectValue placeholder={getT("settings.ai_providers.dialog.select_model")} />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    {(availableModels.length > 0 ? availableModels : editingProvider.modelOptions || []).map((model) => (
-                      <SelectItem key={model} value={model} className="rounded-lg">
-                        {model}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {availableModels.length > 0 && (
+                <div className="space-y-2">
+                  <Label htmlFor="model" className="text-sm font-medium">
+                    {getT("settings.ai_providers.dialog.model")}
+                  </Label>
+                  <Select
+                    value={editingProvider.model || ""}
+                    onValueChange={(value) => setEditingProvider({ ...editingProvider, model: value })}
+                  >
+                    <SelectTrigger className="rounded-xl border-gray-300">
+                      <SelectValue placeholder={getT("settings.ai_providers.dialog.select_model")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableModels.map((model) => (
+                        <SelectItem key={model} value={model}>
+                          {model}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </TabsContent>
 
             {/* Advanced Tab */}
-            <TabsContent value="advanced" className="space-y-6 mt-6">
-              <div className="space-y-3">
+            <TabsContent value="advanced" className="space-y-4 mt-4">
+              <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="temperature" className="text-sm font-medium text-gray-700">
+                  <Label htmlFor="temperature" className="text-sm font-medium">
                     {getT("settings.ai_providers.dialog.temperature")}
                   </Label>
-                  <span className="text-sm font-semibold text-blue-600">
-                    {editingProvider.temperature || 0.7}
-                  </span>
+                  <span className="text-sm text-gray-500">{editingProvider.temperature || 0.7}</span>
                 </div>
                 <Slider
                   id="temperature"
@@ -585,70 +561,57 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                   max={2}
                   step={0.1}
                   value={[editingProvider.temperature || 0.7]}
-                  onValueChange={(value) =>
-                    setEditingProvider({ ...editingProvider, temperature: value[0] })
-                  }
-                  className="py-2"
+                  onValueChange={([value]) => setEditingProvider({ ...editingProvider, temperature: value })}
+                  className="w-full"
                 />
-                <p className="text-xs text-gray-500 leading-relaxed">
+                <p className="text-xs text-gray-500">
                   {getT("settings.ai_providers.dialog.temperature_description")}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="max-tokens" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="max-tokens" className="text-sm font-medium">
                   {getT("settings.ai_providers.dialog.max_tokens")}
                 </Label>
                 <Input
                   id="max-tokens"
                   type="number"
-                  value={editingProvider.maxTokens || 1000}
-                  onChange={(e) =>
-                    setEditingProvider({
-                      ...editingProvider,
-                      maxTokens: parseInt(e.target.value) || 1000,
-                    })
-                  }
-                  min={1}
-                  max={32000}
-                  className="border-gray-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 transition-all"
+                  value={editingProvider.maxTokens || ""}
+                  onChange={(e) => setEditingProvider({ ...editingProvider, maxTokens: parseInt(e.target.value) })}
+                  className="rounded-xl border-gray-300 focus:ring-2 focus:ring-blue-500"
                 />
-                <p className="text-xs text-gray-500 leading-relaxed">
+                <p className="text-xs text-gray-500">
                   {getT("settings.ai_providers.dialog.max_tokens_description")}
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="base-url" className="text-sm font-medium text-gray-700">
+                <Label htmlFor="base-url" className="text-sm font-medium">
                   {getT("settings.ai_providers.dialog.base_url")}
                 </Label>
                 <Input
                   id="base-url"
                   value={editingProvider.baseUrl || ""}
-                  onChange={(e) =>
-                    setEditingProvider({ ...editingProvider, baseUrl: e.target.value })
-                  }
-                  placeholder="https://api.example.com/v1"
-                  className="border-gray-300 rounded-xl px-3 py-2 focus:ring-2 focus:ring-blue-500 transition-all"
+                  onChange={(e) => setEditingProvider({ ...editingProvider, baseUrl: e.target.value })}
+                  placeholder="https://api.example.com"
+                  className="rounded-xl border-gray-300 focus:ring-2 focus:ring-blue-500"
                 />
-                <p className="text-xs text-gray-500 leading-relaxed">
+                <p className="text-xs text-gray-500">
                   {getT("settings.ai_providers.dialog.base_url_description")}
                 </p>
               </div>
             </TabsContent>
 
             {/* Test Tab */}
-            <TabsContent value="test" className="space-y-6 mt-6">
-              <Alert className="rounded-xl bg-blue-50 border-blue-100">
-                <AlertDescription className="text-sm text-blue-700 leading-relaxed">
-                  {getT("settings.ai_providers.dialog.test_description")}
-                </AlertDescription>
-              </Alert>
+            <TabsContent value="test" className="space-y-4 mt-4">
+              <p className="text-sm text-gray-600">
+                {getT("settings.ai_providers.dialog.test_description")}
+              </p>
 
               <Button
                 onClick={handleTestConnection}
-                disabled={testing || !editingProvider.apiKey}
-                className="w-full gap-2 rounded-xl bg-blue-500 hover:bg-blue-600 text-white transition-all"
+                disabled={testing || !editingProvider.apiKey || editingProvider.apiKey.includes("••••")}
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-all"
               >
                 {testing ? (
                   <>
@@ -665,20 +628,16 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
 
               {testResult && (
                 <Alert
-                  className={
+                  className={`rounded-2xl ${
                     testResult.success
-                      ? "rounded-xl bg-green-50 border-green-200"
-                      : "rounded-xl bg-red-50 border-red-200"
-                  }
+                      ? "border-green-200 bg-green-50"
+                      : "border-red-200 bg-red-50"
+                  }`}
                 >
-                  <AlertDescription className={`flex items-center gap-2 text-sm font-medium ${
-                    testResult.success ? "text-green-700" : "text-red-700"
-                  }`}>
-                    {testResult.success ? (
-                      <Check className="h-4 w-4" />
-                    ) : (
-                      <X className="h-4 w-4" />
-                    )}
+                  <AlertDescription
+                    className={testResult.success ? "text-green-700" : "text-red-700"}
+                  >
+                    {testResult.success ? <Check className="w-4 h-4 inline mr-2" /> : <X className="w-4 h-4 inline mr-2" />}
                     {testResult.message}
                   </AlertDescription>
                 </Alert>
@@ -686,18 +645,18 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
             </TabsContent>
           </Tabs>
 
-          <div className="flex gap-3 justify-end pt-6 mt-6 border-t border-gray-100">
-            <Button 
-              variant="outline" 
+          <div className="flex gap-3 mt-6">
+            <Button
+              variant="outline"
               onClick={() => setIsDialogOpen(false)}
-              className="rounded-xl px-6 transition-all"
+              className="flex-1 rounded-xl border-gray-300 hover:bg-gray-50"
             >
-              {getT("common.cancel")}
+              Cancel
             </Button>
-            <Button 
-              onClick={handleSave} 
-              disabled={saving}
-              className="rounded-xl px-6 bg-blue-500 hover:bg-blue-600 text-white transition-all flex items-center gap-2"
+            <Button
+              onClick={handleSaveProvider}
+              disabled={saving || !editingProvider.id}
+              className="flex-1 bg-blue-500 hover:bg-blue-600 text-white rounded-xl transition-all"
             >
               {saving ? (
                 <>
@@ -705,7 +664,7 @@ export default function AIProvidersPage({ params }: AIProvidersPageProps) {
                   {getT("settings.ai_providers.dialog.saving")}
                 </>
               ) : (
-                getT("common.save")
+                getT("settings.ai_providers.save")
               )}
             </Button>
           </div>
