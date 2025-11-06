@@ -1,11 +1,12 @@
 ---
 applyTo: "*"
+description: "Bug fixing and QA workflow covering debugging procedures, root cause analysis, pre-fix checklist, React Hooks violations, TypeScript type safety, performance issues, API integration problems, and testing validation requirements"
 ---
 
 # AI Marketing Agent — Bug Fixing & QA Specialist Instructions
 
 **Version**: 2.0.0  
-**Last Updated**: January 29, 2025  
+**Last Updated**: November 6, 2025  
 **Applies To**: All bug fixing and debugging tasks
 
 ## Purpose

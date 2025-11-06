@@ -1,12 +1,13 @@
 ---
-applyTo: "frontend/**"
+applyTo: "*"
+description: "Frontend UI/UX guidelines for React components, hooks patterns, translation system, error handling, Apple-inspired design, shadcn/ui components, accessibility standards, and user experience best practices"
 ---
 
 # AI Marketing Agent – UX Guidelines (Apple-Inspired Gradual Transition)
 
 **Version**: 2.0.0  
-**Last Updated**: January 29, 2025  
-**Applies To**: Frontend UI/UX work
+**Last Updated**: November 6, 2025  
+**Applies To**: Frontend UI/UX work (React, Next.js, TypeScript, shadcn/ui, Tailwind CSS)
 
 ## 🎯 Context
 The current UX of the AI Marketing Agent project was initially created by AI without strict design rules.  
@@ -220,6 +221,32 @@ const getT = (key: string) => {
   }
   return typeof value === 'string' ? value : key;
 };
+
+// In JSX - add loading guard
+if (loading || !t.pages) return <LoadingState />;
+```
+
+**Dynamic Placeholders Pattern:**
+
+For translations with dynamic values (e.g., "Selected: {provider}"), use `.replace()`:
+
+```tsx
+// Translation key in en.json/pt.json:
+// "provider_selected": "Selected: {provider}"
+
+// In component:
+{(t.creation?.refinement?.form?.provider_selected || "Selected: {provider}")
+  .replace("{provider}", selectedProvider.name)}
+
+// Multiple replacements - use proper parentheses grouping:
+{(t.form?.message || "Generating {count} images with {provider}")
+  .replace("{count}", "3")
+  .replace("{provider}", providerName)}
+
+// ⚠️ CRITICAL: When using .replace() in ternary operator, wrap entire expression:
+{progressMessage || ((translation || fallback)
+  .replace("{var1}", value1)
+  .replace("{var2}", value2))} // Double parentheses required!
 ```
 
 ### 5. Pre-Commit Checklist for UX Changes

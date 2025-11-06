@@ -1,14 +1,49 @@
 # AI Marketing Agent - Copilot Instructions
 
-**Version**: 1.1.0  
-**Last Updated**: January 29, 2025  
+**Version**: 2.0.0  
+**Last Updated**: November 6, 2025  
 **Maintainer**: Rafael Amorim
 
-> **⚠️ IMPORTANT:** Before making any changes, always read the relevant instruction files from `.github/instructions/` based on your task:
-> - **All tasks:** Read `.github/instructions/ai-marketing-agent.architecture-and-development-guidelines.instructions.md`
-> - **All tasks:** Read `.github/instructions/ai-marketing-agent.development-best-practices.instructions.md`
-> - **Bug fixes:** Read `.github/instructions/ai-marketing-agent-fix-bug.instructions.md`
-> - **UI/UX changes:** Read `.github/instructions/ai-marketing-agent-ux-guidelines.instructions.md`
+> **⚠️ CRITICAL:** Before making ANY changes, you MUST mentally load and follow ALL instruction files, even if not automatically attached to this conversation:
+> - **Architecture Guidelines** (`.github/instructions/ai-marketing-agent.architecture-and-development-guidelines.instructions.md`)
+> - **Development Best Practices** (`.github/instructions/ai-marketing-agent.development-best-practices.instructions.md`)
+> - **Bug Fixing Workflow** (`.github/instructions/ai-marketing-agent-fix-bug.instructions.md`)
+> - **UX Guidelines** (`.github/instructions/ai-marketing-agent-ux-guidelines.instructions.md`)
+>
+> **If unsure about any rule, ask the user to attach the relevant instruction file.**
+
+---
+
+## 🚨 Always-Active Rules (Consolidated from All Instruction Files)
+
+### From Architecture Guidelines (CRITICAL - NEVER VIOLATE)
+- ✅ **Database-Driven AI Providers**: Never hardcode provider lists - always fetch from MongoDB `ai_providers` collection
+- ✅ **Port Configuration**: Backend MUST use port 8088 (non-negotiable), Frontend MUST use port 3001
+- ✅ **Clean Architecture**: Business logic in `/app/services/`, never in `/app/api/` route handlers
+- ✅ **MongoDB Patterns**: Use Motor async driver, global instance from `app.db.mongodb`
+- ✅ **Material Creation Workflow**: Follow 3-stage pipeline (Idea → Refinement → Finalization)
+
+### From Development Best Practices (ENFORCE STRICTLY)
+- ✅ **File Organization**: Never create files at project root - use appropriate subdirectories (`/app`, `/frontend/src`, `/tests`, `/docs`, `/debug`)
+- ✅ **Type Safety**: Never use `any` type in TypeScript - import proper types from `@/types`
+- ✅ **Testing Standards**: All bug fixes and features require tests in `/tests/unit` or `/tests/integration`
+- ✅ **Commit Messages**: Use conventional commits (`fix:`, `feat:`, `docs:`, `refactor:`, etc.)
+- ✅ **Backend Standards**: PEP 8, type hints, docstrings for all Python functions
+- ✅ **Frontend Standards**: ESLint compliance, functional components, proper prop typing
+
+### From UX Guidelines (FRONTEND WORK)
+- ✅ **React Hooks Order**: ALL hooks at component top - never inside conditionals, loops, or after early returns
+- ✅ **Translation Pattern**: Use `getTranslations()` from `@/i18n` (NOT `next-intl` package - not configured)
+- ✅ **Error Display**: Use `<AIErrorDisplay>` component with correlation IDs (never `alert()`)
+- ✅ **Component Library**: Use shadcn/ui components exclusively (Apple-inspired design)
+- ✅ **Loading Guards**: Always add `if (loading || !t.pages) return <LoadingState />;` for translations
+- ✅ **Performance**: Use `useMemo` for object/array creation, `useCallback` for event handlers
+
+### From Bug Fixing Workflow (DEBUGGING)
+- ✅ **Pre-Fix Checklist**: Verify root cause, check for similar issues, follow architecture, add tests, update docs
+- ✅ **React Hooks Violations**: Most common bug - hooks after conditionals or using wrong i18n pattern
+- ✅ **Type Safety Issues**: Check for `any` types, missing optional chaining (`?.`), missing nullish coalescing (`??`)
+- ✅ **API Integration**: Verify correlation IDs, check 60-second timeout for DALL-E, ensure masked API keys not sent
 
 ---
 
@@ -38,6 +73,31 @@ When conflicts arise between instruction files, follow this precedence order:
 3. **Main Prompt** (`.github/prompts/ai-marketing-agent.prompt.md`) - Original project vision and general guidelines
 
 **Golden Rule**: More specific instructions override general ones. When in doubt, consult this file first.
+
+---
+
+## 📚 Mandatory Reading for ALL Tasks
+
+**CRITICAL**: Even if these instruction files are not automatically attached to the conversation, you MUST mentally load and follow their rules. If you need clarification on any rule, ask the user to attach the relevant file.
+
+### Always Required (Load First):
+1. ✅ **This File** (`.github/copilot-instructions.md`) - Core principles and consolidated rules
+2. ✅ **Architecture Guidelines** (`.github/instructions/ai-marketing-agent.architecture-and-development-guidelines.instructions.md`)
+   - **When**: Any structural change, new feature, API endpoint, database operation
+   - **Key Rules**: Database-driven providers, port 8088, clean architecture, MongoDB patterns, Material Creation Workflow
+3. ✅ **Development Best Practices** (`.github/instructions/ai-marketing-agent.development-best-practices.instructions.md`)
+   - **When**: Writing ANY code (backend or frontend)
+   - **Key Rules**: File organization, type safety, testing requirements, commit conventions, backend/frontend standards
+
+### Context-Specific (Load When Relevant):
+4. ✅ **Bug Fixing Workflow** (`.github/instructions/ai-marketing-agent-fix-bug.instructions.md`)
+   - **When**: Fixing bugs, debugging issues, error resolution, investigating problems
+   - **Key Rules**: Pre-fix checklist, React Hooks violations, TypeScript safety, API integration issues
+5. ✅ **UX Guidelines** (`.github/instructions/ai-marketing-agent-ux-guidelines.instructions.md`)
+   - **When**: Frontend components, UI changes, user experience work, styling
+   - **Key Rules**: React Hooks order, translation pattern, error display, component library, Apple-inspired design
+
+**Action Required**: Before making ANY change, mentally verify compliance with ALL relevant instruction files above. If you cannot access a file's content, ask the user to attach it.
 
 ---
 

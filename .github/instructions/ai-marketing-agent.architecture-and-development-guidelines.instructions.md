@@ -1,8 +1,13 @@
+---
+applyTo: "*"
+description: "System architecture and design guidelines covering FastAPI backend structure, MongoDB patterns, clean architecture principles, AI provider integration, Material Creation Workflow, port configuration, and directory organization"
+---
+
 # 🧠 Instruction: Architecture & Development Guidelines
 
-**Version**: 1.0.0  
-**Last Updated**: January 28, 2025  
-**Applies To**: All development work
+**Version**: 2.0.0  
+**Last Updated**: November 6, 2025  
+**Applies To**: All development work (backend architecture, database design, API structure, system design)
 
 ## 🎯 Goal
 Ensure technical consistency, maintainability, and compliance with the architectural principles of the **AI Marketing Agent** project.  
