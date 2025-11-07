@@ -165,21 +165,36 @@ export function getIndustryTemplate(industryId: string): IndustryTemplate | unde
 }
 
 // Helper function to enrich prompt with industry context
-export function enrichPromptWithIndustry(basePrompt: string, industryId: string): string {
+export function enrichPromptWithIndustry(
+  basePrompt: string, 
+  industryId: string,
+  translations?: any
+): string {
   const template = getIndustryTemplate(industryId);
   
   if (!template) {
     return basePrompt;
   }
 
+  // Use translations if provided, otherwise fallback to English
+  const t = translations?.enrichment?.industry || {
+    prefix: 'INDUSTRY CONTEXT',
+    visual_keywords: 'Visual Keywords',
+    style_guide: 'Style Guide',
+    tone: 'Tone',
+    color_palette: 'Color Palette',
+    compliance: 'Compliance',
+    avoid: 'Avoid'
+  };
+
   const industryContext = `
-INDUSTRY CONTEXT (${template.name}):
-- Visual Keywords: ${template.visualKeywords.join(', ')}
-- Style Guide: ${template.styleGuide}
-- Tone: ${template.tone}
-- Color Palette: ${template.colorPalette.join(', ')}
-${template.compliance.length > 0 ? `- Compliance: ${template.compliance.join(', ')}` : ''}
-${template.avoidElements.length > 0 ? `- Avoid: ${template.avoidElements.join(', ')}` : ''}
+${t.prefix} (${template.name}):
+- ${t.visual_keywords}: ${template.visualKeywords.join(', ')}
+- ${t.style_guide}: ${template.styleGuide}
+- ${t.tone}: ${template.tone}
+- ${t.color_palette}: ${template.colorPalette.join(', ')}
+${template.compliance.length > 0 ? `- ${t.compliance}: ${template.compliance.join(', ')}` : ''}
+${template.avoidElements.length > 0 ? `- ${t.avoid}: ${template.avoidElements.join(', ')}` : ''}
 `;
 
   return `${basePrompt}\n\n${industryContext}`;

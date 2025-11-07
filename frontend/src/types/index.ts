@@ -23,10 +23,13 @@ export interface GeneratedImage {
 export interface Material {
   id: string;
   title: string;
-  description?: string;
+  description?: string; // Legacy field for backward compatibility
+  campaign_brief?: string; // New field: describes campaign strategy (what/who/why/when)
   target_audience?: string;
   campaign_objective?: string;
+  creative_approach?: CreativeApproach; // Visual storytelling approach
   keywords: string[];
+  campaign_date?: string | Date; // Target campaign date for seasonal context
   stage: MaterialStage;
   status: MaterialStatus;
   company_id: string;
@@ -84,10 +87,13 @@ export interface LoginResponse {
 
 export interface MaterialCreationFormData {
   title: string;
-  description?: string;
+  description?: string; // Legacy field for backward compatibility
+  campaign_brief?: string; // New field: describes campaign strategy (what/who/why/when)
   target_audience?: string;
   campaign_objective?: string;
+  creative_approach?: CreativeApproach; // Visual storytelling approach
   keywords: string[];
+  campaign_date?: Date | string;
 }
 
 export interface AIProviderConfig {
@@ -190,18 +196,55 @@ export interface APIStatus {
   message: string;
 }
 
+// Creative approach for visual storytelling
+export type CreativeApproach = 
+  | "story_led"    // Show people in situations, tell stories through scenes
+  | "concept_led"  // Show ideas through imagery, symbols, and clear visuals
+  | "hybrid";      // Mix both approaches as needed (DEFAULT)
+
 export interface IdeaGenerationFormData {
   title: string;
-  description: string;
+  description: string; // Legacy field for backward compatibility
+  campaign_brief?: string; // New field: describes campaign strategy (what/who/why/when)
   target_audience: string;
   campaign_objective: string;
+  creative_approach?: CreativeApproach; // Visual storytelling approach
   keywords: string[];
+  campaign_date?: Date | string; // Target campaign date for seasonal context
 }
 
+// People preference modes for image generation
+export type PeoplePreference = 
+  | "auto"      // Let industry/context decide (DEFAULT)
+  | "include"   // Force include people
+  | "exclude"   // Force exclude people
+  | "minimal";  // Product-focused with minimal people
+
+// Conflict severity levels
+export type ConflictSeverity = "none" | "low" | "medium" | "high";
+
+// Conflict source information
+export interface ConflictSource {
+  source: "industry" | "material_context" | "seasonal" | "keywords" | "storytelling_approach";
+  reason: string;
+  suggestion: string;
+  severity: ConflictSeverity;
+}
+
+// Conflict analysis result
+export interface ConflictAnalysis {
+  hasConflict: boolean;
+  overallSeverity: ConflictSeverity;
+  conflictingSources: ConflictSource[];
+  recommendation: PeoplePreference;
+}
+
+// Refinement form data interface
 export interface RefinementFormData {
   prompt: string;
   aiProvider: string;
   generationParams: Record<string, unknown>;
+  peoplePreference?: PeoplePreference; // Smart 4-mode system (replaces includePeople)
 }
 
 export interface FinalizationFormData {

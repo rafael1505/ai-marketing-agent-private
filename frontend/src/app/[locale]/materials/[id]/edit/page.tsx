@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { IdeaGenerationForm } from "@/components/forms/idea-generation-form";
 import { EnhancedRefinementForm } from "@/components/forms/enhanced-refinement-form";
 import { FinalizationForm } from "@/components/forms/finalization-form";
 import { AIErrorDisplay } from "@/components/ui/ai-error-display";
+import { StepNavigation } from "@/components/materials/step-navigation";
 import { MaterialStage, MaterialStatus, IdeaGenerationFormData, RefinementFormData, FinalizationFormData, GeneratedImage, Material } from "@/types";
 import { getMaterial, updateMaterial, addGeneratedImage, selectImage, addFeedback, updateStage } from "@/services/materials";
 import { generateMultipleImages, getAvailableProviders, getProviderConfigurations, getActiveProviders, type ProviderConfig } from "@/services/ai-providers";
@@ -28,6 +29,14 @@ export default function EditMaterialPage({
   const [aiError, setAiError] = useState<any | null>(null);
   const [activeProviders, setActiveProviders] = useState<ProviderConfig[]>([]);
   const [translations, setTranslations] = useState<Record<string, any>>({});
+  
+  // Navigation state
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [canProceedToNext, setCanProceedToNext] = useState(false);
+  const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
+  
+  // Ref for error container to enable auto-scroll
+  const errorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const loadMaterial = async () => {
@@ -119,6 +128,28 @@ export default function EditMaterialPage({
     };
   }, [id]);
 
+  // Auto-scroll to error when it appears (UX improvement)
+  useEffect(() => {
+    if (aiError && errorRef.current) {
+      // Smooth scroll to error with offset for better visibility
+      const errorElement = errorRef.current;
+      const offset = 100; // 100px above the error for context
+      const elementPosition = errorElement.getBoundingClientRect().top + window.pageYOffset;
+      const offsetPosition = elementPosition - offset;
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+
+      // Optional: Add a subtle pulse animation to draw attention
+      errorElement.classList.add('animate-pulse');
+      setTimeout(() => {
+        errorElement.classList.remove('animate-pulse');
+      }, 2000);
+    }
+  }, [aiError]);
+
   const loadActiveProviders = async () => {
     try {
       console.log('Loading active AI providers for material editing...');
@@ -136,7 +167,7 @@ export default function EditMaterialPage({
     }
   };
 
-  const handleGenerateImage = async (prompt: string, aiProvider: string): Promise<void> => {
+  const handleGenerateImage = async (prompt: string, aiProvider: string, batchSize: number = 3, peoplePreference: string = "auto"): Promise<void> => {
     if (!material) {
       alert("Material not found. Please refresh the page.");
       return;
@@ -145,7 +176,7 @@ export default function EditMaterialPage({
     // Clear previous errors
     setAiError(null);
     
-    console.log(`Generating image with prompt: "${prompt}" using provider: ${aiProvider}`);
+    console.log(`Generating image with prompt: "${prompt}" using provider: ${aiProvider}, batchSize: ${batchSize}, peoplePreference: ${peoplePreference}`);
     
     try {
       // Check if the selected provider is active and configured
@@ -163,10 +194,10 @@ export default function EditMaterialPage({
         console.log(`Provider ${aiProvider} not active, using: ${providerToUse}`);
       }
       
-      // Generate 3 images (reduced from 5 to improve performance)
-      console.log(`Generating 3 images with provider: ${providerToUse}`);
+      // Generate images with user-selected batch size (3, 5, or 10)
+      console.log(`Generating ${batchSize} images with provider: ${providerToUse}, peoplePreference: ${peoplePreference}`);
       
-      const result = await generateMultipleImages(prompt, providerToUse, 3, '1024x1024');
+      const result = await generateMultipleImages(prompt, providerToUse, batchSize, '1024x1024', peoplePreference);
       
       if (!result.success) {
         // Display enriched error if available
@@ -183,12 +214,15 @@ export default function EditMaterialPage({
         throw new Error("No images were generated. Please try again.");
       }
       
-      // Add all generated images to the material
-      let updatedMaterial = material;
+      // Add all generated images to the material at once (batch generation)
+      console.log(`Adding ${result.images.length} generated images to material...`);
       
-      for (let i = 0; i < result.images.length; i++) {
-        const imageUrl = result.images[i];
-        const generationParams = {
+      // Create new image objects for all generated images
+      const newImages = result.images.map((imageUrl, i) => ({
+        url: imageUrl,
+        prompt: prompt,
+        ai_provider: result.provider,
+        generation_params: {
           width: 1024,
           height: 1024,
           provider: result.provider,
@@ -196,23 +230,18 @@ export default function EditMaterialPage({
           style: 'photorealistic',
           variation: i + 1,
           cost: result.cost || 0
-        };
-        
-        console.log(`Adding generated image ${i + 1} to material...`);
-        try {
-          updatedMaterial = await addGeneratedImage(
-            updatedMaterial.id,
-            imageUrl,
-            prompt,
-            result.provider,
-            generationParams
-          );
-        } catch (addError) {
-          console.error(`Failed to add image ${i + 1} to material:`, addError);
-          // Continue with other images
-        }
-      }
-       console.log("Updated material with all new images:", updatedMaterial);
+        },
+        created_at: new Date().toISOString()
+      }));
+      
+      // Update material with all new images at once
+      const updatedMaterial = {
+        ...material,
+        generated_images: [...(material.generated_images || []), ...newImages],
+        updated_at: new Date().toISOString()
+      };
+      
+      console.log("Updated material with all new images:", updatedMaterial.generated_images.length, "total images");
       setMaterial(updatedMaterial);
       setGeneratedImages(updatedMaterial.generated_images || []);
       
@@ -267,7 +296,8 @@ export default function EditMaterialPage({
         description: data.description,
         target_audience: data.target_audience,
         campaign_objective: data.campaign_objective,
-        keywords: data.keywords
+        keywords: data.keywords,
+        campaign_date: data.campaign_date
       });
       
       // Update stage to refinement
@@ -366,6 +396,110 @@ export default function EditMaterialPage({
     }
   };
 
+  // Navigation handlers
+  const handleNextStep = () => {
+    if (currentStep < MATERIAL_CREATION_STEPS.length - 1) {
+      setCurrentStep(currentStep + 1);
+      setHasUnsavedChanges(false);
+      // Scroll to top of page for better UX
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handlePreviousStep = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
+      setHasUnsavedChanges(false);
+      // Scroll to top of page
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const handleCancelEditing = () => {
+    // Clear auto-save timer
+    if (autoSaveTimer) {
+      clearInterval(autoSaveTimer);
+    }
+    // Navigate back to material detail page
+    router.push(`/${locale}/materials/${id}`);
+  };
+
+  const handleSaveDraft = async () => {
+    try {
+      // Save current state to localStorage for recovery
+      const draftData = {
+        currentStep,
+        material,
+        generatedImages,
+        timestamp: new Date().toISOString()
+      };
+      
+      localStorage.setItem(`material-edit-draft-${id}`, JSON.stringify(draftData));
+      
+      // Show success message
+      console.log('Draft saved successfully');
+      
+      // Material changes are already persisted via updateMaterial, addGeneratedImage, etc.
+      if (material?.id) {
+        console.log('Material changes already persisted to backend:', material.id);
+      }
+      
+      setHasUnsavedChanges(false);
+    } catch (error) {
+      console.error('Error saving draft:', error);
+    }
+  };
+
+  // Auto-save every 30 seconds
+  useEffect(() => {
+    if (hasUnsavedChanges && material) {
+      const timer = setInterval(() => {
+        console.log('Auto-saving draft...');
+        handleSaveDraft();
+      }, 30000); // 30 seconds
+      
+      setAutoSaveTimer(timer);
+      
+      return () => {
+        if (timer) clearInterval(timer);
+      };
+    }
+  }, [hasUnsavedChanges, material]);
+
+  // Validation logic for each step
+  useEffect(() => {
+    if (!material) {
+      setCanProceedToNext(false);
+      return;
+    }
+
+    switch (currentStep) {
+      case 0: // Idea generation
+        // Can proceed if material exists (it already does in edit mode)
+        setCanProceedToNext(true);
+        break;
+      case 1: // Refinement
+        // Can proceed if at least one image is generated
+        setCanProceedToNext(generatedImages.length > 0);
+        break;
+      case 2: // Finalization
+        // Always can complete (select image)
+        setCanProceedToNext(true);
+        break;
+      default:
+        setCanProceedToNext(false);
+    }
+  }, [currentStep, material, generatedImages]);
+
+  // Cleanup auto-save timer on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimer) {
+        clearInterval(autoSaveTimer);
+      }
+    };
+  }, [autoSaveTimer]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -386,78 +520,139 @@ export default function EditMaterialPage({
     );
   }
 
+  // Get step descriptions from translations
+  const getStepDescription = (stepIndex: number) => {
+    switch (stepIndex) {
+      case 0:
+        return translations?.materials?.stage_descriptions?.idea || "Define your campaign concept and objectives";
+      case 1:
+        return translations?.materials?.stage_descriptions?.refinement || "Generate and refine visual content";
+      case 2:
+        return translations?.materials?.stage_descriptions?.finalization || "Select final content and complete";
+      default:
+        return "";
+    }
+  };
+
   return (
     <div className="space-y-8">
-      <div className="flex items-center gap-4 mb-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => router.push(`/${locale}/materials/${id}`)}
-        >
-          ← Back to Material
-        </Button>
-      </div>
-      
+      {/* Header with Breadcrumb */}
       <div>
+        <nav className="flex mb-4" aria-label="Breadcrumb">
+          <ol className="inline-flex items-center space-x-1 md:space-x-3 text-sm">
+            <li className="inline-flex items-center">
+              <button
+                onClick={() => router.push(`/${locale}/materials`)}
+                className="inline-flex items-center text-gray-600 hover:text-blue-600 transition-colors"
+              >
+                {translations?.materials?.title || "Materials"}
+              </button>
+            </li>
+            <li>
+              <div className="flex items-center">
+                <svg className="w-3 h-3 text-gray-400 mx-1" fill="none" viewBox="0 0 6 10">
+                  <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 9 4-4-4-4"/>
+                </svg>
+                <button
+                  onClick={() => router.push(`/${locale}/materials/${id}`)}
+                  className="text-gray-600 hover:text-blue-600 transition-colors"
+                >
+                  {material.title}
+                </button>
+              </div>
+            </li>
+            <li>
+              <div className="flex items-center">
+                <svg className="w-3 h-3 text-gray-400 mx-1" fill="none" viewBox="0 0 6 10">
+                  <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 9 4-4-4-4"/>
+                </svg>
+                <span className="text-gray-500">
+                  {translations?.common?.edit || "Edit"}
+                </span>
+              </div>
+            </li>
+            <li aria-current="page">
+              <div className="flex items-center">
+                <svg className="w-3 h-3 text-gray-400 mx-1" fill="none" viewBox="0 0 6 10">
+                  <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="m1 9 4-4-4-4"/>
+                </svg>
+                <span className="text-blue-600 font-medium">
+                  {currentStep === 0 && (translations?.materials?.stages?.idea_generation || "Idea Generation")}
+                  {currentStep === 1 && (translations?.materials?.stages?.refinement || "Refinement")}
+                  {currentStep === 2 && (translations?.materials?.stages?.finalization || "Finalization")}
+                </span>
+              </div>
+            </li>
+          </ol>
+        </nav>
+        
         <h1 className="text-3xl font-bold tracking-tight mb-2">
-          Edit Material: {material.title}
+          {translations?.materials?.edit_title || "Edit Material"}: {material.title}
         </h1>
         <p className="text-muted-foreground">
-          {MATERIAL_CREATION_STEPS[currentStep].description}
+          {getStepDescription(currentStep)}
         </p>
       </div>
 
-      <div className="flex justify-between items-center">
-        <ol className="flex w-full">
+      {/* Visual Step Indicator (Apple-inspired) */}
+      <div className="flex justify-center items-center">
+        <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-2xl">
           {MATERIAL_CREATION_STEPS.map((step, index) => (
-            <li 
-              key={step.id}
-              className={`flex w-full items-center ${
-                index !== MATERIAL_CREATION_STEPS.length - 1 
-                  ? "after:content-[''] after:w-full after:h-1 after:border-b after:border-gray-200 after:border-4 after:inline-block" 
-                  : ""
-              }`}
-            >
-              <span className={`flex items-center justify-center w-10 h-10 rounded-full lg:h-12 lg:w-12 shrink-0 ${
-                currentStep === index 
-                  ? "bg-primary text-white" 
-                  : currentStep > index 
-                    ? "bg-green-500 text-white" 
-                    : "bg-gray-200 text-gray-500"
-              }`}>
-                {currentStep > index ? (
-                  <svg className="w-3.5 h-3.5 lg:w-4 lg:h-4" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 16 12">
-                    <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M1 5.917 5.724 10.5 15 1.5"/>
-                  </svg>
-                ) : (
-                  index + 1
-                )}
-              </span>
-              <span className="ml-2 text-sm font-medium sm:hidden lg:block">
-                {step.title}
-              </span>
-            </li>
+            <div key={step.id} className="flex items-center">
+              <div className="flex flex-col items-center">
+                <div className={`flex items-center justify-center w-10 h-10 rounded-full transition-all duration-300 ${
+                  currentStep === index 
+                    ? "bg-blue-500 text-white shadow-lg scale-110" 
+                    : currentStep > index 
+                      ? "bg-green-500 text-white" 
+                      : "bg-gray-300 text-gray-600"
+                }`}>
+                  {currentStep > index ? (
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  ) : (
+                    <span className="text-sm font-semibold">{index + 1}</span>
+                  )}
+                </div>
+                <span className={`mt-2 text-xs font-medium transition-colors ${
+                  currentStep === index ? "text-blue-600" : "text-gray-500"
+                }`}>
+                  {index === 0 && (translations?.materials?.stages?.idea_generation || "Idea")}
+                  {index === 1 && (translations?.materials?.stages?.refinement || "Refine")}
+                  {index === 2 && (translations?.materials?.stages?.finalization || "Finalize")}
+                </span>
+              </div>
+              
+              {index < MATERIAL_CREATION_STEPS.length - 1 && (
+                <div className={`h-0.5 w-16 mx-3 transition-colors ${
+                  currentStep > index ? "bg-green-500" : "bg-gray-300"
+                }`} />
+              )}
+            </div>
           ))}
-        </ol>
+        </div>
       </div>
 
-      <div className="mt-8">
+      <div className="mt-8 mb-24">
         {/* Display AI Error if present */}
         {aiError && (
-          <AIErrorDisplay
-            error={aiError.message}
-            errorDetails={aiError}
-            onRetry={() => {
-              setAiError(null);
-              // Could trigger retry logic here
-            }}
-            onSwitchProvider={() => {
-              setAiError(null);
-              router.push(`/${locale}/settings/ai-providers`);
-            }}
-            locale={locale}
-            translations={translations}
-          />
+          <div ref={errorRef} className="mb-6">
+            <AIErrorDisplay
+              error={aiError.message}
+              errorDetails={aiError}
+              onRetry={() => {
+                setAiError(null);
+                // Could trigger retry logic here
+              }}
+              onSwitchProvider={() => {
+                setAiError(null);
+                router.push(`/${locale}/settings/ai-providers`);
+              }}
+              locale={locale}
+              translations={translations}
+            />
+          </div>
         )}
         
         {currentStep === 0 && (
@@ -469,7 +664,8 @@ export default function EditMaterialPage({
               description: material.description || "",
               target_audience: material.target_audience || "",
               campaign_objective: material.campaign_objective || "",
-              keywords: material.keywords || []
+              keywords: material.keywords || [],
+              campaign_date: material.campaign_date
             }}
           />
         )}
@@ -480,6 +676,7 @@ export default function EditMaterialPage({
             onGenerateImage={handleGenerateImage}
             aiProviders={activeProviders}
             generatedImages={generatedImages}
+            material={material}
             locale={locale}
             initialData={{
               prompt: material.description || "",
@@ -501,6 +698,36 @@ export default function EditMaterialPage({
           />
         )}
       </div>
+
+      {/* Step Navigation Component - Fixed at bottom */}
+      <StepNavigation
+        currentStep={currentStep}
+        totalSteps={MATERIAL_CREATION_STEPS.length}
+        stepTitles={[
+          translations?.materials?.stages?.idea_generation || "Idea Generation",
+          translations?.materials?.stages?.refinement || "Refinement",
+          translations?.materials?.stages?.finalization || "Finalization"
+        ]}
+        onPrevious={currentStep > 0 ? handlePreviousStep : undefined}
+        onNext={currentStep < MATERIAL_CREATION_STEPS.length - 1 ? handleNextStep : undefined}
+        onCancel={handleCancelEditing}
+        onSaveDraft={handleSaveDraft}
+        canGoNext={canProceedToNext}
+        canGoPrevious={currentStep > 0}
+        hasUnsavedChanges={hasUnsavedChanges}
+        showSaveDraft={true}
+        showCancel={true}
+        translations={{
+          previous_step: translations?.common?.previous_step || "Previous Step",
+          next_step: translations?.common?.next_step || "Next Step",
+          save_draft: translations?.common?.save_draft || "Save Draft",
+          cancel_editing: translations?.common?.cancel_editing || "Cancel",
+          unsaved_changes: translations?.common?.unsaved_changes || "Unsaved Changes",
+          unsaved_changes_message: translations?.common?.unsaved_changes_message || "Are you sure you want to leave? Your changes will be lost.",
+          confirm: translations?.common?.confirm || "Confirm",
+          back: translations?.common?.back || "Back"
+        }}
+      />
     </div>
   );
 }

@@ -27,15 +27,26 @@ class MaterialBase(BaseModel):
     description: Optional[str] = None
     target_audience: Optional[str] = None
     campaign_objective: Optional[str] = None
+    creative_approach: Optional[str] = "hybrid"  # Visual storytelling approach: story_led, concept_led, hybrid
     keywords: List[str] = []
+    campaign_date: Optional[datetime] = None  # Target date for campaign (for seasonal context)
     stage: MaterialStage
     status: MaterialStatus
 
 class MaterialCreate(MaterialBase):
     pass
 
-class MaterialUpdate(MaterialBase):
-    pass
+class MaterialUpdate(BaseModel):
+    """Update model allows partial updates - all fields are optional"""
+    title: Optional[str] = None
+    description: Optional[str] = None
+    target_audience: Optional[str] = None
+    campaign_objective: Optional[str] = None
+    creative_approach: Optional[str] = None  # Visual storytelling approach
+    keywords: Optional[List[str]] = None
+    campaign_date: Optional[datetime] = None  # Allow updating campaign date
+    stage: Optional[MaterialStage] = None
+    status: Optional[MaterialStatus] = None
 
 class MaterialInDB(MaterialBase):
     id: str

@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { getTranslations } from "@/i18n";
 import { Button } from "@/components/ui/button";
-import { getMaterials } from "@/services/materials";
+import { getMaterials, deleteMaterial } from "@/services/materials";
 import { Material, MaterialStage, MaterialStatus } from "@/types";
 import { MaterialCard } from "@/components/ui/material-card";
 
@@ -88,6 +88,21 @@ export default function MaterialsPage({
       fetchMaterials();
     }
   }, [t]); // Use t as dependency
+
+  // Handle delete material
+  const handleDeleteMaterial = async (id: string) => {
+    try {
+      console.log('[Materials Page] Deleting material:', id);
+      await deleteMaterial(id);
+      console.log('[Materials Page] Material deleted successfully, refreshing list...');
+      // Refresh the materials list
+      await fetchMaterials(true);
+    } catch (err) {
+      console.error("[Materials Page] Error deleting material:", err);
+      setError(t.materials?.delete_error || "Failed to delete material. Please try again.");
+    }
+  };
+
   // Show loading if translations aren't loaded yet or data is being fetched
   if (!translationsLoaded || (isLoading && Object.keys(t).length === 0)) {
     return (
@@ -177,6 +192,7 @@ export default function MaterialsPage({
               key={material.id} 
               material={material} 
               locale={locale}
+              onDelete={handleDeleteMaterial}
             />
           ))}
         </div>

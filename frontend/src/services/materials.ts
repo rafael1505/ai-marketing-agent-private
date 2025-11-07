@@ -655,9 +655,10 @@ export async function addGeneratedImage(
 // Select image for material
 export async function selectImage(materialId: string, imageUrl: string): Promise<Material> {
   try {
-    const response = await api.post(`/api/v1/materials/${materialId}/select-image`, {
-      image_url: imageUrl
-    });
+    // Backend expects image_url as a query parameter, not in the body
+    const response = await api.post(
+      `/api/v1/materials/${materialId}/select-image?image_url=${encodeURIComponent(imageUrl)}`
+    );
     
     // Clear cache to ensure fresh data
     materialsCache.data = null;
@@ -729,7 +730,8 @@ export async function updateStage(
   status: MaterialStatus
 ): Promise<Material> {
   try {
-    const response = await api.patch(`/materials/${materialId}/stage`, {
+    // Use the existing PUT endpoint for partial updates (now supports optional fields)
+    const response = await api.put(`/api/v1/materials/${materialId}`, {
       stage,
       status
     });

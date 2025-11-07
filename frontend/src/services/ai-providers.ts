@@ -51,6 +51,7 @@ export interface ImageGenerationRequest {
   negative_prompt?: string;
   seed?: number;
   model?: string;  // Added to include the selected model
+  people_preference?: string;  // Smart 4-mode system: "auto" | "include" | "exclude" | "minimal"
 }
 
 export interface ImageGenerationResult {
@@ -421,7 +422,8 @@ export const generateImagesWithProvider = async (request: ImageGenerationRequest
       variations: request.variations || 1,
       negative_prompt: request.negative_prompt,
       seed: request.seed,
-      model: request.model
+      model: request.model,
+      people_preference: request.people_preference || 'auto' // Smart 4-mode system (default: auto)
     };
     
     console.log('[generateImagesWithProvider] Backend request:', backendRequest);
@@ -588,9 +590,10 @@ export const generateMultipleImages = async (
   prompt: string,
   provider: string = 'openai',
   variations: number = 5,
-  size: string = '1024x1024'
+  size: string = '1024x1024',
+  peoplePreference: string = 'auto'
 ): Promise<ImageGenerationResult> => {
-  console.log(`[generateMultipleImages] Using provider: ${provider}, variations: ${variations}`);
+  console.log(`[generateMultipleImages] Using provider: ${provider}, variations: ${variations}, peoplePreference: ${peoplePreference}`);
   
   const request: ImageGenerationRequest = {
     prompt,
@@ -599,6 +602,7 @@ export const generateMultipleImages = async (
     variations,
     style: 'vivid',
     quality: 'standard',
+    people_preference: peoplePreference,
   };
 
   console.log('[generateMultipleImages] Request:', request);

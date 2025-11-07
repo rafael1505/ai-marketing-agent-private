@@ -37,8 +37,14 @@
     "delete": "Delete",
     "stages": {
       "idea": "Idea",
+      "idea_generation": "Idea Generation",
       "refinement": "Refinement",
       "finalization": "Finalization"
+    },
+    "stage_descriptions": {
+      "idea": "Define the concept and target audience",
+      "refinement": "Generate and refine visual content",
+      "finalization": "Select final content and complete"
     },
     "statuses": {
       "draft": "Draft",
@@ -71,6 +77,15 @@
       "form": {
         "title": "Title",
         "title_placeholder": "Enter a title for your marketing material",
+        "campaign_brief": "Campaign Brief",
+        "campaign_brief_placeholder": "Describe what this campaign is about - the offer, message, or story you want to tell",
+        "campaign_brief_hint": "💡 Describe your campaign strategy here, not visual details. Visual style will be defined in the next step.",
+        "storytelling_story_led": "Story-Led",
+        "storytelling_story_led_desc": "Show people in situations, tell stories through scenes",
+        "storytelling_concept_led": "Concept-Led",
+        "storytelling_concept_led_desc": "Show ideas through imagery, symbols, and clear visuals",
+        "storytelling_hybrid": "Hybrid",
+        "storytelling_hybrid_desc": "Mix both approaches as needed based on context",
         "description": "Description",
         "description_placeholder": "Describe your marketing material",
         "target_audience": "Target Audience",
@@ -79,21 +94,97 @@
         "campaign_objective_placeholder": "What is the goal of this campaign?",
         "keywords": "Keywords",
         "keywords_placeholder": "Enter keywords separated by commas",
+        "campaign_date": "Campaign Date",
+        "campaign_date_hint": "When will this campaign run? This helps generate seasonally appropriate content.",
+        "quick_dates": "Quick Dates",
+        "custom_date": "Custom Date",
+        "use_today": "Use Today",
+        "seasonal_context": "Seasonal Context",
+        "seasonal_preview": "Based on your selected date, we'll generate content for",
         "submit": "Proceed to Refinement"
+      },
+      "presets": {
+        "halloween": "Halloween",
+        "christmas": "Christmas",
+        "valentines": "Valentine's Day",
+        "new_year": "New Year",
+        "easter": "Easter",
+        "mothers_day": "Mother's Day",
+        "fathers_day": "Father's Day",
+        "black_friday": "Black Friday",
+        "cyber_monday": "Cyber Monday",
+        "thanksgiving": "Thanksgiving"
+      },
+      "seasons": {
+        "spring": "Spring",
+        "summer": "Summer",
+        "fall": "Fall",
+        "autumn": "Autumn",
+        "winter": "Winter"
+      },
+      "seasonal_info": {
+        "season": "Season",
+        "month": "Month",
+        "themes": "Suggested Themes",
+        "colors": "Seasonal Colors",
+        "keywords": "Seasonal Keywords"
       }
     },
     "refinement": {
-      "title": "Content Refinement",
-      "description": "Generate and refine visual content",
+      "title": "Visual Direction",
+      "description": "Define how you want your marketing images to look",
+      "campaign_context_title": "📝 Campaign Context (from Phase 1)",
+      "visual_direction_title": "🎨 Visual Direction Prompt",
       "form": {
-        "prompt": "Generation Prompt",
-        "prompt_placeholder": "Describe the image you want to generate",
+        "prompt": "Visual Direction Prompt",
+        "prompt_placeholder": "Describe the visual style, mood, colors, and composition you want",
+        "prompt_hint": "✨ This prompt was auto-generated from your campaign details. Edit it to refine the visual style.",
+        "prompt_tip": "Be specific about visual style, mood, colors, composition, and key elements",
         "ai_provider": "AI Provider",
+        "select_provider": "Select AI Provider",
         "generate_image": "Generate Image",
         "generating": "Generating...",
         "generated_images": "Generated Images",
         "save": "Continue to Finalization",
-        "saving": "Saving..."
+        "saving": "Saving...",
+        "no_providers": "No AI providers configured",
+        "provider_description": "Choose an AI provider to generate marketing images. Each provider offers different capabilities and pricing.",
+        "error_no_description": "Please enter an image description",
+        "error_no_provider": "Please select an AI provider",
+        "error_generate_failed": "Failed to generate image. Please try again.",
+        "generating_images": "Generating {count} AI images...",
+        "estimated_time": "Estimated time: {seconds} seconds",
+        "processing": "Processing your request...",
+        "generating_message": "Generating {count} AI images with {provider}. This may take {time} seconds depending on the provider.",
+        "please_wait": "Please wait while we create your images...",
+        "generate_to_proceed": "Generate at least one image to proceed",
+        "provider_ready": "Ready for image generation",
+        "provider_limited": "Limited capabilities",
+        "provider_selected": "Selected: {provider}",
+        "batch_settings": "Batch Settings",
+        "image_count": "Number of Images",
+        "image_count_description": "Generate multiple variations simultaneously",
+        "generating_batch": "Generating {current} of {total} images...",
+        "batch_complete": "{count} images generated successfully",
+        "batch_partial_success": "{success} of {total} images generated ({failed} failed)",
+        "generating_progress": "Image {current}/{total}: {status}"
+      },
+      "people_preference": {
+        "title": "People Preference",
+        "description": "Control whether people appear in your images",
+        "mode_auto": "Auto (Recommended)",
+        "mode_auto_desc": "Let the system decide based on your industry and campaign context",
+        "mode_include": "Always Include People",
+        "mode_include_desc": "Generate lifestyle and human-centric images showing real people in action",
+        "mode_exclude": "Never Include People",
+        "mode_exclude_desc": "Product-only, object-focused, or abstract imagery without any people",
+        "mode_minimal": "Product-Focused (Minimal People)",
+        "mode_minimal_desc": "Prioritize products/objects, but allow people in background or hands holding items",
+        "conflict_warning": "Potential Conflict Detected",
+        "recommendation_prefix": "Recommended for your industry:",
+        "view_details": "View Details",
+        "hide_details": "Hide Details",
+        "apply_recommendation": "Use Recommended Setting"
       }
     },
     "finalization": {
@@ -195,6 +286,7 @@
       "rate_limit_exceeded": "⏱️ Rate limit exceeded for {{provider}}",
       "content_policy_violation": "⚠️ Content violates {{provider}}'s usage policy",
       "network_error": "🌐 Network connection error",
+      "connection_failed": "🔌 Unable to connect to {{provider}} - Please check your internet connection",
       "service_unavailable": "🔧 {{provider}} service is temporarily unavailable",
       "invalid_request": "❌ Invalid request parameters",
       "provider_not_configured": "⚙️ {{provider}} is not configured",
@@ -219,6 +311,8 @@
     "reduce_frequency": "Reduce request frequency",
     "try_again": "Try again",
     "refresh_page": "Refresh the page",
+    "check_internet": "Verify your internet connection is working",
+    "check_firewall": "Check if a firewall or proxy is blocking the connection",
     "try_different_provider": "Try using a different provider",
     "reduce_image_count": "Generate fewer images (1 instead of 3)",
     "simplify_prompt": "Simplify your image description",
@@ -240,8 +334,105 @@
     "cancel": "Cancel",
     "submit": "Submit",
     "delete": "Delete",
+    "delete_material": "Delete Material",
     "confirm": "Confirm",
+    "confirm_delete": "Confirm Deletion",
+    "delete_warning": "Delete Material?",
+    "delete_warning_message": "This action cannot be undone. Are you sure you want to delete this material?",
+    "delete_success": "Material deleted successfully",
+    "delete_error": "Failed to delete material",
     "back": "Back",
-    "next": "Next"
+    "next": "Next",
+    "back_to_material": "Back to Material",
+    "back_to_materials": "Back to Materials",
+    "previous_step": "Previous Step",
+    "next_step": "Next Step",
+    "continue": "Continue",
+    "save_and_continue": "Save & Continue",
+    "save_draft": "Save Draft",
+    "cancel_editing": "Cancel Editing",
+    "exit_without_saving": "Exit Without Saving",
+    "unsaved_changes": "You have unsaved changes",
+    "unsaved_changes_message": "Are you sure you want to leave? Your changes will be lost.",
+    "draft_saved": "Draft saved successfully",
+    "draft_auto_saved": "Draft auto-saved",
+    "resume_from_draft": "Resume from where you left off?",
+    "keyboard_shortcuts": "Keyboard Shortcuts",
+    "press_for_help": "Press ? for help"
+  },
+  "enrichment": {
+    "ui": {
+      "quick_start_templates": "Quick Start Templates",
+      "browse_all": "Browse All",
+      "show_less": "Show Less",
+      "template_applied": "Template Applied",
+      "template_applied_description": "Your prompt has been generated based on the selected template. Feel free to customize it further below.",
+      "template_selector_description": "Start with a professionally designed prompt template tailored to your campaign type",
+      "seasonal_context": "Seasonal Context",
+      "industry_guidelines": "Industry Guidelines",
+      "applied": "Applied",
+      "apply": "Apply",
+      "suggested_themes": "Suggested themes",
+      "upcoming_events": "Upcoming events",
+      "visual_keywords_label": "Visual keywords",
+      "avoid_label": "Avoid",
+      "enrich_your_prompt": "Enrich Your Prompt",
+      "select_industry": "Select Industry",
+      "select_industry_placeholder": "Choose an industry for context-specific guidelines",
+      "all_industries": "All Industries",
+      "tip_template_context": "Tip: Select a template above or apply seasonal context to auto-fill this field"
+    },
+    "templates": {
+      "product_launch": {
+        "name": "Product Launch",
+        "description": "Hero shot for new product announcements"
+      },
+      "thought_leadership": {
+        "name": "Thought Leadership",
+        "description": "Professional insights and expertise"
+      },
+      "social_proof": {
+        "name": "Social Proof",
+        "description": "Customer testimonials and reviews"
+      },
+      "growth_metrics": {
+        "name": "Growth Metrics",
+        "description": "Data-driven success stories"
+      },
+      "emotional_connection": {
+        "name": "Emotional Connection",
+        "description": "Heart-centered storytelling"
+      },
+      "announcement": {
+        "name": "Announcement",
+        "description": "News and updates"
+      },
+      "premium_quality": {
+        "name": "Premium Quality",
+        "description": "Luxury and excellence focus"
+      },
+      "lifestyle": {
+        "name": "Lifestyle Integration",
+        "description": "Product in everyday life"
+      }
+    },
+    "industry": {
+      "prefix": "INDUSTRY CONTEXT",
+      "visual_keywords": "Visual Keywords",
+      "style_guide": "Style Guide",
+      "tone": "Tone",
+      "color_palette": "Color Palette",
+      "compliance": "Compliance",
+      "avoid": "Avoid"
+    },
+    "temporal": {
+      "prefix": "TEMPORAL CONTEXT",
+      "season": "Season",
+      "seasonal_mood": "Seasonal Mood",
+      "seasonal_themes": "Seasonal Themes",
+      "visual_elements": "Visual Elements",
+      "upcoming_events": "Upcoming Events",
+      "suffix": "Consider incorporating seasonal elements that resonate with the current time of year to make the content more timely and relevant."
+    }
   }
 }

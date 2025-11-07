@@ -234,20 +234,23 @@ export const DEFAULT_AI_PROVIDERS: AIProviderConfig[] = [
   }
 ];
 
+// Material creation steps - use with translations
+// Access titles via: t.materials.stages.idea_generation, etc.
+// Access descriptions via: t.materials.stage_descriptions.idea, etc.
 export const MATERIAL_CREATION_STEPS = [
   {
     id: "idea",
-    title: "Idea Generation",
-    description: "Define the concept and target audience"
+    titleKey: "materials.stages.idea_generation",
+    descriptionKey: "materials.stage_descriptions.idea"
   },
   {
     id: "refinement",
-    title: "Refinement",
-    description: "Generate and refine visual content"
+    titleKey: "materials.stages.refinement",
+    descriptionKey: "materials.stage_descriptions.refinement"
   },
   {
     id: "finalization",
-    title: "Finalization",
-    description: "Select final content and complete"
+    titleKey: "materials.stages.finalization",
+    descriptionKey: "materials.stage_descriptions.finalization"
   }
 ];

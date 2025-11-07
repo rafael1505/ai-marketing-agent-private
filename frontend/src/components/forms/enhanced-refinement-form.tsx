@@ -9,15 +9,22 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { RefinementFormData, GeneratedImage } from "@/types";
+import { RefinementFormData, GeneratedImage, Material } from "@/types";
 import { Loader } from "@/components/ui/loader";
+import { ContextEnrichmentDisplay } from "@/components/ui/context-enrichment-display";
+import { PeoplePreferenceSelector } from "@/components/ui/people-preference-selector";
+import { INDUSTRY_TEMPLATES, enrichPromptWithIndustry } from "@/data/industry-templates";
+import { generateSeasonalContext, enrichPromptWithSeasonalContext, SeasonalContext } from "@/lib/seasonal-context";
+import { enrichPromptWithMaterialContext } from "@/lib/material-context";
+import { generateVisualPromptFromCampaign } from "@/lib/visual-prompt-generator";
 
 interface RefinementFormProps {
   onSubmit: (data: RefinementFormData) => void;
-  onGenerateImage: (prompt: string, provider: string) => Promise<void>;
+  onGenerateImage: (prompt: string, provider: string, batchSize?: number, peoplePreference?: string) => Promise<void>; // Phase 2: Added batch size, Phase 9: Added peoplePreference (4-mode system)
   aiProviders: any[]; // Updated to use the new AI provider format
   generatedImages: GeneratedImage[];
   initialData?: Partial<RefinementFormData>;
+  material?: Material | null; // Material data including campaign_date for seasonal context
   locale?: string;
 }
 
@@ -27,13 +34,15 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
   aiProviders,
   generatedImages,
   initialData = {},
+  material = null,
   locale = "en"
 }) => {
   const [t, setT] = React.useState<Record<string, any>>({});
   const [formData, setFormData] = React.useState<RefinementFormData>({
-    prompt: initialData.prompt || "Create a professional marketing image for a modern tech product, featuring sleek design elements and vibrant colors",
+    prompt: initialData.prompt || "", // Will be auto-generated from campaign data
     aiProvider: initialData.aiProvider || "",
     generationParams: initialData.generationParams || {},
+    peoplePreference: initialData.peoplePreference || "auto", // Smart 4-mode system (default: auto)
   });
   
   const [isGenerating, setIsGenerating] = React.useState(false);
@@ -43,6 +52,53 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
   const [selectedImageIndex, setSelectedImageIndex] = React.useState<number | null>(null);
   const [progressMessage, setProgressMessage] = React.useState<string>("");
   const [elapsedSeconds, setElapsedSeconds] = React.useState<number>(0);
+  
+  // Context enrichment state
+  const [selectedIndustry, setSelectedIndustry] = React.useState<string | null>(null);
+  const [seasonalContext, setSeasonalContext] = React.useState<SeasonalContext | null>(null);
+  const [showEnrichmentOptions, setShowEnrichmentOptions] = React.useState(true);
+  
+  // Batch generation state (Phase 2)
+  const [batchSize, setBatchSize] = React.useState<number>(3); // Default: 3 images
+  const [batchProgress, setBatchProgress] = React.useState<Array<{status: string, imageUrl?: string}>>([]);
+
+  // Initialize seasonal context after component mounts (client-side only)
+  // Use material's campaign_date if available, otherwise use current date
+  React.useEffect(() => {
+    try {
+      const targetDate = material?.campaign_date ? new Date(material.campaign_date) : new Date();
+      const context = generateSeasonalContext(targetDate);
+      setSeasonalContext(context);
+      console.log("Initialized seasonal context for date:", targetDate, context);
+    } catch (error) {
+      console.error("Error getting seasonal context:", error);
+      setSeasonalContext(null);
+    }
+  }, [material?.campaign_date]);
+
+  // Auto-select people preference based on creative approach from Phase 1
+  React.useEffect(() => {
+    if (material?.creative_approach && !initialData.peoplePreference) {
+      let defaultPreference: string = "auto";
+      
+      if (material.creative_approach === "story_led") {
+        defaultPreference = "include"; // Story-Led → Show people
+        console.log("Auto-selected 'include' people preference based on Story-Led approach");
+      } else if (material.creative_approach === "concept_led") {
+        defaultPreference = "exclude"; // Concept-Led → Focus on concepts without people
+        console.log("Auto-selected 'exclude' people preference based on Concept-Led approach");
+      } else {
+        // hybrid or undefined → use auto (let context decide)
+        defaultPreference = "auto";
+        console.log("Using 'auto' people preference for Hybrid approach");
+      }
+      
+      setFormData(prev => ({ 
+        ...prev, 
+        peoplePreference: defaultPreference as any 
+      }));
+    }
+  }, [material?.creative_approach, initialData.peoplePreference]);
 
   React.useEffect(() => {
     const loadTranslations = async () => {
@@ -77,6 +133,26 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
     loadTranslations();
   }, [locale]);
 
+  // Auto-generate visual direction prompt from campaign strategy data
+  React.useEffect(() => {
+    // Only generate if:
+    // 1. We have material data (campaign strategy from Phase 1)
+    // 2. The prompt is empty (not edited by user yet)
+    // 3. This is not initial data from a saved/resumed session
+    if (material && !initialData.prompt && !formData.prompt) {
+      try {
+        const generatedPrompt = generateVisualPromptFromCampaign(material, t);
+        setFormData(prev => ({ 
+          ...prev, 
+          prompt: generatedPrompt 
+        }));
+        console.log("Auto-generated visual direction prompt from campaign data");
+      } catch (error) {
+        console.error("Error generating visual prompt:", error);
+      }
+    }
+  }, [material, t, initialData.prompt]); // Re-generate only if material or translations change
+
   // Update form data when provider changes
   React.useEffect(() => {
     if (selectedProvider) {
@@ -106,16 +182,20 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
 
       switch (event.key) {
         case 'Escape':
+          event.preventDefault();
+          event.stopPropagation(); // Prevent event from bubbling to parent elements
           setSelectedImageIndex(null);
           break;
         case 'ArrowLeft':
           event.preventDefault();
+          event.stopPropagation(); // Prevent event from bubbling to form/stepper
           setSelectedImageIndex(
             selectedImageIndex > 0 ? selectedImageIndex - 1 : generatedImages.length - 1
           );
           break;
         case 'ArrowRight':
           event.preventDefault();
+          event.stopPropagation(); // Prevent event from bubbling to form/stepper
           setSelectedImageIndex(
             selectedImageIndex < generatedImages.length - 1 ? selectedImageIndex + 1 : 0
           );
@@ -155,12 +235,12 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
 
   const handleGenerateImage = async () => {
     if (!formData.prompt) {
-      setProviderError("Please enter an image description");
+      setProviderError(t.creation?.refinement?.form?.error_no_description || "Please enter an image description");
       return;
     }
     
     if (!formData.aiProvider || !selectedProvider) {
-      setProviderError("Please select an AI provider");
+      setProviderError(t.creation?.refinement?.form?.error_no_provider || "Please select an AI provider");
       return;
     }
     
@@ -175,30 +255,67 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
       const elapsed = Math.floor((Date.now() - startTime) / 1000);
       setElapsedSeconds(elapsed);
       
-      // Provider-specific time estimates
+      // Provider-specific time estimates (Phase 2: adjusted for batch size)
       const providerEstimates: Record<string, number> = {
-        'openai': 75,      // DALL-E 3: ~75s for 3 images
-        'stability': 45,   // Stability AI: ~45s for 3 images
-        'replicate': 60,   // Replicate: ~60s for 3 images
-        'huggingface': 90, // HuggingFace: ~90s for 3 images
+        'openai': 25,      // DALL-E 3: ~25s per image
+        'stability': 15,   // Stability AI: ~15s per image
+        'replicate': 20,   // Replicate: ~20s per image
+        'huggingface': 30, // HuggingFace: ~30s per image
       };
-      const estimatedTime = providerEstimates[formData.aiProvider.toLowerCase()] || 60;
+      const timePerImage = providerEstimates[formData.aiProvider.toLowerCase()] || 20;
+      const estimatedTime = timePerImage * batchSize;
       
       if (elapsed >= 10 && elapsed < estimatedTime) {
         setProgressMessage(
-          `Still generating... ${elapsed}s elapsed. ${selectedProvider.name} can take up to ${estimatedTime}s for 3 images.`
+          `Still generating... ${elapsed}s elapsed. ${selectedProvider.name} can take up to ${estimatedTime}s for ${batchSize} images.`
         );
       }
     }, 10000); // Update every 10 seconds
     
     try {
-      console.log("Starting image generation with:", { prompt: formData.prompt, provider: formData.aiProvider });
-      await onGenerateImage(formData.prompt, formData.aiProvider);
-      console.log("Image generation completed successfully");
+      // Enrich the prompt with all available context (order matters!)
+      let enrichedPrompt = formData.prompt;
+      
+      // 1. First, add material context (title, description, target_audience, campaign_objective, keywords)
+      //    This provides the foundation - what the campaign is about
+      enrichedPrompt = enrichPromptWithMaterialContext(enrichedPrompt, material);
+      console.log("✓ Applied material context (title, description, audience, objective, keywords)");
+      
+      // 2. Apply industry context if selected
+      //    This adds industry-specific guidelines and best practices
+      if (selectedIndustry) {
+        enrichedPrompt = enrichPromptWithIndustry(enrichedPrompt, selectedIndustry, t);
+        console.log("✓ Applied industry context:", selectedIndustry);
+      }
+      
+      // 3. Apply seasonal context based on material's campaign date
+      //    This adds seasonally appropriate themes, colors, and keywords
+      const campaignDate = material?.campaign_date ? new Date(material.campaign_date) : new Date();
+      enrichedPrompt = enrichPromptWithSeasonalContext(enrichedPrompt, campaignDate);
+      console.log("✓ Applied seasonal context for date:", campaignDate.toLocaleDateString());
+      
+      console.log("Starting image generation with fully enriched prompt:", { 
+        original: formData.prompt,
+        enriched: enrichedPrompt,
+        materialTitle: material?.title,
+        hasDescription: !!material?.description,
+        hasAudience: !!material?.target_audience,
+        hasObjective: !!material?.campaign_objective,
+        keywordsCount: material?.keywords?.length || 0,
+        industry: selectedIndustry || "none",
+        campaignDate: campaignDate.toLocaleDateString(),
+        provider: formData.aiProvider,
+        batchSize: batchSize 
+      });
+      
+      // Phase 2: Pass batch size to parent component
+      // Phase 9: Pass peoplePreference (4-mode system) to control people in images
+      await onGenerateImage(enrichedPrompt, formData.aiProvider, batchSize, formData.peoplePreference);
+      console.log(`Batch generation completed successfully: ${batchSize} images (peoplePreference: ${formData.peoplePreference})`);
       setProgressMessage(""); // Clear progress message on success
     } catch (error) {
       console.error("Error generating image:", error);
-      const errorMessage = error instanceof Error ? error.message : "Failed to generate image. Please try again.";
+      const errorMessage = error instanceof Error ? error.message : (t.creation?.refinement?.form?.error_generate_failed || "Failed to generate image. Please try again.");
       setProviderError(errorMessage);
       
       // Parent component (create/edit page) handles error display with AIErrorDisplay
@@ -235,7 +352,7 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
             {t.creation.refinement.form.select_provider}
           </CardTitle>
           <CardDescription>
-            Choose an AI provider to generate marketing images. Each provider offers different capabilities and pricing.
+            {t.creation?.refinement?.form?.provider_description || "Choose an AI provider to generate marketing images. Each provider offers different capabilities and pricing."}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -286,6 +403,7 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
                     </div>
                     
                     <Button 
+                      type="button"
                       variant={selectedProvider?.id === provider.id ? "default" : "outline"}
                       size="sm"
                       className="w-full mt-3"
@@ -323,9 +441,13 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
               <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="font-medium text-blue-900">Selected: {selectedProvider.name}</h4>
+                    <h4 className="font-medium text-blue-900">
+                      {(t.creation?.refinement?.form?.provider_selected || "Selected: {provider}").replace("{provider}", selectedProvider.name)}
+                    </h4>
                     <p className="text-sm text-blue-700">
-                      {selectedProvider.marketingCapabilities?.imageGeneration ? 'Ready for image generation' : 'Limited capabilities'}
+                      {selectedProvider.marketingCapabilities?.imageGeneration 
+                        ? (t.creation?.refinement?.form?.provider_ready || 'Ready for image generation')
+                        : (t.creation?.refinement?.form?.provider_limited || 'Limited capabilities')}
                     </p>
                   </div>
                   <Badge variant="default" className="bg-blue-500">
@@ -335,24 +457,207 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
               </div>
             )}
 
-            {/* Prompt Input */}
-            <div className="space-y-2">
-              <Label htmlFor="prompt" className="text-sm font-medium">
-                {t.creation.refinement.form.prompt}
-              </Label>
+            {/* Batch Settings (Phase 2) */}
+            <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600 dark:text-blue-400">
+                    <rect width="7" height="7" x="3" y="3" rx="1"/>
+                    <rect width="7" height="7" x="14" y="3" rx="1"/>
+                    <rect width="7" height="7" x="14" y="14" rx="1"/>
+                    <rect width="7" height="7" x="3" y="14" rx="1"/>
+                  </svg>
+                  <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                    {t.creation?.refinement?.form?.batch_settings || "Batch Settings"}
+                  </h3>
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="batchSize" className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                  {t.creation?.refinement?.form?.image_count || "Number of Images"}
+                </Label>
+                <p className="text-xs text-blue-700 dark:text-blue-300 mb-2">
+                  {t.creation?.refinement?.form?.image_count_description || "Generate multiple variations simultaneously"}
+                </p>
+                <div className="flex gap-2">
+                  {[3, 5, 10].map((size) => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => setBatchSize(size)}
+                      className={`flex-1 px-4 py-2 rounded-lg border-2 transition-all font-medium ${
+                        batchSize === size
+                          ? 'border-blue-500 bg-blue-500 text-white shadow-md'
+                          : 'border-blue-200 dark:border-blue-700 bg-white dark:bg-blue-900/20 text-blue-900 dark:text-blue-100 hover:border-blue-400 dark:hover:border-blue-500'
+                      }`}
+                    >
+                      {size} {size === 1 ? 'image' : 'images'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Context Enrichment Options */}
+            {showEnrichmentOptions && (
+              <div className="space-y-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 rounded-xl border border-purple-200 dark:border-purple-800">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-600 dark:text-purple-400">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <path d="M12 16v-4"></path>
+                      <path d="M12 8h.01"></path>
+                    </svg>
+                    <h3 className="text-sm font-semibold text-purple-900 dark:text-purple-100">
+                      ✨ {t.enrichment?.ui?.enrich_your_prompt || "Enrich Your Prompt"}
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowEnrichmentOptions(false)}
+                    className="text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-200 transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"></line>
+                      <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Industry Selection */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium text-purple-800 dark:text-purple-200">
+                    🏢 {t.enrichment?.ui?.select_industry || "Select Industry"}
+                  </Label>
+                  <select
+                    value={selectedIndustry || ''}
+                    onChange={(e) => setSelectedIndustry(e.target.value || null)}
+                    className="w-full px-3 py-2 text-sm border border-purple-200 dark:border-purple-800 rounded-lg bg-white dark:bg-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  >
+                    <option value="">{t.enrichment?.ui?.all_industries || "All Industries"}</option>
+                    {Object.keys(INDUSTRY_TEMPLATES).map((industry) => (
+                      <option key={industry} value={industry}>
+                        {industry.charAt(0).toUpperCase() + industry.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedIndustry && (
+                    <p className="text-xs text-purple-700 dark:text-purple-300">
+                      {`${t.enrichment?.ui?.apply || "Apply"} ${selectedIndustry} ${t.enrichment?.ui?.industry_guidelines || "industry guidelines"}`}
+                    </p>
+                  )}
+                </div>
+
+                {/* Material Context Summary - Shows what from Idea Phase will be used */}
+                {material && (
+                  <div className="mt-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-lg border border-green-200 dark:border-green-800">
+                    <h4 className="text-xs font-semibold text-green-900 dark:text-green-100 mb-2">
+                      📝 {t.enrichment?.ui?.material_context || "Campaign Context from Idea Phase"}
+                    </h4>
+                    <div className="space-y-1 text-xs text-green-800 dark:text-green-200">
+                      {material.title && (
+                        <p><span className="font-medium">Title:</span> {material.title}</p>
+                      )}
+                      {material.target_audience && (
+                        <p><span className="font-medium">Audience:</span> {material.target_audience}</p>
+                      )}
+                      {material.campaign_objective && (
+                        <p><span className="font-medium">Objective:</span> {material.campaign_objective}</p>
+                      )}
+                      {material.keywords && material.keywords.length > 0 && (
+                        <p><span className="font-medium">Keywords:</span> {material.keywords.join(", ")}</p>
+                      )}
+                      <p className="text-xs text-green-600 dark:text-green-400 italic mt-2">
+                        ✓ This campaign context will be automatically included in all image generations
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Seasonal Context Display */}
+                {seasonalContext && (
+                  <div className="mt-3 p-3 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/20 dark:to-purple-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                    <h4 className="text-xs font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                      🗓️ {t.forms?.seasonal_context || "Seasonal Context"}
+                    </h4>
+                    <div className="space-y-1 text-xs text-blue-800 dark:text-blue-200">
+                      <p>
+                        <span className="font-medium">{t.forms?.season || "Season"}:</span>{" "}
+                        {seasonalContext.season} ({seasonalContext.monthName})
+                      </p>
+                      {seasonalContext.holidays.length > 0 && (
+                        <p>
+                          <span className="font-medium">🎉 Holidays:</span>{" "}
+                          {seasonalContext.holidays.join(", ")}
+                        </p>
+                      )}
+                      <p className="text-xs text-blue-600 dark:text-blue-400 italic mt-2">
+                        ℹ️ Seasonal context will be automatically applied during image generation
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {!showEnrichmentOptions && (
+              <button
+                type="button"
+                onClick={() => setShowEnrichmentOptions(true)}
+                className="text-sm text-purple-600 hover:text-purple-800 dark:text-purple-400 dark:hover:text-purple-200 underline transition-colors"
+              >
+                Show enrichment options
+              </button>
+            )}
+
+            {/* Smart People Preference Selector - 4-Mode System with Conflict Detection */}
+            <PeoplePreferenceSelector
+              value={formData.peoplePreference || "auto"}
+              onChange={(newValue) => setFormData(prev => ({ ...prev, peoplePreference: newValue }))}
+              industryId={selectedIndustry}
+              material={material}
+              seasonalContext={seasonalContext}
+              translations={t}
+            />
+
+            {/* Visual Direction Prompt - Moved to bottom for real-time enrichment feedback */}
+            <div className="space-y-2 p-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 rounded-xl border-2 border-amber-200 dark:border-amber-800">
+              <div className="flex items-center justify-between mb-2">
+                <Label htmlFor="prompt" className="text-sm font-semibold text-amber-900 dark:text-amber-100 flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-600 dark:text-amber-400">
+                    <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"></path>
+                    <path d="m15 5 4 4"></path>
+                  </svg>
+                  {t.creation?.refinement?.form?.prompt || "Visual Direction Prompt"}
+                </Label>
+                <Badge variant="secondary" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200">
+                  Final Prompt
+                </Badge>
+              </div>
+              <p className="text-xs text-amber-700 dark:text-amber-300 mb-3">
+                📝 This prompt was auto-generated and enriched with all your selections above. Review and refine before generating.
+              </p>
               <Textarea
                 id="prompt"
                 name="prompt"
-                placeholder={t.creation.refinement.form.prompt_placeholder}
+                placeholder={t.creation?.refinement?.form?.prompt_placeholder || "Describe the visual style, mood, colors, and composition you want"}
                 value={formData.prompt}
                 onChange={handleChange}
-                rows={4}
+                rows={8}
                 required
-                className="focus:border-accent transition-all resize-none"
+                className="focus:border-amber-500 transition-all resize-none bg-white dark:bg-gray-900"
               />
-              <p className="text-xs text-muted-foreground">
-                Be specific about style, colors, composition, and branding elements you want in your marketing image.
-              </p>
+              <div className="space-y-1 mt-2">
+                <p className="text-xs text-amber-600 dark:text-amber-400 flex items-start space-x-1">
+                  <span>✨</span>
+                  <span>{t.creation?.refinement?.form?.prompt_hint || "This prompt includes your campaign context, industry guidelines, seasonal themes, and people preferences."}</span>
+                </p>
+                <p className="text-xs text-muted-foreground flex items-start space-x-1">
+                  <span>💡</span>
+                  <span>{t.creation?.refinement?.form?.prompt_tip || "Be specific about visual style, mood, colors, composition, and key elements"}</span>
+                </p>
+              </div>
             </div>
 
             {/* Error Display */}
@@ -396,7 +701,11 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
                       <path d="M3 5h4"/>
                       <path d="M17 19h4"/>
                     </svg>
-                    <span className="font-medium">{t.creation.refinement.form.generate_image}</span>
+                    <span className="font-medium">
+                      {batchSize > 1 
+                        ? `Generate ${batchSize} Images` 
+                        : (t.creation.refinement.form.generate_image || "Generate Image")}
+                    </span>
                   </>
                 )}
               </Button>
@@ -417,11 +726,14 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
                         {elapsedSeconds > 0 && <span className="ml-2 text-blue-600">({elapsedSeconds}s)</span>}
                       </p>
                       <p className="text-xs text-blue-700 mt-1">
-                        {progressMessage || (t.creation?.refinement?.form?.processing_message || `Generating 3 AI images with ${selectedProvider?.name || "AI provider"}. This may take 20-90 seconds depending on the provider.`)}
+                        {progressMessage || ((t.creation?.refinement?.form?.generating_message || "Generating {count} AI images with {provider}. This may take {time} seconds depending on the provider.")
+                          .replace("{count}", String(batchSize))
+                          .replace("{provider}", selectedProvider?.name || "AI provider")
+                          .replace("{time}", String(batchSize * 20) + "-" + String(batchSize * 30)))}
                       </p>
                       <div className="mt-2 flex items-center gap-2 text-xs text-blue-600">
                         <span>⏳</span>
-                        <span>Please wait while we create your images...</span>
+                        <span>{t.creation?.refinement?.form?.please_wait || "Please wait while we create your images..."}</span>
                       </div>
                     </div>
                   </div>
@@ -493,6 +805,7 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
                     <div className="flex items-center gap-2">
                       {/* Navigation Buttons */}
                       <Button
+                        type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => setSelectedImageIndex(
@@ -505,6 +818,7 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
                         </svg>
                       </Button>
                       <Button
+                        type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => setSelectedImageIndex(
@@ -518,6 +832,7 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
                       </Button>
                       {/* Close Button */}
                       <Button
+                        type="button"
                         variant="ghost"
                         size="sm"
                         onClick={() => setSelectedImageIndex(null)}
@@ -557,7 +872,7 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
           <CardFooter className="flex justify-between items-center border-t pt-6">
             <div className="text-sm text-muted-foreground">
               {generatedImages.length === 0 
-                ? "Generate at least one image to proceed" 
+                ? (t.creation?.refinement?.form?.generate_to_proceed || "Generate at least one image to proceed")
                 : `${generatedImages.length} image(s) generated`
               }
             </div>
