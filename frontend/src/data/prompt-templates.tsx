@@ -4,14 +4,14 @@
  */
 
 // Icon components using emojis for consistency
-const RocketIcon = () => <span className="text-2xl">🚀</span>;
-const LightbulbIcon = () => <span className="text-2xl">💡</span>;
-const UsersIcon = () => <span className="text-2xl">👥</span>;
-const TrendingUpIcon = () => <span className="text-2xl">📈</span>;
-const HeartIcon = () => <span className="text-2xl">❤️</span>;
-const MegaphoneIcon = () => <span className="text-2xl">📢</span>;
-const AwardIcon = () => <span className="text-2xl">🏆</span>;
-const PackageIcon = () => <span className="text-2xl">📦</span>;
+const Rocket = () => <span className="text-2xl">🚀</span>;
+const Lightbulb = () => <span className="text-2xl">💡</span>;
+const Users = () => <span className="text-2xl">👥</span>;
+const TrendingUp = () => <span className="text-2xl">📈</span>;
+const Heart = () => <span className="text-2xl">❤️</span>;
+const Megaphone = () => <span className="text-2xl">📢</span>;
+const Award = () => <span className="text-2xl">🏆</span>;
+const Package = () => <span className="text-2xl">📦</span>;
 
 export interface PromptTemplate {
   id: string;
@@ -20,6 +20,7 @@ export interface PromptTemplate {
   descriptionKey: string; // i18n key
   icon: () => JSX.Element;
   category: 'product' | 'content' | 'engagement' | 'conversion';
+  creativeApproach: 'story_led' | 'concept_led' | 'both'; // Storytelling alignment
   structure: {
     focus: string;
     mood: string;
@@ -46,8 +47,9 @@ export const PROMPT_TEMPLATES: PromptTemplate[] = [
     name: "Product Launch",
     nameKey: "templates.product_launch.name",
     descriptionKey: "templates.product_launch.description",
-    icon: RocketIcon,
+    icon: Rocket,
     category: "product",
+    creativeApproach: "concept_led", // Product-focused, clear visuals
     structure: {
       focus: "product hero shot",
       mood: "exciting, innovative, dynamic",
@@ -80,8 +82,9 @@ The image should evoke excitement, desirability, and make viewers want to learn 
     name: "Thought Leadership",
     nameKey: "templates.thought_leadership.name",
     descriptionKey: "templates.thought_leadership.description",
-    icon: LightbulbIcon,
+    icon: Lightbulb,
     category: "content",
+    creativeApproach: "concept_led", // Abstract concepts, visual metaphors
     structure: {
       focus: "abstract concept visualization",
       mood: "professional, authoritative, inspiring",
@@ -114,8 +117,9 @@ The image should convey intelligence, insight, and expertise without being overl
     name: "Social Proof",
     nameKey: "templates.social_proof.name",
     descriptionKey: "templates.social_proof.description",
-    icon: UsersIcon,
+    icon: Users,
     category: "conversion",
+    creativeApproach: "story_led", // Real people, authentic stories
     structure: {
       focus: "customer success story",
       mood: "authentic, relatable, trustworthy",
@@ -148,8 +152,9 @@ The image should feel genuine and build trust, showing real people benefiting fr
     name: "Growth & Results",
     nameKey: "templates.growth_metrics.name",
     descriptionKey: "templates.growth_metrics.description",
-    icon: TrendingUpIcon,
+    icon: TrendingUp,
     category: "conversion",
+    creativeApproach: "concept_led", // Data visualization, clear metrics
     structure: {
       focus: "data visualization and growth",
       mood: "successful, confident, progressive",
@@ -183,8 +188,9 @@ The image should clearly communicate growth, success, and quantifiable results i
     name: "Emotional Connection",
     nameKey: "templates.emotional_connection.name",
     descriptionKey: "templates.emotional_connection.description",
-    icon: HeartIcon,
+    icon: Heart,
     category: "engagement",
+    creativeApproach: "story_led", // Human emotions, genuine moments
     structure: {
       focus: "human emotion and connection",
       mood: "warm, empathetic, heartfelt",
@@ -217,8 +223,9 @@ The image should create an emotional connection, making viewers feel something m
     name: "Announcement",
     nameKey: "templates.announcement.name",
     descriptionKey: "templates.announcement.description",
-    icon: MegaphoneIcon,
+    icon: Megaphone,
     category: "engagement",
+    creativeApproach: "both", // Works with stories or concepts
     structure: {
       focus: "attention-grabbing announcement",
       mood: "exciting, urgent, important",
@@ -251,8 +258,9 @@ The image should immediately grab attention and communicate that something impor
     name: "Premium Quality",
     nameKey: "templates.premium_quality.name",
     descriptionKey: "templates.premium_quality.description",
-    icon: AwardIcon,
+    icon: Award,
     category: "product",
+    creativeApproach: "concept_led", // Quality focus, clear imagery
     structure: {
       focus: "luxury and quality",
       mood: "elegant, sophisticated, premium",
@@ -285,8 +293,9 @@ The image should exude quality, luxury, and premium value, appealing to customer
     name: "Lifestyle Integration",
     nameKey: "templates.lifestyle_integration.name",
     descriptionKey: "templates.lifestyle_integration.description",
-    icon: PackageIcon,
+    icon: Package,
     category: "product",
+    creativeApproach: "story_led", // Product in lifestyle context with people
     structure: {
       focus: "product in lifestyle context",
       mood: "aspirational, relatable, desirable",
@@ -312,6 +321,111 @@ VISUAL REQUIREMENTS:
 Keywords to integrate: ${ctx.keywords.join(', ')}
 
 The image should show how the product fits seamlessly into an aspirational yet relatable lifestyle.`
+  },
+
+  {
+    id: "brand_identity",
+    name: "Brand Identity",
+    nameKey: "templates.brand_identity.name",
+    descriptionKey: "templates.brand_identity.description",
+    icon: Award,
+    category: "content",
+    creativeApproach: "concept_led", // Brand symbols, visual identity
+    structure: {
+      focus: "brand essence and values",
+      mood: "bold, distinctive, memorable",
+      elements: ["brand colors", "symbolic imagery", "strong composition"],
+      style: "brand photography",
+      composition: "striking, iconic"
+    },
+    promptBuilder: (ctx) => `Create a bold brand identity image for "${ctx.title}".
+
+BRAND: ${ctx.description || 'Company brand'}
+AUDIENCE: ${ctx.targetAudience || 'Brand-conscious consumers'}
+GOAL: ${ctx.campaignObjective || 'Strengthen brand recognition'}
+
+VISUAL REQUIREMENTS:
+- Strong visual representation of brand identity
+- Distinctive and memorable composition
+- Strategic use of brand colors and visual language
+- Symbolic elements that represent brand values
+- Professional, polished aesthetic
+- Style: Brand photography, iconic imagery
+- No people - focus on brand essence
+
+Keywords to represent: ${ctx.keywords.join(', ')}
+
+The image should instantly communicate what the brand stands for and create lasting visual impact.`
+  },
+
+  {
+    id: "product_features",
+    name: "Product Features",
+    nameKey: "templates.product_features.name",
+    descriptionKey: "templates.product_features.description",
+    icon: Package,
+    category: "product",
+    creativeApproach: "concept_led", // Feature highlights, technical clarity
+    structure: {
+      focus: "product features and benefits",
+      mood: "informative, clear, professional",
+      elements: ["product details", "feature callouts", "clean presentation"],
+      style: "technical photography",
+      composition: "organized, detailed"
+    },
+    promptBuilder: (ctx) => `Create a detailed product features image for "${ctx.title}".
+
+PRODUCT: ${ctx.description || 'Product with key features'}
+TARGET: ${ctx.targetAudience || 'Feature-focused buyers'}
+PURPOSE: ${ctx.campaignObjective || 'Highlight key features and benefits'}
+
+VISUAL REQUIREMENTS:
+- Clear, detailed view of product features
+- Professional studio lighting to show details
+- Clean, organized composition
+- Focus on functionality and design
+- Technical precision in presentation
+- Style: Technical product photography
+- No people - product is the hero
+
+Keywords to highlight: ${ctx.keywords.join(', ')}
+
+The image should clearly showcase what makes the product special and why customers should care about its features.`
+  },
+
+  {
+    id: "abstract_concept",
+    name: "Abstract Concept",
+    nameKey: "templates.abstract_concept.name",
+    descriptionKey: "templates.abstract_concept.description",
+    icon: Lightbulb,
+    category: "content",
+    creativeApproach: "concept_led", // Pure visual metaphors
+    structure: {
+      focus: "abstract representation",
+      mood: "creative, thought-provoking, artistic",
+      elements: ["geometric shapes", "symbolic colors", "conceptual forms"],
+      style: "abstract art",
+      composition: "artistic, interpretive"
+    },
+    promptBuilder: (ctx) => `Create an abstract conceptual image for "${ctx.title}".
+
+CONCEPT: ${ctx.description || 'Core idea or theme'}
+AUDIENCE: ${ctx.targetAudience || 'Creative audience'}
+OBJECTIVE: ${ctx.campaignObjective || 'Communicate idea visually'}
+
+VISUAL REQUIREMENTS:
+- Abstract, artistic representation of the concept
+- Creative use of shapes, colors, and forms
+- Thought-provoking visual metaphors
+- Modern, contemporary aesthetic
+- No literal representations
+- Style: Abstract art, conceptual design
+- No people - pure concept visualization
+
+Keywords to interpret: ${ctx.keywords.join(', ')}
+
+The image should make viewers think and feel the concept through pure visual language.`
   }
 ];
 

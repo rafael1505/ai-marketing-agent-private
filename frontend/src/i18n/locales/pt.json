@@ -35,8 +35,14 @@
     "delete": "Excluir",
     "stages": {
       "idea": "Ideia",
+      "idea_generation": "Geração de Ideia",
       "refinement": "Refinamento",
       "finalization": "Finalização"
+    },
+    "stage_descriptions": {
+      "idea": "Defina o conceito e o público-alvo",
+      "refinement": "Gere e refine o conteúdo visual",
+      "finalization": "Selecione o conteúdo final e complete"
     },
     "statuses": {
       "draft": "Rascunho",
@@ -71,25 +77,112 @@
         "title_placeholder": "Digite um título para seu material de marketing",
         "description": "Descrição",
         "description_placeholder": "Descreva seu material de marketing",
+        "campaign_brief": "Briefing da Campanha",
+        "campaign_brief_placeholder": "Descreva sobre o que é esta campanha - a oferta, mensagem ou história que você quer contar",
+        "campaign_brief_hint": "💡 Descreva sua estratégia de campanha aqui, não detalhes visuais. O estilo visual será definido na próxima etapa.",
+        "storytelling_story_led": "Narrativa Visual",
+        "storytelling_story_led_desc": "Mostrar pessoas em situações, contar histórias através de cenas",
+        "storytelling_concept_led": "Conceito Visual",
+        "storytelling_concept_led_desc": "Mostrar ideias através de imagens, símbolos e visuais claros",
+        "storytelling_hybrid": "Híbrido",
+        "storytelling_hybrid_desc": "Misturar ambas as abordagens conforme necessário com base no contexto",
         "target_audience": "Público-alvo",
         "target_audience_placeholder": "Para quem este material é direcionado?",
         "campaign_objective": "Objetivo da Campanha",
         "campaign_objective_placeholder": "Qual é o objetivo desta campanha?",
         "keywords": "Palavras-chave",
         "keywords_placeholder": "Digite palavras-chave separadas por vírgulas",
+        "campaign_date": "Data da Campanha",
+        "campaign_date_hint": "Quando esta campanha será executada? Isso ajuda a gerar conteúdo apropriado para a época.",
+        "quick_dates": "Datas Rápidas",
+        "custom_date": "Data Personalizada",
+        "use_today": "Usar Hoje",
+        "seasonal_context": "Contexto Sazonal",
+        "seasonal_preview": "Com base na data selecionada, geraremos conteúdo para",
         "submit": "Prosseguir para Refinamento"
+      },
+      "presets": {
+        "halloween": "Halloween",
+        "christmas": "Natal",
+        "valentines": "Dia dos Namorados",
+        "new_year": "Ano Novo",
+        "easter": "Páscoa",
+        "mothers_day": "Dia das Mães",
+        "fathers_day": "Dia dos Pais",
+        "black_friday": "Black Friday",
+        "cyber_monday": "Cyber Monday",
+        "thanksgiving": "Ação de Graças"
+      },
+      "seasons": {
+        "spring": "Primavera",
+        "summer": "Verão",
+        "fall": "Outono",
+        "autumn": "Outono",
+        "winter": "Inverno"
+      },
+      "seasonal_info": {
+        "season": "Estação",
+        "month": "Mês",
+        "themes": "Temas Sugeridos",
+        "colors": "Cores Sazonais",
+        "keywords": "Palavras-chave Sazonais"
       }
     },
     "refinement": {
-      "title": "Refinamento de Conteúdo",
-      "description": "Gere e refine o conteúdo visual",
+      "title": "Direção Visual",
+      "description": "Defina como você quer que suas imagens de marketing sejam",
+      "campaign_context_title": "📝 Contexto da Campanha (da Fase 1)",
+      "visual_direction_title": "🎨 Prompt de Direção Visual",
       "form": {
-        "prompt": "Prompt de Geração",
-        "prompt_placeholder": "Descreva a imagem que você deseja gerar",
+        "prompt": "Prompt de Direção Visual",
+        "prompt_placeholder": "Descreva o estilo visual, clima, cores e composição que você deseja",
+        "prompt_hint": "✨ Este prompt foi gerado automaticamente a partir dos detalhes da sua campanha. Edite-o para refinar o estilo visual.",
+        "prompt_tip": "Seja específico sobre estilo visual, clima, cores, composição e elementos-chave",
         "ai_provider": "Provedor de IA",
-        "generate": "Gerar Imagem",
+        "select_provider": "Selecionar Provedor de IA",
+        "generate_image": "Gerar Imagem",
         "generating": "Gerando...",
-        "submit": "Prosseguir para Finalização"
+        "generated_images": "Imagens Geradas",
+        "save": "Continuar para Finalização",
+        "saving": "Salvando...",
+        "no_providers": "Nenhum provedor de IA configurado",
+        "provider_description": "Escolha um provedor de IA para gerar imagens de marketing. Cada provedor oferece diferentes capacidades e preços.",
+        "error_no_description": "Por favor, insira uma descrição da imagem",
+        "error_no_provider": "Por favor, selecione um provedor de IA",
+        "error_generate_failed": "Falha ao gerar imagem. Por favor, tente novamente.",
+        "generating_images": "Gerando {count} imagens com IA...",
+        "estimated_time": "Tempo estimado: {seconds} segundos",
+        "processing": "Processando sua solicitação...",
+        "generating_message": "Gerando {count} imagens com IA usando {provider}. Isso pode levar {time} segundos dependendo do provedor.",
+        "please_wait": "Por favor, aguarde enquanto criamos suas imagens...",
+        "generate_to_proceed": "Gere pelo menos uma imagem para prosseguir",
+        "provider_ready": "Pronto para geração de imagens",
+        "provider_limited": "Capacidades limitadas",
+        "provider_selected": "Selecionado: {provider}",
+        "batch_settings": "Configurações de Lote",
+        "image_count": "Número de Imagens",
+        "image_count_description": "Gere múltiplas variações simultaneamente",
+        "generating_batch": "Gerando {current} de {total} imagens...",
+        "batch_complete": "{count} imagens geradas com sucesso",
+        "batch_partial_success": "{success} de {total} imagens geradas ({failed} falharam)",
+        "generating_progress": "Imagem {current}/{total}: {status}"
+      },
+      "people_preference": {
+        "title": "Preferência de Pessoas",
+        "description": "Controle se pessoas aparecem nas suas imagens",
+        "mode_auto": "Auto (Recomendado)",
+        "mode_auto_desc": "Deixe o sistema decidir com base na sua indústria e contexto da campanha",
+        "mode_include": "Sempre Incluir Pessoas",
+        "mode_include_desc": "Gere imagens de estilo de vida e centradas no ser humano mostrando pessoas reais em ação",
+        "mode_exclude": "Nunca Incluir Pessoas",
+        "mode_exclude_desc": "Imagens focadas apenas em produtos, objetos ou abstratas sem qualquer pessoa",
+        "mode_minimal": "Foco no Produto (Pessoas Mínimas)",
+        "mode_minimal_desc": "Priorize produtos/objetos, mas permita pessoas no fundo ou mãos segurando itens",
+        "conflict_warning": "Conflito Potencial Detectado",
+        "recommendation_prefix": "Recomendado para sua indústria:",
+        "view_details": "Ver Detalhes",
+        "hide_details": "Ocultar Detalhes",
+        "apply_recommendation": "Usar Configuração Recomendada"
       }
     },
     "finalization": {
@@ -191,6 +284,7 @@
       "rate_limit_exceeded": "⏱️ Limite de taxa excedido para {{provider}}",
       "content_policy_violation": "⚠️ Conteúdo viola a política de uso de {{provider}}",
       "network_error": "🌐 Erro de conexão de rede",
+      "connection_failed": "🔌 Não foi possível conectar ao {{provider}} - Verifique sua conexão com a internet",
       "service_unavailable": "🔧 Serviço de {{provider}} temporariamente indisponível",
       "invalid_request": "❌ Parâmetros de solicitação inválidos",
       "provider_not_configured": "⚙️ {{provider}} não está configurado",
@@ -215,6 +309,8 @@
     "reduce_frequency": "Reduza a frequência de solicitações",
     "try_again": "Tente novamente",
     "refresh_page": "Atualize a página",
+    "check_internet": "Verifique se sua conexão com a internet está funcionando",
+    "check_firewall": "Verifique se um firewall ou proxy está bloqueando a conexão",
     "try_different_provider": "Tente usar um provedor diferente",
     "reduce_image_count": "Gerar menos imagens (1 em vez de 3)",
     "simplify_prompt": "Simplifique a descrição da imagem",
@@ -236,8 +332,105 @@
     "cancel": "Cancelar",
     "submit": "Enviar",
     "delete": "Excluir",
+    "delete_material": "Excluir Material",
     "confirm": "Confirmar",
+    "confirm_delete": "Confirmar Exclusão",
+    "delete_warning": "Excluir Material?",
+    "delete_warning_message": "Esta ação não pode ser desfeita. Tem certeza que deseja excluir este material?",
+    "delete_success": "Material excluído com sucesso",
+    "delete_error": "Falha ao excluir material",
     "back": "Voltar",
-    "next": "Próximo"
+    "next": "Próximo",
+    "back_to_material": "Voltar para Material",
+    "back_to_materials": "Voltar para Materiais",
+    "previous_step": "Etapa Anterior",
+    "next_step": "Próxima Etapa",
+    "continue": "Continuar",
+    "save_and_continue": "Salvar e Continuar",
+    "save_draft": "Salvar Rascunho",
+    "cancel_editing": "Cancelar Edição",
+    "exit_without_saving": "Sair Sem Salvar",
+    "unsaved_changes": "Você tem alterações não salvas",
+    "unsaved_changes_message": "Tem certeza que deseja sair? Suas alterações serão perdidas.",
+    "draft_saved": "Rascunho salvo com sucesso",
+    "draft_auto_saved": "Rascunho salvo automaticamente",
+    "resume_from_draft": "Continuar de onde parou?",
+    "keyboard_shortcuts": "Atalhos do Teclado",
+    "press_for_help": "Pressione ? para ajuda"
+  },
+  "enrichment": {
+    "ui": {
+      "quick_start_templates": "Modelos de Início Rápido",
+      "browse_all": "Ver Todos",
+      "show_less": "Mostrar Menos",
+      "template_applied": "Modelo Aplicado",
+      "template_applied_description": "Seu prompt foi gerado com base no modelo selecionado. Sinta-se à vontade para personalizá-lo abaixo.",
+      "template_selector_description": "Comece com um modelo de prompt profissionalmente projetado e adaptado ao seu tipo de campanha",
+      "seasonal_context": "Contexto Sazonal",
+      "industry_guidelines": "Diretrizes da Indústria",
+      "applied": "Aplicado",
+      "apply": "Aplicar",
+      "suggested_themes": "Temas sugeridos",
+      "upcoming_events": "Eventos próximos",
+      "visual_keywords_label": "Palavras-chave visuais",
+      "avoid_label": "Evitar",
+      "enrich_your_prompt": "Enriqueça Seu Prompt",
+      "select_industry": "Selecionar Indústria",
+      "select_industry_placeholder": "Escolha uma indústria para diretrizes específicas do contexto",
+      "all_industries": "Todas as Indústrias",
+      "tip_template_context": "Dica: Selecione um modelo acima ou aplique o contexto sazonal para preencher automaticamente este campo"
+    },
+    "templates": {
+      "product_launch": {
+        "name": "Lançamento de Produto",
+        "description": "Destaque para anúncios de novos produtos"
+      },
+      "thought_leadership": {
+        "name": "Liderança de Pensamento",
+        "description": "Insights profissionais e expertise"
+      },
+      "social_proof": {
+        "name": "Prova Social",
+        "description": "Depoimentos e avaliações de clientes"
+      },
+      "growth_metrics": {
+        "name": "Métricas de Crescimento",
+        "description": "Histórias de sucesso baseadas em dados"
+      },
+      "emotional_connection": {
+        "name": "Conexão Emocional",
+        "description": "Narrativa centrada no coração"
+      },
+      "announcement": {
+        "name": "Anúncio",
+        "description": "Novidades e atualizações"
+      },
+      "premium_quality": {
+        "name": "Qualidade Premium",
+        "description": "Foco em luxo e excelência"
+      },
+      "lifestyle": {
+        "name": "Integração ao Estilo de Vida",
+        "description": "Produto no dia a dia"
+      }
+    },
+    "industry": {
+      "prefix": "CONTEXTO DA INDÚSTRIA",
+      "visual_keywords": "Palavras-chave Visuais",
+      "style_guide": "Guia de Estilo",
+      "tone": "Tom",
+      "color_palette": "Paleta de Cores",
+      "compliance": "Conformidade",
+      "avoid": "Evitar"
+    },
+    "temporal": {
+      "prefix": "CONTEXTO TEMPORAL",
+      "season": "Estação",
+      "seasonal_mood": "Clima Sazonal",
+      "seasonal_themes": "Temas Sazonais",
+      "visual_elements": "Elementos Visuais",
+      "upcoming_events": "Eventos Próximos",
+      "suffix": "Considere incorporar elementos sazonais que ressoem com a época atual do ano para tornar o conteúdo mais oportuno e relevante."
+    }
   }
 }

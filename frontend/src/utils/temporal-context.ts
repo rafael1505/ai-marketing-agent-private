@@ -152,19 +152,34 @@ export function getTemporalContext(date: Date = new Date()): TemporalContext {
 }
 
 // Enrich prompt with temporal context
-export function enrichPromptWithTemporal(basePrompt: string, date: Date = new Date()): string {
+export function enrichPromptWithTemporal(
+  basePrompt: string, 
+  date: Date = new Date(),
+  translations?: any
+): string {
   const context = getTemporalContext(date);
   
+  // Use translations if provided, otherwise fallback to English
+  const t = translations?.enrichment?.temporal || {
+    prefix: 'TEMPORAL CONTEXT',
+    season: 'Season',
+    seasonal_mood: 'Seasonal Mood',
+    seasonal_themes: 'Seasonal Themes',
+    visual_elements: 'Visual Elements',
+    upcoming_events: 'Upcoming Events',
+    suffix: 'Consider incorporating seasonal elements that resonate with the current time of year to make the content more timely and relevant.'
+  };
+  
   const temporalEnrichment = `
-TEMPORAL CONTEXT:
-- Season: ${context.season.name} (${context.currentMonth})
-- Seasonal Mood: ${context.seasonalMood}
-- Seasonal Themes: ${context.suggestedThemes.join(', ')}
+${t.prefix}:
+- ${t.season}: ${context.season.name} (${context.currentMonth})
+- ${t.seasonal_mood}: ${context.seasonalMood}
+- ${t.seasonal_themes}: ${context.suggestedThemes.join(', ')}
 - Color Palette: ${context.season.colors.join(', ')}
-- Visual Elements: ${context.season.visualElements.join(', ')}
-${context.upcomingHolidays.length > 0 ? `- Upcoming Events: ${context.upcomingHolidays.join(', ')}` : ''}
+- ${t.visual_elements}: ${context.season.visualElements.join(', ')}
+${context.upcomingHolidays.length > 0 ? `- ${t.upcoming_events}: ${context.upcomingHolidays.join(', ')}` : ''}
 
-Consider incorporating seasonal elements that resonate with the current time of year to make the content more timely and relevant.
+${t.suffix}
 `;
 
   return `${basePrompt}\n\n${temporalEnrichment}`;

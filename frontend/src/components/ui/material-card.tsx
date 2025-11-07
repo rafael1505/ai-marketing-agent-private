@@ -5,17 +5,28 @@ import { Material, MaterialStage, MaterialStatus } from "@/types";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatDate, truncateText } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface MaterialCardProps {
   material: Material;
   locale?: string;
+  onDelete?: (id: string) => void;
 }
 
 export const MaterialCard: React.FC<MaterialCardProps> = ({
   material,
-  locale = "en"
+  locale = "en",
+  onDelete
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const t = useMemo(() => {
     try {
       // Use synchronous access to avoid state management issues
@@ -137,6 +148,22 @@ export const MaterialCard: React.FC<MaterialCardProps> = ({
         return "from-gray-50 to-gray-50";
     }
   };
+
+  const handleDeleteClick = () => {
+    setShowDeleteDialog(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (onDelete) {
+      onDelete(material.id);
+    }
+    setShowDeleteDialog(false);
+  };
+
+  const handleDeleteCancel = () => {
+    setShowDeleteDialog(false);
+  };
+
   return (
     <div className={`h-full transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}>
       <Card className={`shadow-md hover-card h-full border-t-4 ${getBorderColor(material.stage)}`}>
@@ -197,9 +224,46 @@ export const MaterialCard: React.FC<MaterialCardProps> = ({
                 {t.materials.edit}
               </Link>
             </Button>
+            {onDelete && (
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                onClick={handleDeleteClick}
+                className="btn-scale"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1">
+                  <path d="M3 6h18"/>
+                  <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                  <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                  <line x1="10" x2="10" y1="11" y2="17"/>
+                  <line x1="14" x2="14" y1="11" y2="17"/>
+                </svg>
+                {t.materials?.delete_material || "Delete"}
+              </Button>
+            )}
           </div>
         </CardFooter>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t.materials?.confirm_delete || "Confirm Delete"}</DialogTitle>
+            <DialogDescription>
+              {t.materials?.delete_warning_message || "Are you sure you want to delete this material? This action cannot be undone."}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleDeleteCancel}>
+              {t.common?.cancel || "Cancel"}
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteConfirm}>
+              {t.materials?.delete_material || "Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

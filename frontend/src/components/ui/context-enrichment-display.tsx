@@ -13,6 +13,7 @@ interface ContextEnrichmentDisplayProps {
   onApplyTemporal?: () => void;
   industryApplied?: boolean;
   temporalApplied?: boolean;
+  translations?: any;
 }
 
 export function ContextEnrichmentDisplay({
@@ -20,10 +21,23 @@ export function ContextEnrichmentDisplay({
   onApplyIndustry,
   onApplyTemporal,
   industryApplied = false,
-  temporalApplied = false
+  temporalApplied = false,
+  translations
 }: ContextEnrichmentDisplayProps) {
   const temporalContext = getTemporalContext();
   const industryTemplate = industry ? getIndustryTemplate(industry) : null;
+
+  // Get translations with fallbacks
+  const t = translations?.enrichment?.ui || {
+    seasonal_context: 'Seasonal Context',
+    applied: 'Applied',
+    apply: 'Apply',
+    suggested_themes: 'Suggested themes',
+    upcoming_events: 'Upcoming events',
+    industry_guidelines: 'Industry Guidelines',
+    visual_keywords_label: 'Visual keywords',
+    avoid_label: 'Avoid'
+  };
 
   return (
     <div className="space-y-4">
@@ -34,7 +48,7 @@ export function ContextEnrichmentDisplay({
             <div className="flex items-center gap-2">
               <span className="text-xl">📅</span>
               <CardTitle className="text-sm font-medium text-orange-900">
-                Seasonal Context
+                {t.seasonal_context}
               </CardTitle>
             </div>
             {onApplyTemporal && (
@@ -49,7 +63,7 @@ export function ContextEnrichmentDisplay({
                     : 'text-orange-700 hover:text-orange-900 hover:bg-orange-100'
                 }`}
               >
-                {temporalApplied ? '✓ Applied' : 'Apply →'}
+                {temporalApplied ? `✓ ${t.applied}` : `${t.apply} →`}
               </Button>
             )}
           </div>
@@ -66,7 +80,7 @@ export function ContextEnrichmentDisplay({
             </div>
             
             <div className="text-xs text-orange-700">
-              <p className="font-medium mb-1">Suggested themes:</p>
+              <p className="font-medium mb-1">{t.suggested_themes}:</p>
               <div className="flex flex-wrap gap-1">
                 {temporalContext.suggestedThemes.map((theme) => (
                   <Badge 
@@ -82,7 +96,7 @@ export function ContextEnrichmentDisplay({
 
             {temporalContext.upcomingHolidays.length > 0 && (
               <div className="text-xs text-orange-700">
-                <p className="font-medium mb-1">Upcoming events:</p>
+                <p className="font-medium mb-1">{t.upcoming_events}:</p>
                 <ul className="list-disc list-inside space-y-0.5">
                   {temporalContext.upcomingHolidays.map((holiday, idx) => (
                     <li key={idx}>{holiday}</li>
@@ -102,7 +116,7 @@ export function ContextEnrichmentDisplay({
               <div className="flex items-center gap-2">
                 <span className="text-xl">🏢</span>
                 <CardTitle className="text-sm font-medium text-indigo-900">
-                  Industry Guidelines
+                  {t.industry_guidelines}
                 </CardTitle>
               </div>
               {onApplyIndustry && (
@@ -117,7 +131,7 @@ export function ContextEnrichmentDisplay({
                       : 'text-indigo-700 hover:text-indigo-900 hover:bg-indigo-100'
                   }`}
                 >
-                  {industryApplied ? '✓ Applied' : 'Apply →'}
+                  {industryApplied ? `✓ ${t.applied}` : `${t.apply} →`}
                 </Button>
               )}
             </div>
@@ -133,7 +147,7 @@ export function ContextEnrichmentDisplay({
             </div>
 
             <div className="text-xs text-indigo-700">
-              <p className="font-medium mb-1">Visual keywords:</p>
+              <p className="font-medium mb-1">{t.visual_keywords_label}:</p>
               <div className="flex flex-wrap gap-1">
                 {industryTemplate.visualKeywords.slice(0, 6).map((keyword) => (
                   <Badge 
@@ -149,7 +163,7 @@ export function ContextEnrichmentDisplay({
 
             {industryTemplate.avoidElements.length > 0 && (
               <div className="text-xs text-indigo-700">
-                <p className="font-medium mb-1">⚠️ Avoid:</p>
+                <p className="font-medium mb-1">⚠️ {t.avoid_label}:</p>
                 <p className="italic">
                   {industryTemplate.avoidElements.slice(0, 3).join(', ')}
                 </p>

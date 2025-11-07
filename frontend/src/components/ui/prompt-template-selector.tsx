@@ -11,14 +11,50 @@ interface PromptTemplateSelectorProps {
   onSelect: (template: PromptTemplate, generatedPrompt: string) => void;
   context: PromptContext;
   selectedTemplateId?: string;
+  translations?: any;
+  creativeApproach?: 'story_led' | 'concept_led' | 'hybrid'; // Filter templates by approach
 }
 
 export function PromptTemplateSelector({ 
   onSelect, 
   context,
-  selectedTemplateId 
+  selectedTemplateId,
+  translations,
+  creativeApproach = 'hybrid'
 }: PromptTemplateSelectorProps) {
   const [expanded, setExpanded] = React.useState(false);
+  
+  // Filter templates based on creative approach
+  const filteredTemplates = React.useMemo(() => {
+    console.log('[PromptTemplateSelector] creativeApproach:', creativeApproach);
+    console.log('[PromptTemplateSelector] PROMPT_TEMPLATES count:', PROMPT_TEMPLATES.length);
+    
+    // Check if templates have creativeApproach property
+    const hasCreativeApproachProperty = PROMPT_TEMPLATES.length > 0 && 'creativeApproach' in PROMPT_TEMPLATES[0];
+    console.log('[PromptTemplateSelector] Templates have creativeApproach property:', hasCreativeApproachProperty);
+    
+    // If templates don't have the property yet (build cache issue), show all templates
+    if (!hasCreativeApproachProperty) {
+      console.warn('[PromptTemplateSelector] WARNING: Templates missing creativeApproach property - showing all templates as fallback');
+      return PROMPT_TEMPLATES;
+    }
+    
+    if (creativeApproach === 'hybrid') {
+      console.log('[PromptTemplateSelector] Using hybrid - showing all templates');
+      return PROMPT_TEMPLATES;
+    }
+    
+    const filtered = PROMPT_TEMPLATES.filter(template => {
+      const hasProperty = 'creativeApproach' in template;
+      const templateApproach = template.creativeApproach;
+      const matches = templateApproach === creativeApproach || templateApproach === 'both';
+      console.log(`[PromptTemplateSelector] Template "${template.name}": approach="${templateApproach}", matches=${matches}`);
+      return matches;
+    });
+    
+    console.log('[PromptTemplateSelector] Filtered templates count:', filtered.length);
+    return filtered;
+  }, [creativeApproach]);
 
   const categories = [
     { id: 'product', name: 'Product', icon: '📦' },
@@ -32,6 +68,24 @@ export function PromptTemplateSelector({
     onSelect(template, generatedPrompt);
   };
 
+  // Helper to get translated template name
+  const getTemplateName = (template: PromptTemplate) => {
+    if (translations?.enrichment?.templates) {
+      const templateKey = template.id;
+      return translations.enrichment.templates[templateKey]?.name || template.name;
+    }
+    return template.name;
+  };
+
+  // Helper to get translated template description
+  const getTemplateDescription = (template: PromptTemplate) => {
+    if (translations?.enrichment?.templates) {
+      const templateKey = template.id;
+      return translations.enrichment.templates[templateKey]?.description || '';
+    }
+    return '';
+  };
+
   return (
     <div className="space-y-4">
       <Card className="rounded-2xl bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
@@ -40,7 +94,7 @@ export function PromptTemplateSelector({
             <div className="flex items-center gap-2">
               <span className="text-2xl">✨</span>
               <CardTitle className="text-lg font-medium text-purple-900">
-                Quick Start Templates
+                {translations?.enrichment?.ui?.quick_start_templates || "Quick Start Templates"}
               </CardTitle>
             </div>
             {!expanded && (
@@ -50,20 +104,38 @@ export function PromptTemplateSelector({
                 onClick={() => setExpanded(true)}
                 className="text-purple-700 hover:text-purple-900 hover:bg-purple-100"
               >
-                Browse All →
+                {translations?.enrichment?.ui?.browse_all || "Browse All"} →
               </Button>
             )}
           </div>
         </CardHeader>
         <CardContent>
           <CardDescription className="text-purple-700 mb-4">
-            Start with a professionally designed prompt template tailored to your campaign type
+            {translations?.enrichment?.ui?.template_selector_description || "Start with a professionally designed prompt template tailored to your campaign type"}
+            {creativeApproach !== 'hybrid' && (
+              <span className="block mt-2 text-sm font-medium text-purple-900">
+                {creativeApproach === 'story_led' 
+                  ? '📖 Showing templates optimized for Story-Led approach'
+                  : '💡 Showing templates optimized for Concept-Led approach'
+                }
+              </span>
+            )}
+            <span className="block mt-2 text-xs font-mono bg-yellow-100 px-2 py-1 rounded">
+              DEBUG: creativeApproach="{creativeApproach}" | filteredTemplates={filteredTemplates.length} | total={PROMPT_TEMPLATES.length}
+            </span>
           </CardDescription>
 
           {!expanded ? (
-            // Show popular templates
-            <div className="grid grid-cols-2 gap-3">
-              {PROMPT_TEMPLATES.slice(0, 4).map((template) => {
+            // Show popular templates (filtered by creative approach)
+            <>
+              {filteredTemplates.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <p className="text-sm">No templates match the selected creative approach.</p>
+                  <p className="text-xs mt-2">Try selecting a different approach or use Hybrid mode.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  {filteredTemplates.slice(0, 4).map((template) => {
                 const Icon = template.icon;
                 const isSelected = selectedTemplateId === template.id;
                 
@@ -83,7 +155,7 @@ export function PromptTemplateSelector({
                           <Icon />
                           <div>
                             <CardTitle className="text-sm font-medium">
-                              {template.name}
+                              {getTemplateName(template)}
                             </CardTitle>
                             <Badge 
                               variant="secondary" 
@@ -101,12 +173,14 @@ export function PromptTemplateSelector({
                   </Card>
                 );
               })}
-            </div>
+                </div>
+              )}
+            </>
           ) : (
-            // Show all templates by category
+            // Show all templates by category (filtered by creative approach)
             <div className="space-y-6">
               {categories.map((category) => {
-                const templates = PROMPT_TEMPLATES.filter(t => t.category === category.id);
+                const templates = filteredTemplates.filter(t => t.category === category.id);
                 
                 return (
                   <div key={category.id}>
@@ -143,7 +217,7 @@ export function PromptTemplateSelector({
                                   )}
                                 </div>
                                 <CardTitle className="text-xs font-medium leading-tight">
-                                  {template.name}
+                                  {getTemplateName(template)}
                                 </CardTitle>
                               </div>
                             </CardHeader>
@@ -161,7 +235,7 @@ export function PromptTemplateSelector({
                 onClick={() => setExpanded(false)}
                 className="w-full text-purple-700 hover:text-purple-900 hover:bg-purple-100"
               >
-                ← Show Less
+                ← {translations?.enrichment?.ui?.show_less || "Show Less"}
               </Button>
             </div>
           )}
@@ -175,11 +249,10 @@ export function PromptTemplateSelector({
               <Check className="w-5 h-5 text-green-600 mt-0.5" />
               <div>
                 <p className="text-sm font-medium text-green-900">
-                  Template Applied
+                  {translations?.enrichment?.ui?.template_applied || "Template Applied"}
                 </p>
                 <p className="text-xs text-green-700 mt-1">
-                  Your prompt has been generated based on the selected template. 
-                  Feel free to customize it further below.
+                  {translations?.enrichment?.ui?.template_applied_description || "Your prompt has been generated based on the selected template. Feel free to customize it further below."}
                 </p>
               </div>
             </div>

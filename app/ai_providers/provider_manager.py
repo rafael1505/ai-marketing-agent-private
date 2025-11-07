@@ -37,6 +37,8 @@ class ImageGenerationRequest:
     variations: int = 1
     negative_prompt: Optional[str] = None
     seed: Optional[int] = None
+    people_preference: str = "auto"  # Smart 4-mode system: "auto" | "include" | "exclude" | "minimal"
+    creative_approach: str = "hybrid"  # Visual storytelling: "story_led" | "concept_led" | "hybrid"
 
 @dataclass
 class ImageGenerationResult:
@@ -320,13 +322,25 @@ class AIProviderManager:
     async def generate_image(self, provider_id: str, request: ImageGenerationRequest) -> ImageGenerationResult:
         """Generate image using specified provider"""
         if provider_id not in self.providers:
+            # Get available providers for error message
+            available_providers = [p_id for p_id, p in self.providers.items() if p.is_available()]
             return ImageGenerationResult(
                 success=False,
                 images=[],
                 provider=provider_id,
                 model="unknown",
                 metadata={},
-                error=f"Provider '{provider_id}' not available"
+                error=f"Provider '{provider_id}' not available",
+                error_details={
+                    "error_type": "provider_not_found",
+                    "message": f"The AI provider '{provider_id}' is not initialized or not supported.",
+                    "user_message": f"errors.ai.provider_not_available",
+                    "provider": provider_id,
+                    "available_providers": available_providers,
+                    "suggested_actions": [
+                        f"Switch to an available provider: {', '.join(available_providers)}" if available_providers else "Configure an AI provider in Settings"
+                    ]
+                }
             )
         
         provider = self.providers[provider_id]
@@ -338,7 +352,18 @@ class AIProviderManager:
                 provider=provider_id,
                 model=provider.get_model(),
                 metadata={},
-                error=f"Provider '{provider_id}' is not available or configured"
+                error=f"Provider '{provider_id}' is not available or configured",
+                error_details={
+                    "error_type": "provider_not_configured",
+                    "message": f"The provider '{provider_id}' is not properly configured.",
+                    "user_message": "errors.ai.provider_not_configured",
+                    "provider": provider_id,
+                    "suggested_actions": [
+                        "Check API keys in AI Provider settings",
+                        "Verify base URL configuration",
+                        "Test provider connection"
+                    ]
+                }
             )
         
         try:
@@ -352,6 +377,162 @@ class AIProviderManager:
                 model=provider.get_model(),
                 metadata={},
                 error=str(e)
+            )
+    
+    async def generate_images_parallel(
+        self, 
+        provider_id: str, 
+        request: ImageGenerationRequest,
+        max_concurrent: int = None
+    ) -> ImageGenerationResult:
+        """
+        Generate multiple images in parallel with rate limiting and error handling.
+        
+        Args:
+            provider_id: ID of the AI provider to use
+            request: Image generation request with variations count
+            max_concurrent: Maximum concurrent requests (defaults based on provider)
+        
+        Returns:
+            ImageGenerationResult with all successfully generated images
+        """
+        if request.variations <= 1:
+            # For single image, use standard generation
+            return await self.generate_image(provider_id, request)
+        
+        # Provider-specific concurrency limits to avoid rate limiting
+        default_concurrency_limits = {
+            "openai": 2,        # OpenAI: Conservative to avoid rate limits
+            "stability": 3,     # Stability AI: Moderate concurrency
+            "replicate": 3,     # Replicate: Moderate concurrency
+            "huggingface": 5,   # HuggingFace: Higher tolerance
+            "free-test-provider": 10  # Free test: No limits
+        }
+        
+        # Determine concurrency limit
+        if max_concurrent is None:
+            max_concurrent = default_concurrency_limits.get(provider_id, 2)
+        
+        logger.info(
+            f"Generating {request.variations} images in parallel with "
+            f"max_concurrent={max_concurrent} for provider '{provider_id}'"
+        )
+        
+        # Create individual requests for each variation
+        single_requests = []
+        for i in range(request.variations):
+            single_request = ImageGenerationRequest(
+                prompt=request.prompt,
+                size=request.size,
+                style=request.style,
+                quality=request.quality,
+                variations=1,  # Each task generates 1 image
+                negative_prompt=request.negative_prompt,
+                seed=request.seed + i if request.seed else None  # Vary seed for different results
+            )
+            single_requests.append(single_request)
+        
+        # Execute requests in batches to respect concurrency limits
+        all_images = []
+        all_errors = []
+        total_cost = 0.0
+        successful_count = 0
+        
+        # Process in batches
+        for batch_start in range(0, len(single_requests), max_concurrent):
+            batch_end = min(batch_start + max_concurrent, len(single_requests))
+            batch = single_requests[batch_start:batch_end]
+            
+            logger.info(f"Processing batch {batch_start//max_concurrent + 1}: images {batch_start+1} to {batch_end}")
+            
+            # Execute batch in parallel
+            tasks = [self.generate_image(provider_id, req) for req in batch]
+            results = await asyncio.gather(*tasks, return_exceptions=True)
+            
+            # Process results
+            for i, result in enumerate(results):
+                image_num = batch_start + i + 1
+                
+                if isinstance(result, Exception):
+                    error_msg = f"Image {image_num} failed with exception: {str(result)}"
+                    logger.error(error_msg)
+                    all_errors.append({
+                        "image_num": image_num,
+                        "error": str(result),
+                        "error_type": "exception"
+                    })
+                elif result.success:
+                    all_images.extend(result.images)
+                    total_cost += result.cost or 0.0
+                    successful_count += 1
+                    logger.info(f"Image {image_num} generated successfully")
+                else:
+                    error_msg = f"Image {image_num} failed: {result.error}"
+                    logger.error(error_msg)
+                    all_errors.append({
+                        "image_num": image_num,
+                        "error": result.error,
+                        "error_type": result.error_details.get("error_type") if result.error_details else "unknown",
+                        "error_details": result.error_details
+                    })
+            
+            # Small delay between batches to avoid rate limiting
+            if batch_end < len(single_requests):
+                await asyncio.sleep(0.5)
+        
+        # Determine overall success
+        success = successful_count > 0
+        
+        # Get provider info for metadata
+        provider = self.providers.get(provider_id)
+        model = provider.get_model() if provider else "unknown"
+        
+        # Build response
+        if success:
+            metadata = {
+                "total_requested": request.variations,
+                "total_generated": successful_count,
+                "total_failed": len(all_errors),
+                "errors": all_errors if all_errors else None,
+                "parallel_execution": True,
+                "max_concurrent": max_concurrent
+            }
+            
+            if all_errors:
+                logger.warning(
+                    f"Partial success: {successful_count}/{request.variations} images generated, "
+                    f"{len(all_errors)} failed"
+                )
+            else:
+                logger.info(f"All {successful_count} images generated successfully")
+            
+            return ImageGenerationResult(
+                success=True,
+                images=all_images,
+                provider=provider_id,
+                model=model,
+                metadata=metadata,
+                cost=total_cost
+            )
+        else:
+            # Complete failure
+            logger.error(f"All {request.variations} image generation attempts failed")
+            
+            # Use first error for main error message
+            first_error = all_errors[0] if all_errors else {"error": "Unknown error", "error_type": "unknown"}
+            
+            return ImageGenerationResult(
+                success=False,
+                images=[],
+                provider=provider_id,
+                model=model,
+                metadata={
+                    "total_requested": request.variations,
+                    "total_failed": len(all_errors),
+                    "errors": all_errors
+                },
+                error=first_error.get("error", "All image generation attempts failed"),
+                error_details=first_error.get("error_details")
             )
     
     def get_recommended_provider(self, features: List[str] = None) -> str:
@@ -413,8 +594,43 @@ class OpenAIProvider(BaseProvider):
         if self.is_configured():
             self.status = ProviderStatus.CONFIGURED
     
+    def is_configured(self) -> bool:
+        """Check if provider is configured with API key AND model"""
+        has_api_key = self.config.get("api_key") is not None
+        has_model = self.config.get("model") is not None and self.config.get("model") != ""
+        return has_api_key and has_model
+    
     async def generate_image(self, request: ImageGenerationRequest) -> ImageGenerationResult:
         """Generate image using OpenAI DALL-E"""
+        
+        # Validate model is configured
+        if not self.config.get("model"):
+            ai_error = AIErrorClassifier.classify_provider_error(
+                provider="openai",
+                status_code=None,
+                error_data={"error": {"message": "Model not configured"}},
+                exception=ValueError("Model not selected for OpenAI provider")
+            )
+            # Override error details to be more user-friendly
+            ai_error.error_type = "configuration_error"
+            ai_error.message = "OpenAI model not selected"
+            ai_error.user_message = "Please select a model for the OpenAI provider in AI Provider settings"
+            ai_error.suggested_actions = [
+                "Go to AI Providers settings",
+                "Select a model for OpenAI (e.g., dall-e-3)",
+                "Save the configuration and try again"
+            ]
+            
+            return ImageGenerationResult(
+                success=False,
+                images=[],
+                provider="openai",
+                model="none",
+                metadata={},
+                error=ai_error.message,
+                error_details=ai_error.to_dict()
+            )
+        
         headers = {
             "Authorization": f"Bearer {self.config['api_key']}",
             "Content-Type": "application/json"
@@ -423,9 +639,36 @@ class OpenAIProvider(BaseProvider):
         # DALL-E 3 only supports 1 image at a time
         num_images = min(request.variations, 1)
         
+        # Apply smart people preference modification (4-mode system)
+        modified_prompt = request.prompt
+        people_pref = request.people_preference or "auto"
+        
+        if people_pref == "exclude":
+            # Strong exclusion - product-only imagery
+            modified_prompt = f"{request.prompt}\n\nCRITICAL REQUIREMENT: Absolutely NO people, NO humans, NO faces, NO body parts. Focus exclusively on products, objects, abstract elements, or scenery. This is a product-only visual."
+        elif people_pref == "include":
+            # Reinforce people presence (only if not already in prompt)
+            if not any(keyword in request.prompt.lower() for keyword in ["people", "person", "human", "customer", "user", "family", "lifestyle"]):
+                modified_prompt = f"{request.prompt}\n\nIMPORTANT: Include diverse, authentic people in natural settings. Show real human moments and connections."
+        elif people_pref == "minimal":
+            # Product-focused with subtle human context
+            modified_prompt = f"{request.prompt}\n\nGUIDELINE: Prioritize product showcase. If people appear, they should be minimal, in background, or partial (hands holding product). Main focus must be on the product/object."
+        # "auto" mode: no modification - let enrichments guide naturally
+        
+        # Apply creative approach enrichment (storytelling method)
+        creative_approach = request.creative_approach or "hybrid"
+        
+        if creative_approach == "story_led":
+            # Story-Led: Narrative scenes with people
+            modified_prompt = f"{modified_prompt}\n\n[STORYTELLING: Story-Led] Create narrative scenes showing people in authentic situations. Tell visual stories through human experiences, emotions, and natural interactions. Focus on documentary-style, candid moments."
+        elif creative_approach == "concept_led":
+            # Concept-Led: Clear visual concepts, symbols
+            modified_prompt = f"{modified_prompt}\n\n[STORYTELLING: Concept-Led] Focus on clear visual concepts, symbolic imagery, and informative presentation. Emphasize clarity, professionalism, and direct communication through visual metaphors and clean compositions."
+        # "hybrid" mode: no modification - let context decide
+        
         payload = {
             "model": self.config["model"],
-            "prompt": request.prompt,
+            "prompt": modified_prompt,
             "n": num_images,
             "size": request.size if request.size in self.get_supported_sizes() else "1024x1024",
             "quality": request.quality if request.quality in ["standard", "hd"] else "standard",
@@ -461,7 +704,9 @@ class OpenAIProvider(BaseProvider):
                                     logger.warning(f"Failed to generate additional variation: {e}")
                                     break
                         
-                        cost = len(images) * self.config["pricing"].get(request.quality, 0.04)
+                        # Calculate cost (handle case where pricing is None or missing)
+                        pricing = self.config.get("pricing") or {}
+                        cost = len(images) * pricing.get(request.quality, 0.04)
                         
                         return ImageGenerationResult(
                             success=True,
@@ -551,9 +796,39 @@ class StabilityAIProvider(BaseProvider):
         # Parse size
         width, height = map(int, request.size.split('x'))
         
+        # Apply smart people preference modification (4-mode system)
+        modified_prompt = request.prompt
+        negative_prompt_additions = []
+        people_pref = request.people_preference or "auto"
+        
+        if people_pref == "exclude":
+            # Strong exclusion - product-only imagery
+            modified_prompt = f"{request.prompt}. CRITICAL: Absolutely NO people, NO humans, NO faces, NO body parts."
+            negative_prompt_additions.append("people, humans, persons, faces, portraits, crowds, human figures, body parts, hands, feet, silhouettes")
+        elif people_pref == "include":
+            # Reinforce people presence
+            if not any(keyword in request.prompt.lower() for keyword in ["people", "person", "human", "customer", "user", "family", "lifestyle"]):
+                modified_prompt = f"{request.prompt}. Include diverse, authentic people in natural settings."
+        elif people_pref == "minimal":
+            # Product-focused with subtle human context
+            modified_prompt = f"{request.prompt}. Product-focused composition. People minimal or in background only."
+            negative_prompt_additions.append("crowds, group photos, portrait mode, face close-ups, human-centric composition")
+        # "auto" mode: no modification
+        
+        # Apply creative approach enrichment (storytelling method)
+        creative_approach = request.creative_approach or "hybrid"
+        
+        if creative_approach == "story_led":
+            # Story-Led: Narrative scenes with people
+            modified_prompt = f"{modified_prompt}. [STORYTELLING: Story-Led] Narrative scene showing people in authentic situations, documentary-style, candid moments."
+        elif creative_approach == "concept_led":
+            # Concept-Led: Clear visual concepts
+            modified_prompt = f"{modified_prompt}. [STORYTELLING: Concept-Led] Clear visual concept, symbolic imagery, professional presentation, clean composition."
+        # "hybrid" mode: no modification
+        
         payload = {
             "text_prompts": [
-                {"text": request.prompt, "weight": 1.0}
+                {"text": modified_prompt, "weight": 1.0}
             ],
             "cfg_scale": 7,
             "height": height,
@@ -562,8 +837,16 @@ class StabilityAIProvider(BaseProvider):
             "steps": 30,
         }
         
+        # Build negative prompts
         if request.negative_prompt:
             payload["text_prompts"].append({"text": request.negative_prompt, "weight": -1.0})
+        
+        # Add people-related negative prompts based on preference
+        if negative_prompt_additions:
+            payload["text_prompts"].append({
+                "text": ", ".join(negative_prompt_additions),
+                "weight": -1.0
+            })
         
         if request.seed:
             payload["seed"] = request.seed
@@ -585,7 +868,9 @@ class StabilityAIProvider(BaseProvider):
                                 image_data = f"data:image/png;base64,{artifact['base64']}"
                                 images.append(image_data)
                         
-                        cost = len(images) * self.config["pricing"]["standard"]
+                        # Calculate cost (handle case where pricing is None or missing)
+                        pricing = self.config.get("pricing") or {}
+                        cost = len(images) * pricing.get("standard", 0.02)
                         
                         return ImageGenerationResult(
                             success=True,
@@ -639,10 +924,40 @@ class ReplicateProvider(BaseProvider):
         
         width, height = map(int, request.size.split('x'))
         
+        # Apply smart people preference modification (4-mode system)
+        modified_prompt = request.prompt
+        negative_prompt_additions = []
+        people_pref = request.people_preference or "auto"
+        
+        if people_pref == "exclude":
+            # Strong exclusion - product-only imagery
+            modified_prompt = f"{request.prompt}. CRITICAL: Absolutely NO people, NO humans, NO faces, NO body parts."
+            negative_prompt_additions.append("people, humans, persons, faces, portraits, crowds, human figures, body parts, hands, feet, silhouettes")
+        elif people_pref == "include":
+            # Reinforce people presence
+            if not any(keyword in request.prompt.lower() for keyword in ["people", "person", "human", "customer", "user", "family", "lifestyle"]):
+                modified_prompt = f"{request.prompt}. Include diverse, authentic people in natural settings."
+        elif people_pref == "minimal":
+            # Product-focused with subtle human context
+            modified_prompt = f"{request.prompt}. Product-focused composition. People minimal or in background only."
+            negative_prompt_additions.append("crowds, group photos, portrait mode, face close-ups, human-centric composition")
+        # "auto" mode: no modification
+        
+        # Apply creative approach enrichment (storytelling method)
+        creative_approach = request.creative_approach or "hybrid"
+        
+        if creative_approach == "story_led":
+            # Story-Led: Narrative scenes with people
+            modified_prompt = f"{modified_prompt}. [STORYTELLING: Story-Led] Narrative scene showing people in authentic situations, documentary-style, candid moments."
+        elif creative_approach == "concept_led":
+            # Concept-Led: Clear visual concepts
+            modified_prompt = f"{modified_prompt}. [STORYTELLING: Concept-Led] Clear visual concept, symbolic imagery, professional presentation, clean composition."
+        # "hybrid" mode: no modification
+        
         payload = {
             "version": self.config["model"].split(":")[-1],
             "input": {
-                "prompt": request.prompt,
+                "prompt": modified_prompt,
                 "width": width,
                 "height": height,
                 "num_outputs": min(request.variations, self.get_max_variations()),
@@ -651,8 +966,15 @@ class ReplicateProvider(BaseProvider):
             }
         }
         
+        # Build negative prompt
+        negative_prompts = []
         if request.negative_prompt:
-            payload["input"]["negative_prompt"] = request.negative_prompt
+            negative_prompts.append(request.negative_prompt)
+        if negative_prompt_additions:
+            negative_prompts.extend(negative_prompt_additions)
+        
+        if negative_prompts:
+            payload["input"]["negative_prompt"] = ", ".join(negative_prompts)
         
         if request.seed:
             payload["input"]["seed"] = request.seed
@@ -683,7 +1005,9 @@ class ReplicateProvider(BaseProvider):
                                     
                                     if status_data["status"] == "succeeded":
                                         images = status_data["output"] or []
-                                        cost = len(images) * self.config["pricing"]["standard"]
+                                        # Calculate cost (handle case where pricing is None or missing)
+                                        pricing = self.config.get("pricing") or {}
+                                        cost = len(images) * pricing.get("standard", 0.01)
                                         
                                         return ImageGenerationResult(
                                             success=True,

@@ -20,6 +20,7 @@ class ImageGenerationRequestBody(BaseModel):
     variations: int = 1
     negative_prompt: Optional[str] = None
     seed: Optional[int] = None
+    people_preference: str = "auto"  # Smart 4-mode system: "auto" | "include" | "exclude" | "minimal"
 
 @router.post("/generate-image")
 async def generate_image_with_provider(
@@ -42,12 +43,19 @@ async def generate_image_with_provider(
         quality=request_body.quality,
         variations=request_body.variations,
         negative_prompt=request_body.negative_prompt,
-        seed=request_body.seed
+        seed=request_body.seed,
+        people_preference=request_body.people_preference
     )
     
     try:
         logger.info(f"Generating image with provider: {request_body.ai_provider}, variations: {request_body.variations}")
-        result = await manager.generate_image(request_body.ai_provider, generation_request)
+        
+        # Use parallel generation for multiple variations (Phase 2.4 optimization)
+        if request_body.variations > 1:
+            logger.info(f"Using parallel generation for {request_body.variations} images")
+            result = await manager.generate_images_parallel(request_body.ai_provider, generation_request)
+        else:
+            result = await manager.generate_image(request_body.ai_provider, generation_request)
         
         if result.success:
             logger.info(f"Image generation successful: {len(result.images)} images generated")

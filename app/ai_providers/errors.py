@@ -186,6 +186,14 @@ class AIErrorClassifier:
                 ["actions.try_again", "actions.check_connection"]
             )
         
+        # SSL/connection errors (cannot connect to host, SSL errors, etc.)
+        if any(keyword in error_str for keyword in ["cannot connect", "ssl", "connect call failed", "connection refused", "connection reset"]):
+            return (
+                AIErrorType.NETWORK_ERROR,
+                "errors.ai.connection_failed",
+                ["actions.check_internet", "actions.check_firewall", "actions.try_again", "actions.contact_support"]
+            )
+        
         if "connection" in error_str or "network" in error_str:
             return (
                 AIErrorType.NETWORK_ERROR,

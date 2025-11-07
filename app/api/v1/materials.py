@@ -35,6 +35,11 @@ async def create_material(
     current_user: Annotated[dict, Depends(get_current_active_user)],
     request: Request
 ) -> Any:
+    # Debug logging to capture validation issues
+    print(f"[CREATE_MATERIAL] Received request from user: {current_user.get('email', 'unknown')}")
+    print(f"[CREATE_MATERIAL] Material data: {material.model_dump()}")
+    print(f"[CREATE_MATERIAL] Stage: {material.stage}, Status: {material.status}")
+    
     mongodb = request.app.mongodb
     materials_collection = get_db_collection(mongodb, "materials")
     material_db = MaterialDB(materials_collection)
@@ -112,7 +117,10 @@ async def update_material(
     if current_material["company_id"] != current_user["company_id"]:
         raise HTTPException(status_code=403, detail="Not enough permissions")
     
-    updated_material = await material_db.update(material_id, material.model_dump())
+    # Only update fields that were actually provided (exclude None values for partial updates)
+    update_data = material.model_dump(exclude_none=True)
+    
+    updated_material = await material_db.update(material_id, update_data)
     if not updated_material:
         raise HTTPException(status_code=404, detail="Material not found")
     # Convert ObjectId to string for JSON serialization
@@ -241,4 +249,36 @@ async def update_stage(
         raise HTTPException(status_code=404, detail="Material not found")
     # Convert ObjectId to string for JSON serialization
     return serialize_material(updated_material)
+
+
+@router.delete("/{material_id}")
+async def delete_material(
+    material_id: str,
+    current_user: Annotated[dict, Depends(get_current_active_user)],
+    request: Request
+) -> Any:
+    """Delete a material by ID"""
+    mongodb = request.app.mongodb
+    materials_collection = get_db_collection(mongodb, "materials")
+    material_db = MaterialDB(materials_collection)
+    
+    # Check if material exists and user has permission
+    current_material = await material_db.get(material_id)
+    if not current_material:
+        raise HTTPException(status_code=404, detail="Material not found")
+    
+    if current_material["company_id"] != current_user["company_id"]:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    
+    # Delete the material
+    try:
+        result = await materials_collection.delete_one({"_id": ObjectId(material_id)})
+        
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Material not found")
+        
+        return {"success": True, "message": "Material deleted successfully", "id": material_id}
+    except Exception as e:
+        print(f"Error deleting material: {e}")
+        raise HTTPException(status_code=500, detail=f"Error deleting material: {str(e)}")
 

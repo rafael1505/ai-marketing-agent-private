@@ -96,6 +96,33 @@ async def global_exception_handler(request: Request, exc: Exception):
         content=error_detail
     )
 
+# Add specific handler for Pydantic validation errors
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
+
+@api_app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle FastAPI/Pydantic validation errors with detailed logging"""
+    logging.error(f"[VALIDATION_ERROR] Path: {request.url.path}")
+    logging.error(f"[VALIDATION_ERROR] Method: {request.method}")
+    logging.error(f"[VALIDATION_ERROR] Body: {await request.body()}")
+    logging.error(f"[VALIDATION_ERROR] Errors: {exc.errors()}")
+    
+    return JSONResponse(
+        status_code=422,
+        content={
+            "success": False,
+            "error": "Validation error",
+            "error_details": {
+                "error_type": "validation_error",
+                "message": "Request validation failed",
+                "user_message": "errors.validation.failed",
+                "validation_errors": exc.errors(),
+                "timestamp": datetime.now().isoformat()
+            }
+        }
+    )
+
 # Add direct routes for API debugging
 from app.api.v1 import companies
 
