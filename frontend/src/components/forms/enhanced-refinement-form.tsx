@@ -68,7 +68,6 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
   const [batchProgress, setBatchProgress] = React.useState<Array<{status: string, imageUrl?: string}>>([]);
 
   // Phase 1 fields moved to Phase 2 (UX Restructuring)
-  const [campaignBrief, setCampaignBrief] = React.useState<string>(material?.campaign_brief || material?.description || "");
   const [creativeApproach, setCreativeApproach] = React.useState<"story_led" | "concept_led" | "hybrid">(
     material?.creative_approach || "hybrid"
   );
@@ -245,7 +244,6 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
       // Merge Phase 2 formData with Phase 1 fields (moved to Phase 2)
       const enrichedFormData = {
         ...formData,
-        campaign_brief: campaignBrief,
         creative_approach: creativeApproach,
         campaign_date: campaignDate,
       };
@@ -465,43 +463,6 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
             <PhaseStrategyContext material={material} translations={t} />
 
             {/* ========== EXECUTION FIELDS (Moved from Phase 1) ========== */}
-            
-            {/* Campaign Brief */}
-            <div className="space-y-2 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-xl border border-green-200 dark:border-green-800">
-              <div className="flex items-center justify-between mb-3">
-                <Label htmlFor="campaign_brief" className="text-sm font-medium flex items-center space-x-2">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600 dark:text-green-400">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                    <polyline points="10 9 9 9 8 9"></polyline>
-                  </svg>
-                  <span>{t.creation?.idea?.form?.campaign_brief || "Campaign Brief"}</span>
-                  {selectedTemplate && (
-                    <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full">
-                      Using: {selectedTemplate.name}
-                    </span>
-                  )}
-                </Label>
-                <span className="px-3 py-1 text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded-full border border-green-200 dark:border-green-800">
-                  ✨ Auto-Enriched
-                </span>
-              </div>
-              <Textarea
-                id="campaign_brief"
-                name="campaign_brief"
-                placeholder={t.creation?.idea?.form?.campaign_brief_placeholder || "Describe the overall marketing campaign vision..."}
-                value={campaignBrief}
-                onChange={(e) => setCampaignBrief(e.target.value)}
-                rows={6}
-                className="focus:border-green-500 transition-all resize-none bg-green-50/30 dark:bg-green-950/10"
-              />
-              <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-start space-x-1">
-                <span>💡</span>
-                <span>{t.creation?.idea?.form?.campaign_brief_hint || "This will be enriched with templates, industry context, and seasonal themes"}</span>
-              </p>
-            </div>
 
             {/* Creative Approach */}
             <div className="space-y-3 p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 rounded-xl border border-purple-200 dark:border-purple-800">
@@ -632,7 +593,8 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
                 }}
                 onSelect={(template: PromptTemplate, generatedPrompt: string) => {
                   setSelectedTemplate(template);
-                  setCampaignBrief(generatedPrompt);
+                  // Update the Visual Direction Prompt (formData.prompt) with the generated prompt
+                  setFormData(prev => ({ ...prev, prompt: generatedPrompt }));
                 }}
                 selectedTemplateId={selectedTemplate?.id}
                 translations={t}
