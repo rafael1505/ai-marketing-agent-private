@@ -4,6 +4,7 @@ import React from "react";
 import Image from "next/image";
 import { getTranslations } from "@/i18n";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,7 +14,11 @@ import { RefinementFormData, GeneratedImage, Material } from "@/types";
 import { Loader } from "@/components/ui/loader";
 import { ContextEnrichmentDisplay } from "@/components/ui/context-enrichment-display";
 import { PeoplePreferenceSelector } from "@/components/ui/people-preference-selector";
+import { PhaseStrategyContext } from "@/components/ui/phase-strategy-context";
+import { PromptTemplateSelector } from "@/components/ui/prompt-template-selector";
+import { PROMPT_TEMPLATES, type PromptTemplate } from "@/data/prompt-templates";
 import { INDUSTRY_TEMPLATES, enrichPromptWithIndustry } from "@/data/industry-templates";
+import { getDatePresets } from "@/lib/seasonal-context";
 import { generateSeasonalContext, enrichPromptWithSeasonalContext, SeasonalContext } from "@/lib/seasonal-context";
 import { enrichPromptWithMaterialContext } from "@/lib/material-context";
 import { generateVisualPromptFromCampaign } from "@/lib/visual-prompt-generator";
@@ -61,6 +66,17 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
   // Batch generation state (Phase 2)
   const [batchSize, setBatchSize] = React.useState<number>(3); // Default: 3 images
   const [batchProgress, setBatchProgress] = React.useState<Array<{status: string, imageUrl?: string}>>([]);
+
+  // Phase 1 fields moved to Phase 2 (UX Restructuring)
+  const [campaignBrief, setCampaignBrief] = React.useState<string>(material?.campaign_brief || material?.description || "");
+  const [creativeApproach, setCreativeApproach] = React.useState<"story_led" | "concept_led" | "hybrid">(
+    material?.creative_approach || "hybrid"
+  );
+  const [campaignDate, setCampaignDate] = React.useState<Date>(
+    material?.campaign_date ? new Date(material.campaign_date) : new Date()
+  );
+  const [selectedTemplate, setSelectedTemplate] = React.useState<any | null>(null);
+  const [showDatePresets, setShowDatePresets] = React.useState(false);
 
   // Initialize seasonal context after component mounts (client-side only)
   // Use material's campaign_date if available, otherwise use current date
@@ -226,7 +242,16 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
     setIsSubmitting(true);
 
     try {
-      await onSubmit(formData);
+      // Merge Phase 2 formData with Phase 1 fields (moved to Phase 2)
+      const enrichedFormData = {
+        ...formData,
+        campaign_brief: campaignBrief,
+        creative_approach: creativeApproach,
+        campaign_date: campaignDate,
+      };
+      
+      console.log("Submitting enriched form data:", enrichedFormData);
+      await onSubmit(enrichedFormData);
     } catch (error) {
       console.error("Error submitting refinement form:", error);
       setIsSubmitting(false);
@@ -436,6 +461,354 @@ export const EnhancedRefinementForm: React.FC<RefinementFormProps> = ({
         
         <form onSubmit={handleSubmit} className="fade-in">
           <CardContent className="space-y-6 pt-6">
+            {/* Phase 1 Strategy Context - Read-only summary */}
+            <PhaseStrategyContext material={material} translations={t} />
+
+            {/* ========== EXECUTION FIELDS (Moved from Phase 1) ========== */}
+            
+            {/* Campaign Brief */}
+            <div className="space-y-2 p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 rounded-xl border border-green-200 dark:border-green-800">
+              <div className="flex items-center justify-between mb-3">
+                <Label htmlFor="campaign_brief" className="text-sm font-medium flex items-center space-x-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-green-600 dark:text-green-400">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                  </svg>
+                  <span>{t.creation?.idea?.form?.campaign_brief || "Campaign Brief"}</span>
+                  {selectedTemplate && (
+                    <span className="ml-2 px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full">
+                      Using: {selectedTemplate.name}
+                    </span>
+                  )}
+                </Label>
+                <span className="px-3 py-1 text-xs font-medium bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded-full border border-green-200 dark:border-green-800">
+                  ✨ Auto-Enriched
+                </span>
+              </div>
+              <Textarea
+                id="campaign_brief"
+                name="campaign_brief"
+                placeholder={t.creation?.idea?.form?.campaign_brief_placeholder || "Describe the overall marketing campaign vision..."}
+                value={campaignBrief}
+                onChange={(e) => setCampaignBrief(e.target.value)}
+                rows={6}
+                className="focus:border-green-500 transition-all resize-none bg-green-50/30 dark:bg-green-950/10"
+              />
+              <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-start space-x-1">
+                <span>💡</span>
+                <span>{t.creation?.idea?.form?.campaign_brief_hint || "This will be enriched with templates, industry context, and seasonal themes"}</span>
+              </p>
+            </div>
+
+            {/* Creative Approach */}
+            <div className="space-y-3 p-4 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-950/20 dark:to-pink-950/20 rounded-xl border border-purple-200 dark:border-purple-800">
+              <div className="flex items-center space-x-2 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-purple-600 dark:text-purple-400">
+                  <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                  <path d="M12 9v4"></path>
+                  <path d="M12 17h.01"></path>
+                </svg>
+                <h3 className="text-sm font-semibold text-purple-900 dark:text-purple-100">
+                  🎬 {t.creation?.refinement?.form?.creative_approach || "Visual Storytelling Approach"}
+                </h3>
+              </div>
+              <p className="text-xs text-purple-700 dark:text-purple-300 mb-3">
+                {t.creation?.refinement?.form?.creative_approach_hint || "How should your visuals communicate your message?"}
+              </p>
+              
+              <div className="space-y-2">
+                {/* Story-Led Option */}
+                <div
+                  onClick={() => setCreativeApproach("story_led")}
+                  className={`flex items-start space-x-3 p-3 rounded-lg border transition-all cursor-pointer ${
+                    creativeApproach === "story_led"
+                      ? "bg-purple-50 border-purple-300 dark:bg-purple-950/20 dark:border-purple-600"
+                      : "border-gray-200 hover:border-purple-200 dark:border-gray-700 dark:hover:border-purple-600"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="creative_approach"
+                    value="story_led"
+                    checked={creativeApproach === "story_led"}
+                    onChange={(e) => setCreativeApproach(e.target.value as any)}
+                    className="mt-1 h-4 w-4 text-purple-600 focus:ring-purple-500"
+                  />
+                  <div className="flex-1 space-y-1">
+                    <label className="flex items-center gap-2 cursor-pointer font-medium text-sm">
+                      <span className="text-base">📖</span>
+                      {t.creation?.idea?.form?.storytelling_story_led || "Story-Led"}
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      {t.creation?.idea?.form?.storytelling_story_led_desc || "Show people in situations, tell stories through scenes"}
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Concept-Led Option */}
+                <div
+                  onClick={() => setCreativeApproach("concept_led")}
+                  className={`flex items-start space-x-3 p-3 rounded-lg border transition-all cursor-pointer ${
+                    creativeApproach === "concept_led"
+                      ? "bg-purple-50 border-purple-300 dark:bg-purple-950/20 dark:border-purple-600"
+                      : "border-gray-200 hover:border-purple-200 dark:border-gray-700 dark:hover:border-purple-600"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="creative_approach"
+                    value="concept_led"
+                    checked={creativeApproach === "concept_led"}
+                    onChange={(e) => setCreativeApproach(e.target.value as any)}
+                    className="mt-1 h-4 w-4 text-purple-600 focus:ring-purple-500"
+                  />
+                  <div className="flex-1 space-y-1">
+                    <label className="flex items-center gap-2 cursor-pointer font-medium text-sm">
+                      <span className="text-base">💡</span>
+                      {t.creation?.idea?.form?.storytelling_concept_led || "Concept-Led"}
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      {t.creation?.idea?.form?.storytelling_concept_led_desc || "Show ideas through imagery, symbols, and clear visuals"}
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Hybrid Option (Default) */}
+                <div
+                  onClick={() => setCreativeApproach("hybrid")}
+                  className={`flex items-start space-x-3 p-3 rounded-lg border transition-all cursor-pointer ${
+                    creativeApproach === "hybrid"
+                      ? "bg-purple-50 border-purple-300 dark:bg-purple-950/20 dark:border-purple-600"
+                      : "border-gray-200 hover:border-purple-200 dark:border-gray-700 dark:hover:border-purple-600"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="creative_approach"
+                    value="hybrid"
+                    checked={creativeApproach === "hybrid"}
+                    onChange={(e) => setCreativeApproach(e.target.value as any)}
+                    className="mt-1 h-4 w-4 text-purple-600 focus:ring-purple-500"
+                  />
+                  <div className="flex-1 space-y-1">
+                    <label className="flex items-center gap-2 cursor-pointer font-medium text-sm">
+                      <span className="text-base">⚖️</span>
+                      {t.creation?.idea?.form?.storytelling_hybrid || "Hybrid"} 
+                      <span className="ml-2 px-2 py-0.5 text-xs bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded-full">
+                        Recommended
+                      </span>
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      {t.creation?.idea?.form?.storytelling_hybrid_desc || "Mix both approaches as needed based on context"}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Template Selector */}
+            <div className="space-y-3 p-4 bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-950/20 dark:to-cyan-950/20 rounded-xl border border-blue-200 dark:border-blue-800">
+              <div className="flex items-center space-x-2 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-blue-600 dark:text-blue-400">
+                  <path d="M12 20h9"></path>
+                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                </svg>
+                <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                  💡 {t.creation?.refinement?.form?.professional_templates || "Professional Templates"}
+                </h3>
+              </div>
+              <p className="text-xs text-blue-700 dark:text-blue-300 mb-3">
+                {t.creation?.refinement?.form?.templates_hint || "Templates will incorporate your audience and objective for better results"}
+              </p>
+              <PromptTemplateSelector
+                context={{
+                  title: material?.title || "[Product/Service Name]",
+                  targetAudience: material?.target_audience,
+                  campaignObjective: material?.campaign_objective,
+                  keywords: material?.keywords || []
+                }}
+                onSelect={(template: PromptTemplate, generatedPrompt: string) => {
+                  setSelectedTemplate(template);
+                  setCampaignBrief(generatedPrompt);
+                }}
+                selectedTemplateId={selectedTemplate?.id}
+                translations={t}
+                creativeApproach={creativeApproach}
+              />
+            </div>
+
+            {/* Campaign Date */}
+            <div className="space-y-3 p-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 rounded-xl border border-amber-200 dark:border-amber-800">
+              <Label htmlFor="campaign_date" className="text-sm font-medium flex items-center space-x-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-amber-600 dark:text-amber-400">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                <span>{t.creation?.idea?.form?.campaign_date || "Campaign Date"}</span>
+              </Label>
+              <p className="text-xs text-amber-700 dark:text-amber-300 -mt-1 mb-2">
+                {t.creation?.idea?.form?.campaign_date_hint || "When will this campaign run? This helps generate seasonally appropriate content."}
+              </p>
+              
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowDatePresets(!showDatePresets)}
+                  className="w-auto btn-scale"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
+                    <path d="M21 10H3"></path>
+                    <path d="M21 6H3"></path>
+                    <path d="M21 14H3"></path>
+                    <path d="M21 18H3"></path>
+                  </svg>
+                  {t.creation?.idea?.form?.quick_dates || "Quick Dates"}
+                </Button>
+                
+                <Input
+                  type="date"
+                  id="campaign_date"
+                  name="campaign_date"
+                  value={campaignDate ? new Date(campaignDate).toISOString().split('T')[0] : ''}
+                  onChange={(e) => {
+                    const dateValue = e.target.value ? new Date(e.target.value) : new Date();
+                    setCampaignDate(dateValue);
+                    // Update seasonal context
+                    try {
+                      const context = generateSeasonalContext(dateValue);
+                      setSeasonalContext(context);
+                    } catch (error) {
+                      console.error("Error updating seasonal context:", error);
+                    }
+                  }}
+                  className="flex-1 focus:border-primary transition-all"
+                />
+                
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    const today = new Date();
+                    setCampaignDate(today);
+                    try {
+                      const context = generateSeasonalContext(today);
+                      setSeasonalContext(context);
+                    } catch (error) {
+                      console.error("Error updating seasonal context:", error);
+                    }
+                  }}
+                  className="btn-scale"
+                  title={t.creation?.idea?.form?.use_today || "Use Today"}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <polyline points="12 6 12 12 16 14"></polyline>
+                  </svg>
+                </Button>
+              </div>
+              
+              {/* Date Presets Grid */}
+              {showDatePresets && (
+                <div className="grid grid-cols-2 gap-2 p-3 border rounded-lg bg-card shadow-sm animate-in fade-in-50 duration-200">
+                  {Object.entries(getDatePresets()).map(([key, preset]: [string, any]) => (
+                    <Button
+                      key={key}
+                      type="button"
+                      variant="ghost"
+                      onClick={() => {
+                        setCampaignDate(preset.date);
+                        setShowDatePresets(false);
+                        try {
+                          const context = generateSeasonalContext(preset.date);
+                          setSeasonalContext(context);
+                        } catch (error) {
+                          console.error("Error updating seasonal context:", error);
+                        }
+                      }}
+                      className="justify-start hover:bg-accent/50 transition-all"
+                    >
+                      <span className="text-sm">{preset.label}</span>
+                      <span className="ml-auto text-xs text-muted-foreground">
+                        {preset.date.toLocaleDateString(locale, { month: 'short', day: 'numeric' })}
+                      </span>
+                    </Button>
+                  ))}
+                </div>
+              )}
+              
+              {/* Seasonal Context Preview */}
+              {seasonalContext && (
+                <div className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded-lg border border-blue-200 dark:border-blue-800 space-y-2 animate-in fade-in-50 duration-300 mt-3">
+                  <div className="flex items-center space-x-2 text-sm font-semibold text-blue-900 dark:text-blue-100">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 2v1"></path>
+                      <path d="m18 6-1 1"></path>
+                      <path d="M22 12h-1"></path>
+                      <path d="m18 18-1-1"></path>
+                      <path d="M12 21v1"></path>
+                      <path d="m6 18 1-1"></path>
+                      <path d="M2 12h1"></path>
+                      <path d="m6 6 1 1"></path>
+                      <circle cx="12" cy="12" r="3"></circle>
+                    </svg>
+                    <span>{t.creation?.idea?.form?.seasonal_context || "Seasonal Context"}</span>
+                  </div>
+                  <p className="text-xs text-blue-800 dark:text-blue-200">
+                    {t.creation?.idea?.form?.seasonal_preview || "Based on your selected date, we'll generate content for"}:
+                  </p>
+                  <div className="grid grid-cols-2 gap-3 mt-2">
+                    <div className="space-y-1">
+                      <p className="text-xs font-medium text-blue-900 dark:text-blue-100">
+                        {t.creation?.idea?.seasonal_info?.season || "Season"}
+                      </p>
+                      <p className="text-sm text-blue-700 dark:text-blue-300">{seasonalContext.season} ({seasonalContext.monthName})</p>
+                    </div>
+                    {seasonalContext.holidays.length > 0 && (
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-blue-900 dark:text-blue-100">Holidays</p>
+                        <p className="text-sm text-blue-700 dark:text-blue-300">{seasonalContext.holidays.join(", ")}</p>
+                      </div>
+                    )}
+                    <div className="space-y-1 col-span-2">
+                      <p className="text-xs font-medium text-blue-900 dark:text-blue-100">
+                        {t.creation?.idea?.seasonal_info?.themes || "Suggested Themes"}
+                      </p>
+                      <div className="flex flex-wrap gap-1">
+                        {seasonalContext.themes.slice(0, 6).map((theme, idx) => (
+                          <span key={idx} className="inline-block px-2 py-0.5 text-xs bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 rounded-full">
+                            {theme}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-1 col-span-2">
+                      <p className="text-xs font-medium text-blue-900 dark:text-blue-100">
+                        {t.creation?.idea?.seasonal_info?.colors || "Seasonal Colors"}
+                      </p>
+                      <div className="flex gap-2">
+                        {seasonalContext.colors.map((color, idx) => (
+                          <div
+                            key={idx}
+                            className="w-8 h-8 rounded-md border-2 border-white dark:border-gray-700 shadow-sm"
+                            style={{ backgroundColor: color }}
+                            title={color}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ========== END OF EXECUTION FIELDS ========== */}
+
             {/* Selected Provider Info */}
             {selectedProvider && (
               <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
