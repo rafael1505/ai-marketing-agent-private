@@ -26,33 +26,24 @@ export function PromptTemplateSelector({
   
   // Filter templates based on creative approach
   const filteredTemplates = React.useMemo(() => {
-    console.log('[PromptTemplateSelector] creativeApproach:', creativeApproach);
-    console.log('[PromptTemplateSelector] PROMPT_TEMPLATES count:', PROMPT_TEMPLATES.length);
-    
     // Check if templates have creativeApproach property
     const hasCreativeApproachProperty = PROMPT_TEMPLATES.length > 0 && 'creativeApproach' in PROMPT_TEMPLATES[0];
-    console.log('[PromptTemplateSelector] Templates have creativeApproach property:', hasCreativeApproachProperty);
     
     // If templates don't have the property yet (build cache issue), show all templates
     if (!hasCreativeApproachProperty) {
-      console.warn('[PromptTemplateSelector] WARNING: Templates missing creativeApproach property - showing all templates as fallback');
       return PROMPT_TEMPLATES;
     }
     
     if (creativeApproach === 'hybrid') {
-      console.log('[PromptTemplateSelector] Using hybrid - showing all templates');
       return PROMPT_TEMPLATES;
     }
     
     const filtered = PROMPT_TEMPLATES.filter(template => {
-      const hasProperty = 'creativeApproach' in template;
       const templateApproach = template.creativeApproach;
       const matches = templateApproach === creativeApproach || templateApproach === 'both';
-      console.log(`[PromptTemplateSelector] Template "${template.name}": approach="${templateApproach}", matches=${matches}`);
       return matches;
     });
     
-    console.log('[PromptTemplateSelector] Filtered templates count:', filtered.length);
     return filtered;
   }, [creativeApproach]);
 
@@ -120,9 +111,6 @@ export function PromptTemplateSelector({
                 }
               </span>
             )}
-            <span className="block mt-2 text-xs font-mono bg-yellow-100 px-2 py-1 rounded">
-              DEBUG: creativeApproach="{creativeApproach}" | filteredTemplates={filteredTemplates.length} | total={PROMPT_TEMPLATES.length}
-            </span>
           </CardDescription>
 
           {!expanded ? (

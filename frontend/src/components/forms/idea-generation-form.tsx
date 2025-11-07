@@ -55,7 +55,6 @@ export const IdeaGenerationForm: React.FC<IdeaGenerationFormProps> = ({
         keywords: initialData.keywords || [],
         campaign_date: initialData.campaign_date || new Date(),
       });
-      console.log("Form reinitialized with saved data:", initialData);
     }
   }, [initialData]);
 
@@ -332,9 +331,6 @@ export const IdeaGenerationForm: React.FC<IdeaGenerationFormProps> = ({
             </div>
             <p className="text-xs text-blue-700 dark:text-blue-300 mb-3">
               Templates will incorporate your audience and objective from above for better results
-              <span className="block mt-1 font-mono text-xs bg-yellow-100 px-2 py-1 rounded">
-                DEBUG: creative_approach = "{formData.creative_approach || 'undefined'}"
-              </span>
             </p>
             <PromptTemplateSelector
               context={{
