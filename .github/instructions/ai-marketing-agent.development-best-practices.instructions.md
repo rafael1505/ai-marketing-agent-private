@@ -1,8 +1,13 @@
+---
+applyTo: "*"
+description: "Code quality standards and development conventions including PEP 8 compliance, TypeScript best practices, file organization policies, testing requirements, commit message standards, version control guidelines, and backend/frontend coding patterns"
+---
+
 # AI Marketing Agent – Development Best Practices Instruction
 
-**Version**: 1.0.0  
-**Last Updated**: January 28, 2025  
-**Applies To**: All development work (frontend and backend)
+**Version**: 2.0.0  
+**Last Updated**: November 6, 2025  
+**Applies To**: All development work (frontend and backend code quality, conventions, testing)
 
 ## 🎯 Objective
 This instruction defines the **development best practices** for the AI Marketing Agent project.  

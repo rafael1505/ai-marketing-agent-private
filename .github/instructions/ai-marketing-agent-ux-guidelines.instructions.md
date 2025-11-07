@@ -1,12 +1,13 @@
 ---
-applyTo: "frontend/**"
+applyTo: "*"
+description: "Frontend UI/UX guidelines for React components, hooks patterns, translation system, error handling, Apple-inspired design, shadcn/ui components, accessibility standards, and user experience best practices"
 ---
 
 # AI Marketing Agent – UX Guidelines (Apple-Inspired Gradual Transition)
 
-**Version**: 1.0.0  
-**Last Updated**: January 28, 2025  
-**Applies To**: Frontend UI/UX work
+**Version**: 2.0.0  
+**Last Updated**: November 6, 2025  
+**Applies To**: Frontend UI/UX work (React, Next.js, TypeScript, shadcn/ui, Tailwind CSS)
 
 ## 🎯 Context
 The current UX of the AI Marketing Agent project was initially created by AI without strict design rules.  
@@ -119,6 +120,147 @@ When working on UI/UX, also reference:
 - **Linting:** ESLint + Prettier with consistent formatting  
 
 Follow these conventions when building new pages or refactoring existing components.
+
+---
+
+## ⚠️ React Hooks Best Practices
+
+**CRITICAL RULES** (violations cause runtime errors):
+
+### 1. Hooks Must Be at Top Level
+
+Hooks must be called at the top level of function components, not inside conditions, loops, or nested functions.
+
+```tsx
+// ❌ WRONG - Hook inside conditional
+function MyComponent() {
+  if (condition) {
+    const [state, setState] = useState(false); // ERROR!
+  }
+}
+
+// ✅ CORRECT - Hook at top level
+function MyComponent() {
+  const [state, setState] = useState(false);
+  if (condition) {
+    // Use state here
+  }
+}
+```
+
+### 2. Hooks Must Be in Function Components
+
+```tsx
+// ❌ WRONG - Hook in regular function
+function helper() {
+  const [state, setState] = useState(false); // ERROR!
+}
+
+// ✅ CORRECT - Hook in component
+function MyComponent() {
+  const [state, setState] = useState(false);
+  const result = helper(state); // Pass state as prop
+}
+```
+
+### 3. Component vs Helper Function Pattern
+
+**When refactoring, follow this decision tree:**
+
+```
+Is this a UI element that renders JSX?
+├─ Yes → Create React Component (can use hooks)
+├─ No → Create helper function (NO hooks allowed)
+└─ Unsure → If it needs useState/useEffect → Component
+```
+
+**Example - Correct Separation:**
+
+```tsx
+// Helper function (NO hooks)
+function calculateProviderStats(providers: AIProviderConfig[]) {
+  return providers.filter(p => p.isActive).length;
+}
+
+// Component (CAN use hooks)
+function ProviderStatsCard({ providers }: { providers: AIProviderConfig[] }) {
+  const [expanded, setExpanded] = useState(false);
+  const activeCount = calculateProviderStats(providers);
+  
+  return <Card>...</Card>;
+}
+```
+
+### 4. Translation Pattern (Project-Specific)
+
+This project uses **custom i18n**, not `next-intl`. Always follow this pattern:
+
+```tsx
+// ❌ WRONG - Using next-intl (causes context error)
+import { useTranslations } from "next-intl";
+const t = useTranslations();
+
+// ✅ CORRECT - Using custom i18n
+import { getTranslations } from "@/i18n";
+const [t, setT] = useState<Record<string, any>>({});
+
+useEffect(() => {
+  const loadTranslations = async () => {
+    const translations = await getTranslations(locale === "pt" ? "pt" : "en");
+    setT(translations);
+  };
+  loadTranslations();
+}, [locale]);
+
+// Helper to access nested keys
+const getT = (key: string) => {
+  const keys = key.split('.');
+  let value: any = t;
+  for (const k of keys) {
+    value = value?.[k];
+  }
+  return typeof value === 'string' ? value : key;
+};
+
+// In JSX - add loading guard
+if (loading || !t.pages) return <LoadingState />;
+```
+
+**Dynamic Placeholders Pattern:**
+
+For translations with dynamic values (e.g., "Selected: {provider}"), use `.replace()`:
+
+```tsx
+// Translation key in en.json/pt.json:
+// "provider_selected": "Selected: {provider}"
+
+// In component:
+{(t.creation?.refinement?.form?.provider_selected || "Selected: {provider}")
+  .replace("{provider}", selectedProvider.name)}
+
+// Multiple replacements - use proper parentheses grouping:
+{(t.form?.message || "Generating {count} images with {provider}")
+  .replace("{count}", "3")
+  .replace("{provider}", providerName)}
+
+// ⚠️ CRITICAL: When using .replace() in ternary operator, wrap entire expression:
+{progressMessage || ((translation || fallback)
+  .replace("{var1}", value1)
+  .replace("{var2}", value2))} // Double parentheses required!
+```
+
+### 5. Pre-Commit Checklist for UX Changes
+
+Before committing any UI/UX improvements, verify:
+
+- [ ] All `useState`/`useEffect`/`useCallback` calls are at **top level** of function components
+- [ ] No hooks inside `if` statements, loops, or nested functions
+- [ ] Helper functions that don't render JSX are **pure functions** (no hooks)
+- [ ] Component names start with **capital letter** (e.g., `ProviderCard`, not `providerCard`)
+- [ ] Translations use `getTranslations()` from `@/i18n`, not `next-intl`
+- [ ] Loading state checks for translation object: `if (loading || !t.pages)`
+- [ ] Test in development mode (React will warn about hook violations)
+- [ ] Run TypeScript compilation: `npm run type-check` (if available)
 
 ---
 

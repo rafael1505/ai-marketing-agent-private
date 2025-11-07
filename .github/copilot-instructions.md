@@ -1,14 +1,49 @@
 # AI Marketing Agent - Copilot Instructions
 
-**Version**: 1.0.0  
-**Last Updated**: January 28, 2025  
+**Version**: 2.0.0  
+**Last Updated**: November 6, 2025  
 **Maintainer**: Rafael Amorim
 
-> **⚠️ IMPORTANT:** Before making any changes, always read the relevant instruction files from `.github/instructions/` based on your task:
-> - **All tasks:** Read `.github/instructions/ai-marketing-agent.architecture-and-development-guidelines.instructions.md`
-> - **All tasks:** Read `.github/instructions/ai-marketing-agent.development-best-practices.instructions.md`
-> - **Bug fixes:** Read `.github/instructions/ai-marketing-agent-fix-bug.instructions.md`
-> - **UI/UX changes:** Read `.github/instructions/ai-marketing-agent-ux-guidelines.instructions.md`
+> **⚠️ CRITICAL:** Before making ANY changes, you MUST mentally load and follow ALL instruction files, even if not automatically attached to this conversation:
+> - **Architecture Guidelines** (`.github/instructions/ai-marketing-agent.architecture-and-development-guidelines.instructions.md`)
+> - **Development Best Practices** (`.github/instructions/ai-marketing-agent.development-best-practices.instructions.md`)
+> - **Bug Fixing Workflow** (`.github/instructions/ai-marketing-agent-fix-bug.instructions.md`)
+> - **UX Guidelines** (`.github/instructions/ai-marketing-agent-ux-guidelines.instructions.md`)
+>
+> **If unsure about any rule, ask the user to attach the relevant instruction file.**
+
+---
+
+## 🚨 Always-Active Rules (Consolidated from All Instruction Files)
+
+### From Architecture Guidelines (CRITICAL - NEVER VIOLATE)
+- ✅ **Database-Driven AI Providers**: Never hardcode provider lists - always fetch from MongoDB `ai_providers` collection
+- ✅ **Port Configuration**: Backend MUST use port 8088 (non-negotiable), Frontend MUST use port 3001
+- ✅ **Clean Architecture**: Business logic in `/app/services/`, never in `/app/api/` route handlers
+- ✅ **MongoDB Patterns**: Use Motor async driver, global instance from `app.db.mongodb`
+- ✅ **Material Creation Workflow**: Follow 3-stage pipeline (Idea → Refinement → Finalization)
+
+### From Development Best Practices (ENFORCE STRICTLY)
+- ✅ **File Organization**: Never create files at project root - use appropriate subdirectories (`/app`, `/frontend/src`, `/tests`, `/docs`, `/debug`)
+- ✅ **Type Safety**: Never use `any` type in TypeScript - import proper types from `@/types`
+- ✅ **Testing Standards**: All bug fixes and features require tests in `/tests/unit` or `/tests/integration`
+- ✅ **Commit Messages**: Use conventional commits (`fix:`, `feat:`, `docs:`, `refactor:`, etc.)
+- ✅ **Backend Standards**: PEP 8, type hints, docstrings for all Python functions
+- ✅ **Frontend Standards**: ESLint compliance, functional components, proper prop typing
+
+### From UX Guidelines (FRONTEND WORK)
+- ✅ **React Hooks Order**: ALL hooks at component top - never inside conditionals, loops, or after early returns
+- ✅ **Translation Pattern**: Use `getTranslations()` from `@/i18n` (NOT `next-intl` package - not configured)
+- ✅ **Error Display**: Use `<AIErrorDisplay>` component with correlation IDs (never `alert()`)
+- ✅ **Component Library**: Use shadcn/ui components exclusively (Apple-inspired design)
+- ✅ **Loading Guards**: Always add `if (loading || !t.pages) return <LoadingState />;` for translations
+- ✅ **Performance**: Use `useMemo` for object/array creation, `useCallback` for event handlers
+
+### From Bug Fixing Workflow (DEBUGGING)
+- ✅ **Pre-Fix Checklist**: Verify root cause, check for similar issues, follow architecture, add tests, update docs
+- ✅ **React Hooks Violations**: Most common bug - hooks after conditionals or using wrong i18n pattern
+- ✅ **Type Safety Issues**: Check for `any` types, missing optional chaining (`?.`), missing nullish coalescing (`??`)
+- ✅ **API Integration**: Verify correlation IDs, check 60-second timeout for DALL-E, ensure masked API keys not sent
 
 ---
 
@@ -38,6 +73,31 @@ When conflicts arise between instruction files, follow this precedence order:
 3. **Main Prompt** (`.github/prompts/ai-marketing-agent.prompt.md`) - Original project vision and general guidelines
 
 **Golden Rule**: More specific instructions override general ones. When in doubt, consult this file first.
+
+---
+
+## 📚 Mandatory Reading for ALL Tasks
+
+**CRITICAL**: Even if these instruction files are not automatically attached to the conversation, you MUST mentally load and follow their rules. If you need clarification on any rule, ask the user to attach the relevant file.
+
+### Always Required (Load First):
+1. ✅ **This File** (`.github/copilot-instructions.md`) - Core principles and consolidated rules
+2. ✅ **Architecture Guidelines** (`.github/instructions/ai-marketing-agent.architecture-and-development-guidelines.instructions.md`)
+   - **When**: Any structural change, new feature, API endpoint, database operation
+   - **Key Rules**: Database-driven providers, port 8088, clean architecture, MongoDB patterns, Material Creation Workflow
+3. ✅ **Development Best Practices** (`.github/instructions/ai-marketing-agent.development-best-practices.instructions.md`)
+   - **When**: Writing ANY code (backend or frontend)
+   - **Key Rules**: File organization, type safety, testing requirements, commit conventions, backend/frontend standards
+
+### Context-Specific (Load When Relevant):
+4. ✅ **Bug Fixing Workflow** (`.github/instructions/ai-marketing-agent-fix-bug.instructions.md`)
+   - **When**: Fixing bugs, debugging issues, error resolution, investigating problems
+   - **Key Rules**: Pre-fix checklist, React Hooks violations, TypeScript safety, API integration issues
+5. ✅ **UX Guidelines** (`.github/instructions/ai-marketing-agent-ux-guidelines.instructions.md`)
+   - **When**: Frontend components, UI changes, user experience work, styling
+   - **Key Rules**: React Hooks order, translation pattern, error display, component library, Apple-inspired design
+
+**Action Required**: Before making ANY change, mentally verify compliance with ALL relevant instruction files above. If you cannot access a file's content, ask the user to attach it.
 
 ---
 
@@ -323,6 +383,8 @@ This project uses specialized instruction files for different development scenar
 - **🎨 `.github/instructions/ai-marketing-agent-ux-guidelines.instructions.md`**
   - Design system and visual consistency
   - Component usage patterns
+  - **React Hooks best practices and violations** ⚠️
+  - **Translation pattern (custom i18n, not next-intl)** ⚠️
   - Accessibility requirements
   - User feedback and error handling
   - Animation and interaction guidelines
@@ -330,9 +392,262 @@ This project uses specialized instruction files for different development scenar
 
 ---
 
+## ⚠️ Common Mistakes Appendix
+
+This section catalogs the most frequent errors made during development. **Always consult this before making changes.**
+
+### 🔴 Critical: React Hooks Violations
+
+**Symptom**: Runtime error "Rendered more hooks than during the previous render" or "Invalid hook call"
+
+**Root Cause**: Hooks called conditionally, in loops, or in non-component functions
+
+**Fix Pattern**:
+```tsx
+// ❌ WRONG - Hook inside conditional
+function Component() {
+  if (error) return <Error />;
+  const [state, setState] = useState(false); // ERROR: Hook after early return
+}
+
+// ✅ CORRECT - All hooks at top level
+function Component() {
+  const [state, setState] = useState(false); // Hook FIRST
+  if (error) return <Error />;
+}
+```
+
+**Prevention**:
+- [ ] Move ALL hooks to the very top of the component
+- [ ] Never put hooks inside `if`, `for`, `while`, `switch`, `map`
+- [ ] Extract logic without hooks to helper functions
+- [ ] Read: `.github/instructions/ai-marketing-agent-ux-guidelines.instructions.md` → "React Hooks Best Practices"
+
+---
+
+### 🔴 Critical: Wrong i18n Pattern
+
+**Symptom**: Error "Failed to call `useTranslations` because the context from `NextIntlClientProvider` was not found"
+
+**Root Cause**: Using `next-intl` package instead of project's custom `@/i18n` pattern
+
+**Fix Pattern**:
+```tsx
+// ❌ WRONG - Project doesn't use next-intl
+import { useTranslations } from "next-intl";
+const t = useTranslations();
+
+// ✅ CORRECT - Use custom i18n
+import { getTranslations } from "@/i18n";
+const [t, setT] = useState<Record<string, any>>({});
+
+useEffect(() => {
+  const loadTranslations = async () => {
+    const translations = await getTranslations(locale === "pt" ? "pt" : "en");
+    setT(translations);
+  };
+  loadTranslations();
+}, [locale]);
+
+// Helper to safely access nested keys
+const getT = (key: string) => {
+  const keys = key.split('.');
+  let value: any = t;
+  for (const k of keys) {
+    value = value?.[k];
+  }
+  return typeof value === 'string' ? value : key;
+};
+
+// Add loading guard
+if (loading || !t.pages) return <LoadingState />;
+```
+
+**Prevention**:
+- [ ] Never import from `next-intl`
+- [ ] Always use `getTranslations()` from `@/i18n`
+- [ ] Always add loading guard: `if (loading || !t.pages)`
+- [ ] Read: `.github/instructions/ai-marketing-agent-ux-guidelines.instructions.md` → "Translation Pattern"
+
+---
+
+### 🔴 Critical: Hardcoded AI Providers
+
+**Symptom**: Providers don't reflect user configurations, or new providers don't appear
+
+**Root Cause**: Providers hardcoded in frontend instead of loaded from database
+
+**Fix Pattern**:
+```tsx
+// ❌ WRONG - Hardcoded providers
+const providers = [
+  { id: 'openai', name: 'OpenAI' },
+  { id: 'stability', name: 'Stability AI' }
+];
+
+// ✅ CORRECT - Database-driven
+const [providers, setProviders] = useState<AIProviderConfig[]>([]);
+useEffect(() => {
+  const loadProviders = async () => {
+    const data = await getUserAIProviders(); // From API
+    setProviders(data);
+  };
+  loadProviders();
+}, []);
+```
+
+**Prevention**:
+- [ ] Never hardcode provider lists in code
+- [ ] Always fetch via `getUserAIProviders()` API call
+- [ ] Providers configured in MongoDB `ai_providers` collection
+- [ ] Read: `.github/copilot-instructions.md` → "Key Principle: Database-Driven AI Providers"
+
+---
+
+### 🟠 Important: Port Configuration
+
+**Symptom**: Frontend can't connect to backend API, CORS errors
+
+**Root Cause**: Backend running on wrong port (not 8088)
+
+**Fix Pattern**:
+```bash
+# ❌ WRONG - Any port other than 8088
+uvicorn app.main:api_app --port 8000
+uvicorn app.main:api_app --port 8089
+
+# ✅ CORRECT - Must be 8088
+uvicorn app.main:api_app --host 127.0.0.1 --port 8088 --reload
+```
+
+**Prevention**:
+- [ ] Backend MUST run on port 8088 (non-negotiable)
+- [ ] Frontend configured in `next.config.js` to proxy to 8088
+- [ ] CORS explicitly allows `localhost:3001` and `localhost:3000`
+- [ ] Read: `.github/copilot-instructions.md` → "Port Configuration (CRITICAL)"
+
+---
+
+### 🟠 Important: Error Handling Pattern
+
+**Symptom**: Alerts instead of rich error UI, no correlation IDs, poor UX
+
+**Root Cause**: Using `alert()` or `console.error()` instead of `AIErrorDisplay`
+
+**Fix Pattern**:
+```tsx
+// ❌ WRONG - Using alert
+catch (error) {
+  alert("An error occurred!");
+}
+
+// ✅ CORRECT - Using AIErrorDisplay
+import { AIErrorDisplay } from "@/components/ui/ai-error-display";
+const [aiError, setAiError] = useState<any>(null);
+
+catch (error: any) {
+  if (error.error_details) {
+    setAiError(error.error_details); // Rich error with correlation ID
+  }
+}
+
+// In JSX
+{aiError && <AIErrorDisplay error={aiError} onRetry={() => setAiError(null)} />}
+```
+
+**Prevention**:
+- [ ] Never use `alert()` for error messages
+- [ ] Always use `<AIErrorDisplay>` component
+- [ ] Backend returns enriched errors with correlation IDs
+- [ ] Axios interceptor adds correlation IDs to requests
+- [ ] Read: `.github/copilot-instructions.md` → "Error Handling Pattern"
+
+---
+
+### 🟡 Moderate: File Organization
+
+**Symptom**: Files at project root, clutter, hard to find code
+
+**Root Cause**: Creating files in wrong directories
+
+**Fix Pattern**:
+```bash
+# ❌ WRONG - At project root
+touch test_script.py
+touch debug.js
+
+# ✅ CORRECT - In appropriate directories
+touch debug/test_script.py
+touch tests/frontend/debug.html
+```
+
+**Prevention**:
+- [ ] Backend code → `/app/`
+- [ ] Frontend code → `/frontend/src/`
+- [ ] Tests → `/tests/`
+- [ ] Debug scripts → `/debug/`
+- [ ] Documentation → `/docs/`
+- [ ] **NEVER create files at project root**
+- [ ] Read: `.github/instructions/ai-marketing-agent.development-best-practices.instructions.md` → "File Organization"
+
+---
+
+### 🟡 Moderate: Missing Type Safety
+
+**Symptom**: TypeScript errors, runtime type errors, hard to debug
+
+**Root Cause**: Using `any` type or missing type annotations
+
+**Fix Pattern**:
+```tsx
+// ❌ WRONG - Using any
+const handleClick = (data: any) => { ... }
+
+// ✅ CORRECT - Proper types
+import { AIProviderConfig } from "@/types";
+const handleClick = (data: AIProviderConfig) => { ... }
+```
+
+**Prevention**:
+- [ ] Never use `any` type
+- [ ] Import types from `@/types`
+- [ ] Use optional chaining: `provider?.apiKey`
+- [ ] Use nullish coalescing: `provider.name ?? 'Unknown'`
+- [ ] Read: `.github/instructions/ai-marketing-agent-fix-bug.instructions.md` → "TypeScript Type Safety"
+
+---
+
+## 📋 Pre-Task Checklist (AI Assistants)
+
+Before starting ANY task, verify:
+
+**For UI/UX Changes:**
+- [ ] Read `.github/instructions/ai-marketing-agent-ux-guidelines.instructions.md`
+- [ ] Understand React Hooks rules (section "React Hooks Best Practices")
+- [ ] Understand translation pattern (section "Translation Pattern")
+- [ ] Check "Common Mistakes" above for hooks and i18n violations
+
+**For Bug Fixes:**
+- [ ] Read `.github/instructions/ai-marketing-agent-fix-bug.instructions.md`
+- [ ] Check "Common Bug Patterns" section
+- [ ] Identify root cause before applying fix
+- [ ] Check "Common Mistakes" above for similar patterns
+
+**For Any Code Change:**
+- [ ] Read `.github/copilot-instructions.md` (this file)
+- [ ] Understand file organization rules
+- [ ] Understand error handling pattern
+- [ ] Never hardcode AI providers
+- [ ] Use port 8088 for backend
+- [ ] Check "Common Mistakes" above
+
+---
+
 ## Reference Documents
-- `.github/instructions/ai-marketing-agent.architecture-and-development-guidelines.instruction.md` - Full architecture
+- `.github/instructions/README.md` - **Instruction files index and decision trees**
+- `.github/instructions/ai-marketing-agent.architecture-and-development-guidelines.instructions.md` - Full architecture
 - `.github/instructions/ai-marketing-agent-fix-bug.instructions.md` - Bug fixing workflow
+- `.github/instructions/ai-marketing-agent-ux-guidelines.instructions.md` - UX and React patterns
 - `docs/MONGODB_ARCHITECTURE.md` - Database schema details
 - `docs/authentication-guide.md` - Auth system documentation
 - `CONTRIBUTING.md` - Development workflow and standards

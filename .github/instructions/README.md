@@ -1,35 +1,228 @@
 # AI Marketing Agent - Instruction Files Index
 
+**Version**: 2.0.0  
+**Last Updated**: January 29, 2025  
+**Maintainer**: Rafael Amorim
+
+---
+
 ## 📚 Quick Navigation
 
 This directory contains specialized instruction files that guide AI-assisted development for the AI Marketing Agent project.
 
-| File | Purpose | When to Use |
-|------|---------|-------------|
-| [copilot-instructions.md](../copilot-instructions.md) | Main reference and quick guide | **Always** - start here for any task |
-| [ai-marketing-agent.prompt.md](../prompts/ai-marketing-agent.prompt.md) | Original project vision | Understanding project goals and context |
-| [architecture-and-development-guidelines](./ai-marketing-agent.architecture-and-development-guidelines.instructions.md) | System design and structure | Making structural decisions, new features |
-| [development-best-practices](./ai-marketing-agent.development-best-practices.instructions.md) | Code quality standards | Writing any code (backend or frontend) |
-| [fix-bug](./ai-marketing-agent-fix-bug.instructions.md) | Debugging and QA workflow | Fixing issues, debugging problems |
-| [ux-guidelines](./ai-marketing-agent-ux-guidelines.instructions.md) | UI/UX design principles | Frontend work, UI components |
+| File | Purpose | When to Consult |
+|------|---------|-----------------|
+| [copilot-instructions.md](../copilot-instructions.md) | Main coordination file | **ALWAYS** - Start here for all tasks |
+| [ai-marketing-agent.prompt.md](../prompts/ai-marketing-agent.prompt.md) | Original project vision | Understanding overall goals |
+| [architecture-and-development-guidelines](./ai-marketing-agent.architecture-and-development-guidelines.instructions.md) | System design rules | Structural changes, new features |
+| [development-best-practices](./ai-marketing-agent.development-best-practices.instructions.md) | Code quality standards | Writing any code |
+| [fix-bug](./ai-marketing-agent-fix-bug.instructions.md) | Debugging workflow | **Required** before fixing bugs |
+| [ux-guidelines](./ai-marketing-agent-ux-guidelines.instructions.md) | UI/UX design rules | **Required** for frontend changes |
 
 ---
 
-## 🎯 How to Use These Instructions
+## � Decision Tree for AI Assistants
 
-### For AI Assistants (GitHub Copilot, ChatGPT, Claude, etc.)
+### Making a UI Change?
+```
+1. Read `.github/copilot-instructions.md` (Material creation workflow, error handling)
+2. Read `.github/instructions/ai-marketing-agent-ux-guidelines.instructions.md` (React Hooks, design patterns)
+3. Read `.github/instructions/ai-marketing-agent.development-best-practices.instructions.md` (Component organization)
+4. Apply changes
+5. Run Pre-Commit Checklist from UX guidelines (React Hooks verification)
+6. Test in development mode (React Hook warnings enabled)
+```
 
-1. **Always read** `.github/copilot-instructions.md` first
-2. **Check the hierarchy** - more specific instructions override general ones
-3. **Follow the decision tree** for file placement and task workflow
-4. **Cross-reference** related files when working on complex tasks
+### Fixing a Bug?
+```
+1. Read `.github/copilot-instructions.md` (Error handling pattern)
+2. Read `.github/instructions/ai-marketing-agent-fix-bug.instructions.md` (Bug diagnosis workflow)
+3. Check "Common Bug Patterns" section (React Hooks, TypeScript, Performance, API)
+4. Apply fix
+5. Update tests in `/tests/`
+6. Update docs if behavior changed
+```
 
-### For Developers
+### Adding a Feature?
+```
+1. Read `.github/copilot-instructions.md` (Architecture overview, database patterns)
+2. Read `.github/instructions/ai-marketing-agent.architecture-and-development-guidelines.instructions.md` (Clean architecture)
+3. Read `.github/instructions/ai-marketing-agent.development-best-practices.instructions.md` (File placement)
+4. Implement feature
+5. Add tests
+6. Update documentation
+```
 
-1. Review these instructions when onboarding
-2. Reference when unsure about project conventions
-3. Update when making architectural changes
-4. Follow the same standards as AI assistants
+---
+
+## ⚠️ Critical Rules (Most Violated)
+
+### 1. React Hooks Must Be at Top Level
+**Location**: `ai-marketing-agent-ux-guidelines.instructions.md` → "React Hooks Best Practices"
+
+**Violation Example:**
+```tsx
+// ❌ WRONG
+function MyComponent({ providers }) {
+  if (providers.length > 0) {
+    const [selected, setSelected] = useState(null); // ERROR!
+  }
+}
+
+// ✅ CORRECT
+function MyComponent({ providers }) {
+  const [selected, setSelected] = useState(null);
+  if (providers.length > 0) {
+    // Use selected state here
+  }
+}
+```
+
+**Why it's critical**: Causes "Rendered more hooks than during the previous render" error.
+
+---
+
+### 2. Use Custom i18n, Not next-intl
+**Location**: `ai-marketing-agent-ux-guidelines.instructions.md` → "Translation Pattern"
+
+**Violation Example:**
+```tsx
+// ❌ WRONG - Causes context error
+import { useTranslations } from "next-intl";
+const t = useTranslations();
+
+// ✅ CORRECT - Project pattern
+import { getTranslations } from "@/i18n";
+const [t, setT] = useState<Record<string, any>>({});
+useEffect(() => {
+  const translations = await getTranslations(locale === "pt" ? "pt" : "en");
+  setT(translations);
+}, [locale]);
+```
+
+**Why it's critical**: Project doesn't use `next-intl` package; causes "context not found" runtime error.
+
+---
+
+### 3. Always Use AIErrorDisplay Component
+**Location**: `.github/copilot-instructions.md` → "Error Handling Pattern"
+
+**Violation Example:**
+```tsx
+// ❌ WRONG
+alert("Error occurred!");
+
+// ✅ CORRECT
+<AIErrorDisplay error={error} onRetry={handleRetry} />
+```
+
+**Why it's critical**: Breaks error handling consistency, correlation IDs, and i18n support.
+
+---
+
+### 4. Never Hardcode AI Providers
+**Location**: `.github/copilot-instructions.md` → "Key Principle: Database-Driven AI Providers"
+
+**Violation Example:**
+```tsx
+// ❌ WRONG
+const providers = ['openai', 'stability'];
+
+// ✅ CORRECT
+const providers = await getUserAIProviders();
+```
+
+**Why it's critical**: Providers are database-driven, not hardcoded. User configurations stored in MongoDB.
+
+---
+
+### 5. Port 8088 is Non-Negotiable
+**Location**: `.github/copilot-instructions.md` → "Port Configuration (CRITICAL)"
+
+**Violation Example:**
+```bash
+# ❌ WRONG
+uvicorn app.main:api_app --port 8089
+
+# ✅ CORRECT
+uvicorn app.main:api_app --port 8088
+```
+
+**Why it's critical**: Frontend proxy (`next.config.js`) expects port 8088 exactly. Changing breaks API connectivity.
+
+---
+
+### 6. Never Create Files at Project Root
+**Location**: `ai-marketing-agent.development-best-practices.instructions.md` → "File Organization"
+
+**Violation Example:**
+```bash
+# ❌ WRONG
+touch test_script.py  # At project root
+
+# ✅ CORRECT
+touch debug/test_script.py  # In appropriate directory
+```
+
+**Why it's critical**: Maintains clean project structure and separation of concerns.
+
+---
+
+## 📊 Instruction File Versions
+
+| File | Version | Last Updated | Status |
+|------|---------|--------------|--------|
+| copilot-instructions.md | 1.1.0 | 2025-01-29 | **Updated** |
+| ai-marketing-agent.prompt.md | 1.0.0 | Original | Reference |
+| architecture-and-development-guidelines | 1.0.0 | 2025-01-28 | Active |
+| development-best-practices | 1.0.0 | 2025-01-28 | Active |
+| fix-bug | 2.0.0 | 2025-01-29 | **Updated** |
+| ux-guidelines | 2.0.0 | 2025-01-29 | **Updated** |
+
+---
+
+## 📋 Quick Checklists
+
+### Before Committing ANY Code
+- [ ] Read relevant instruction files (see Decision Tree above)
+- [ ] No TypeScript errors (`npm run type-check` if available)
+- [ ] No console errors in development mode
+- [ ] Follows file organization rules (no root files)
+- [ ] Uses project patterns (custom i18n, AIErrorDisplay, etc.)
+
+### Before Committing Frontend Code
+- [ ] All hooks at top level of components
+- [ ] No `next-intl` imports (use `@/i18n`)
+- [ ] Translation loading includes guard: `if (loading || !t.pages)`
+- [ ] Uses shadcn/ui components
+- [ ] Follows Apple-inspired UX guidelines
+- [ ] Responsive design tested
+
+### Before Committing Backend Code
+- [ ] No hardcoded providers (database-driven)
+- [ ] Port 8088 used for API server
+- [ ] Error responses include correlation IDs
+- [ ] Business logic in `app/services/`, not routes
+- [ ] Database operations in `app/db/`
+- [ ] Type hints and docstrings present
+
+---
+
+## ❓ Questions?
+
+If instructions conflict or are unclear:
+1. Follow precedence order (Copilot Instructions > Specialized > Main Prompt)
+2. Consult this README for common patterns
+3. Check "Common Mistakes" in Copilot Instructions
+4. When in doubt, **ask before implementing**
+
+---
+
+**Remember**: These instructions exist to **prevent bugs**, not slow you down. Taking 2 minutes to read the right file saves 2 hours of debugging. 🚀
+
+---
+
+## 🔄 Update Process
 
 ---
 
@@ -37,11 +230,11 @@ This directory contains specialized instruction files that guide AI-assisted dev
 
 When conflicts arise, follow this precedence order:
 
-1. **Copilot Instructions** - Quick reference and critical overrides
-2. **Specialized Instructions** - Context-specific rules (this folder)
-3. **Main Prompt** - Original project vision and general guidelines
+1. **Copilot Instructions** (`.github/copilot-instructions.md`) - Quick reference and critical overrides
+2. **Specialized Instructions** (`.github/instructions/*.instructions.md`) - Context-specific rules
+3. **Main Prompt** (`.github/prompts/ai-marketing-agent.prompt.md`) - Original project vision
 
-**Golden Rule**: More specific instructions override general ones.
+**Golden Rule**: More specific instructions override general ones. When in doubt, consult this README first.
 
 ---
 

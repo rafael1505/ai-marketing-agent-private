@@ -114,10 +114,60 @@
       "save": "Salvar Alterações"
     },    "ai_providers": {
       "title": "Provedores de IA",
+      "subtitle": "Configure e gerencie seus provedores de IA",
       "add": "Adicionar Provedor",
       "name": "Nome do Provedor",
       "api_key": "Chave API",
-      "save": "Salvar Provedor"
+      "save": "Salvar Provedor",
+      "configure": "Configurar",
+      "activate": "Ativar",
+      "deactivate": "Desativar",
+      "delete": "Excluir",
+      "confirm_delete": "Confirmar?",
+      "status": "Status",
+      "configured": "Configurado",
+      "not_configured": "Não Configurado",
+      "active": "Ativo",
+      "inactive": "Inativo",
+      "loading": "Carregando provedores...",
+      "tip_title": "Dica",
+      "tip_description": "Clique no botão de configurações para editar todas as opções do provedor. Use o botão de teste para verificar se sua chave de API está funcionando.",
+      "dialog": {
+        "add_title": "Adicionar Novo Provedor",
+        "edit_title": "Configurar {{name}}",
+        "description": "Configure as opções do provedor de IA",
+        "tabs": {
+          "basic": "Básico",
+          "advanced": "Avançado",
+          "test": "Testar"
+        },
+        "provider_id": "ID do Provedor",
+        "provider_name": "Nome do Provedor",
+        "api_key_placeholder": "Digite sua API Key",
+        "api_key_configured": "✓ API Key configurada - Digite para alterar",
+        "model": "Modelo",
+        "select_model": "Selecione um modelo",
+        "temperature": "Temperatura",
+        "temperature_description": "Controla a aleatoriedade da saída. Valores mais altos geram saídas mais criativas.",
+        "max_tokens": "Máximo de Tokens",
+        "max_tokens_description": "Limite máximo de tokens para geração",
+        "base_url": "URL Base (Opcional)",
+        "base_url_description": "Para APIs customizadas ou auto-hospedadas",
+        "test_description": "Teste a conexão com o provedor de IA para verificar se a chave de API está válida.",
+        "test_connection": "Testar Conexão",
+        "testing": "Testando...",
+        "saving": "Salvando...",
+        "enter_api_key": "Por favor, insira uma chave de API",
+        "connection_successful": "Conexão bem-sucedida!",
+        "connection_failed": "Falha na conexão",
+        "error_testing": "Erro ao testar conexão"
+      },
+      "errors": {
+        "loading": "Erro ao carregar provedores",
+        "saving": "Erro ao salvar provedor",
+        "deleting": "Erro ao deletar provedor",
+        "provider_id_required": "ID do provedor é obrigatório"
+      }
     },
     "api_diagnostics": {
       "title": "Diagnóstico da API",
