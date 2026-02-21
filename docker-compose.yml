@@ -7,17 +7,22 @@ services:
       - MONGODB_URL=mongodb://mongo:27017
       - MONGODB_DB=ai_marketing_agent
       - SECRET_KEY=your_secret_key_here
-    command: ["/bin/bash", "/app/start.sh"]
-    volumes:
-      - ./start.sh:/app/start.sh
+    command: ["/bin/bash", "/app/scripts/start.sh"]
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/diagnostic/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "3001:3000"
+      - "3001:3001"
     environment:
       - NEXT_PUBLIC_API_URL=http://localhost:8000/api/v1
       - NEXT_TELEMETRY_DISABLED=1
@@ -27,13 +32,26 @@ services:
       - NEXT_SHARP_PATH=/tmp/node_modules/sharp
       - SKIP_INVALID_PERMISSIONS=true
     depends_on:
-      - web
+      web:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:3001',r=>{const c=r.statusCode;process.exit(c>=200&&c<400?0:1);}).on('error',()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 45s
   mongo:
     image: mongo:4.4
     ports:
       - "27017:27017"
     volumes:
       - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
 
 volumes:
   mongodb_data:

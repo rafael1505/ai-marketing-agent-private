@@ -65,7 +65,7 @@ RUN chmod +x ./node_modules/.bin/next
 # Run the build with explicit path to make sure permissions are respected
 RUN npm run build
 
-# Production image, copy all the files and run next
+# Production image, run the built Next.js app
 FROM node:20-alpine AS runner
 WORKDIR /app
 
@@ -73,38 +73,26 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV API_URL=http://backend:8000
 ENV SKIP_INVALID_PERMISSIONS=true
-# Ensure Docker knows to handle special characters in filenames
-ENV DOCKER_BUILDKIT=1
 
 # Create non-root user for better security
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+RUN addgroup --system --gid 1001 nodejs \
+  && adduser --system --uid 1001 nextjs
 
-# Create directories with proper permissions before copying files
-RUN mkdir -p /app/public /app/.next/static && \
-    chown -R nextjs:nodejs /app
+# Copy build artifacts and runtime dependencies from builder
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
 
-# Copy necessary build files with explicit permission handling and ownership
-# Using trailing slash for directories to avoid Docker COPY errors
-COPY --from=builder --chown=nextjs:nodejs /app/public/ ./public/
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone/ ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static/ ./.next/static/
-
-# Final permission fix for the production environment 
-# Using -L to follow symlinks and properly fix permissions
-# Fix directory permissions first
-RUN find /app -type d -not -path "*/node_modules/*" -not -path "*/.git/*" -print0 | xargs -0 -r chmod 755 || true
-# Then fix file permissions
-RUN find /app -type f -not -path "*/node_modules/*" -not -path "*/.git/*" -print0 | xargs -0 -r chmod 644 || true
-
-# Ensure server.js is executable (if it exists)
-RUN if [ -f "/app/server.js" ]; then chmod 755 /app/server.js; fi
+# Final permission fix for the production environment (keep .bin executables)
+RUN find /app -type d -not -path "*/.git/*" -print0 | xargs -0 -r chmod 755 || true && \
+  find /app -type f -not -path "*/.git/*" -not -path "*/node_modules/.bin/*" -print0 | xargs -0 -r chmod 644 || true && \
+  find /app/node_modules/.bin -type f -print0 2>/dev/null | xargs -0 -r chmod 755 || true
 
 USER nextjs
 
 EXPOSE 3001
-
 ENV PORT=3001
 
-# Start the application
-CMD ["node", "server.js"]
+# Start the application using Next.js built-in server (node directly avoids npm/.bin exec permission issues)
+CMD ["node", "node_modules/next/dist/bin/next", "start"]

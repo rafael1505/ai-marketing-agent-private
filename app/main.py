@@ -285,3 +285,6 @@ async def update_company_debug(company_id: str, request: Request):
         raise HTTPException(status_code=400, detail=f"Error updating company: {str(e)}")
 
 api_app.include_router(api_debug_router)
+
+# Alias for uvicorn (e.g. uvicorn app.main:app)
+app = api_app

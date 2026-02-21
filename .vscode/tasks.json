@@ -1,224 +1,37 @@
 {
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "🚀 Start Full Development Environment",
-            "dependsOrder": "sequence",
-            "dependsOn": [
-                "🗄️ Start MongoDB",
-                "⚙️ Start Backend (API Server)",
-                "🎨 Start Frontend (Next.js)"
-            ],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": true,
-                "panel": "shared",
-                "showReuseMessage": false,
-                "clear": false
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "🗄️ Start MongoDB",
-            "type": "shell",
-            "command": "docker start ai-marketing-agent-mongo-1 2>/dev/null && echo '✅ MongoDB started' || (echo '📦 MongoDB container not found, creating...' && cd \"${workspaceFolder}\" && docker run -d --name ai-marketing-agent-mongo-1 -p 27017:27017 -v ai-marketing-agent-mongo-data:/data/db mongo:4.4 && echo '✅ MongoDB created and started')",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": false,
-                "clear": false
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "⚙️ Start Backend (API Server)",
-            "type": "shell",
-            "command": "echo '⏳ Starting backend API server...' && echo '🔍 Checking port 8088...' && (lsof -ti:8088 2>/dev/null | xargs -r kill -9 2>/dev/null && echo '🧹 Killed existing process on port 8088' || echo '✓ Port 8088 is free') && sleep 2 && cd \"${workspaceFolder}\" && uvicorn app.main:api_app --host 127.0.0.1 --port 8088 --reload",
-            "isBackground": true,
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "dedicated",
-                "showReuseMessage": false,
-                "clear": false
-            },
-            "problemMatcher": {
-                "pattern": {
-                    "regexp": "^.*$",
-                    "file": 1,
-                    "location": 2,
-                    "message": 3
-                },
-                "background": {
-                    "activeOnStart": true,
-                    "beginsPattern": "^.*Starting.*",
-                    "endsPattern": "^.*Application startup complete.*"
-                }
-            }
-        },
-        {
-            "label": "🎨 Start Frontend (Next.js)",
-            "type": "shell",
-            "command": "echo '⏳ Starting frontend server...' && echo '🔍 Checking port 3001...' && (lsof -ti:3001 2>/dev/null | xargs -r kill -9 2>/dev/null && echo '🧹 Killed existing process on port 3001' || echo '✓ Port 3001 is free') && sleep 2 && cd \"${workspaceFolder}/frontend\" && npm run dev",
-            "isBackground": true,
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "dedicated",
-                "showReuseMessage": false,
-                "clear": false
-            },
-            "problemMatcher": {
-                "pattern": {
-                    "regexp": "^.*$",
-                    "file": 1,
-                    "location": 2,
-                    "message": 3
-                },
-                "background": {
-                    "activeOnStart": true,
-                    "beginsPattern": "^.*Starting.*",
-                    "endsPattern": "^.*Ready in.*"
-                }
-            }
-        },
-        {
-            "label": "🛑 Stop All Services",
-            "type": "shell",
-            "command": "echo '🛑 Stopping all services...' && echo '' && echo '⚙️  Backend API:' && (ps aux | grep -E '[u]vicorn app.main' | awk '{print $2}' | xargs -r kill -9 2>/dev/null && echo '   ✅ Stopped' || echo '   ⚪ Already stopped') && echo '' && echo '🎨 Frontend:' && (ps aux | grep -E '[n]ext dev' | awk '{print $2}' | xargs -r kill -9 2>/dev/null && echo '   ✅ Stopped' || echo '   ⚪ Already stopped') && echo '' && echo '🗄️  MongoDB:' && (docker stop ai-marketing-agent-mongo-1 2>/dev/null && echo '   ✅ Stopped' || echo '   ⚪ Already stopped') && echo '' && echo '════════════════════════════════════════' && echo '✅ Stop command completed'",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": true,
-                "panel": "dedicated",
-                "showReuseMessage": false,
-                "clear": true
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "🔄 Restart All Services",
-            "dependsOrder": "sequence",
-            "dependsOn": [
-                "🛑 Stop All Services",
-                "🚀 Start Full Development Environment"
-            ],
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": true,
-                "panel": "shared",
-                "showReuseMessage": false,
-                "clear": false
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "📊 Check Services Status",
-            "type": "shell",
-            "command": "echo '═══════════════════════════════════════' && echo '📊 Services Status Check' && echo '═══════════════════════════════════════' && echo '' && echo '🗄️  MongoDB Container:' && (docker ps --format '{{.Names}} - {{.Status}}' | grep ai-marketing-agent-mongo-1 && echo '   ✅ Running' || echo '   ❌ Stopped') && echo '' && echo '⚙️  Backend API (Port 8088):' && (pgrep -f 'uvicorn app.main' > /dev/null && echo '   ✅ Running (PID: '$(pgrep -f 'uvicorn app.main')')' || echo '   ❌ Stopped') && echo '' && echo '🎨 Frontend (Port 3001):' && (pgrep -f 'next dev' > /dev/null && echo '   ✅ Running (PID: '$(pgrep -f 'next dev')')' || echo '   ❌ Stopped') && echo '' && echo '═══════════════════════════════════════'",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": true,
-                "panel": "shared",
-                "showReuseMessage": false,
-                "clear": true
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "🗄️ Stop MongoDB",
-            "type": "shell",
-            "command": "docker stop ai-marketing-agent-mongo-1 && echo '✅ MongoDB stopped'",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": false,
-                "clear": false
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "🔄 Restart MongoDB",
-            "type": "shell",
-            "command": "docker restart ai-marketing-agent-mongo-1 && echo '✅ MongoDB restarted'",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared",
-                "showReuseMessage": false,
-                "clear": false
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "📊 MongoDB Health Check",
-            "type": "shell",
-            "command": "echo '🔍 Checking MongoDB health...' && docker exec ai-marketing-agent-mongo-1 mongosh --eval 'db.adminCommand(\"ping\")' --quiet && echo '✅ MongoDB is healthy'",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": true,
-                "panel": "shared",
-                "showReuseMessage": false,
-                "clear": false
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "🧹 Clean Logs",
-            "type": "shell",
-            "command": "cd \"${workspaceFolder}\" && rm -f api_server.log frontend_server.log && echo '✅ Logs cleaned (api_server.log, frontend_server.log)'",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": true,
-                "panel": "shared",
-                "showReuseMessage": false,
-                "clear": false
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "🔍 View Backend Logs",
-            "type": "shell",
-            "command": "cd \"${workspaceFolder}\" && echo '📄 Backend API Logs (api_server.log):' && echo '════════════════════════════════════════════════' && tail -50 api_server.log 2>/dev/null || echo '❌ Log file not found. Backend may not be running yet.'",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": true,
-                "panel": "dedicated",
-                "showReuseMessage": false,
-                "clear": true
-            },
-            "problemMatcher": []
-        },
-        {
-            "label": "🔍 View Frontend Logs",
-            "type": "shell",
-            "command": "cd \"${workspaceFolder}\" && echo '📄 Frontend Logs (frontend_server.log):' && echo '════════════════════════════════════════════════' && tail -50 frontend_server.log 2>/dev/null || echo '❌ Log file not found. Frontend may not be running yet.'",
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": true,
-                "panel": "dedicated",
-                "showReuseMessage": false,
-                "clear": true
-            },
-            "problemMatcher": []
-        }
-    ]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start full development environment",
+      "type": "shell",
+      "command": "sg docker -c \"echo 'Starting...' && docker compose up -d --wait && echo 'Environment is READY. Backend: http://localhost:8000 | Frontend: http://localhost:3001'\"",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "detail": "Starts MongoDB, backend, and frontend via Docker Compose; waits for services to be ready. Requires user in docker group (sudo usermod -aG docker $USER).",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Stop full development environment",
+      "type": "shell",
+      "command": "sg docker -c \"echo 'Stopping...' && docker compose down && echo 'Environment stopped.'\"",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "detail": "Stops all services (MongoDB, backend, frontend) via Docker Compose.",
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared"
+      }
+    }
+  ]
 }
