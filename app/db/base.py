@@ -1,10 +1,9 @@
-from typing import Any, Dict, List, Optional, Type, TypeVar, TYPE_CHECKING
+import logging
+from typing import Any, Dict, List, Optional, TypeVar
 from bson import ObjectId
 from datetime import datetime
-from pydantic import BaseModel
 
-if TYPE_CHECKING:
-    from motor.motor_asyncio import AsyncIOMotorCollection
+logger = logging.getLogger(__name__)
 
 ModelType = TypeVar("ModelType")
 
@@ -15,8 +14,6 @@ class BaseDB:
         self.collection = collection
 
     async def get(self, id: str) -> Optional[Dict[str, Any]]:
-        # Print debug info
-        print(f"BaseDB.get: Looking for document with ID: {id}")
         
         # Try to use ObjectId if it's a valid ObjectId format
         if ObjectId.is_valid(id):
@@ -36,8 +33,7 @@ class BaseDB:
         except (ValueError, TypeError):
             pass
             
-        # If we still haven't found it, return None
-        print(f"BaseDB.get: No document found with ID: {id}")
+        logger.debug("BaseDB.get: no document found with id=%s", id)
         return None
 
     async def get_all(self, skip: int = 0, limit: int = 100) -> List[Dict[str, Any]]:
@@ -69,17 +65,15 @@ class BaseDB:
         data["created_at"] = datetime.utcnow()
         data["updated_at"] = data["created_at"]
         result = await self.collection.insert_one(data)
-        
-        # Debug info
-        print(f"BaseDB.create: inserted_id = {result.inserted_id}")
-        
-        # Try to get the created document using the inserted_id
+        logger.debug("BaseDB.create: inserted_id=%s", result.inserted_id)
+
         created_doc = await self.get(str(result.inserted_id))
-        
-        # If we couldn't retrieve the document, create a minimal response with the ID
+
         if created_doc is None:
-            # For testing, return at least a document with the ID
-            print(f"BaseDB.create: Warning - Could not retrieve inserted document with ID {result.inserted_id}")
+            logger.warning(
+                "BaseDB.create: could not retrieve inserted document with id=%s",
+                result.inserted_id,
+            )
             created_doc = {
                 "_id": str(result.inserted_id),
                 "id": str(result.inserted_id),
