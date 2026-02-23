@@ -49,7 +49,7 @@ Evidence:
 ```
 
 Remediation task: **ARCH-T003** — move to `app/services/material_service.py`.
-Status: **OPEN**
+Status: **RESOLVED** — moved to `app/services/material_service.py` (commit e8c2a99+)
 
 ---
 
@@ -64,7 +64,7 @@ Evidence:
 ```
 
 Remediation task: **ARCH-T003** — move to `app/services/material_service.py`.
-Status: **OPEN**
+Status: **RESOLVED** — moved to `app/services/material_service.py` (commit e8c2a99+)
 
 ---
 
@@ -223,7 +223,7 @@ MUST NOT know about `stage` or `status` field names; it calls the service which
 applies business rules and writes to the DB layer.
 
 Remediation task: **ARCH-T003** — introduce `material_service.transition_stage()`.
-Status: **OPEN**
+Status: **RESOLVED** — `transition_stage()` implemented in `app/services/material_service.py`; route refactor (Phase 3) will remove the direct DB call from the route.
 
 ---
 
@@ -242,7 +242,9 @@ live in `material_service`, not in the route.
 
 Remediation task: **ARCH-T003** — add pre-condition in `material_service.select_image()`:
 raise `422 Unprocessable Entity` with `error_details` if `generated_images` is empty.
-Status: **OPEN**
+Status: **RESOLVED** — guard implemented in `material_service.select_image()`; raises
+`HTTPException(422, detail={"error_type": "finalization_guard", ...})`; covered by
+3 unit tests in `tests/unit/services/test_material_service.py::TestSelectImage`.
 
 ---
 
@@ -266,17 +268,17 @@ Status: **OPEN**
 
 | ID | Rule | Line(s) | Severity | Task |
 |----|------|---------|----------|------|
-| MAT-V001 | ARCH-LAYER-002 | 21–26 | High | ARCH-T003 |
-| MAT-V002 | ARCH-LAYER-002 | 28–30 | High | ARCH-T003 |
-| MAT-V003 | ARCH-LAYER-001 | 9 sites | High | ARCH-T003 |
-| MAT-V004 | ARCH-LAYER-001 | 9 sites | High | ARCH-T003 |
-| MAT-V005 | ARCH-LAYER-001 | 274–283 | High | ARCH-T003 |
-| MAT-V006 | ARCH-LAYER-001 + ARCH-MCP-001/002 | 155–165 | Critical | ARCH-T003/T005 |
-| MAT-V007 | PR-BE-001 (PEP 8) | 149 | Low | ARCH-T003 |
-| MAT-V008 | ARCH-LAYER-003 | 39–41, 68, 79, 282 | High | ARCH-T003 |
-| MAT-V009 | ARCH-MAT-002 | 230–251 | High | ARCH-T003 |
-| MAT-V010 | ARCH-MAT-004 | 182–202 | Critical | ARCH-T003 |
-| MAT-V011 | ARCH-LAYER-001 (50-line) | 129–180 | Medium | ARCH-T003 |
+| MAT-V001 | ARCH-LAYER-002 | 21–26 | High | ARCH-T003 | **RESOLVED** |
+| MAT-V002 | ARCH-LAYER-002 | 28–30 | High | ARCH-T003 | **RESOLVED** |
+| MAT-V003 | ARCH-LAYER-001 | 9 sites | High | ARCH-T003 | OPEN (Phase 3) |
+| MAT-V004 | ARCH-LAYER-001 | 9 sites | High | ARCH-T003 | OPEN (Phase 3) |
+| MAT-V005 | ARCH-LAYER-001 | 274–283 | High | ARCH-T003 | OPEN (Phase 3) |
+| MAT-V006 | ARCH-LAYER-001 + ARCH-MCP-001/002 | 155–165 | Critical | ARCH-T003/T005 | OPEN (Phase 3) |
+| MAT-V007 | PR-BE-001 (PEP 8) | 149 | Low | ARCH-T003 | OPEN (Phase 3) |
+| MAT-V008 | ARCH-LAYER-003 | 39–41, 68, 79, 282 | High | ARCH-T003 | OPEN (Phase 3) |
+| MAT-V009 | ARCH-MAT-002 | 230–251 | High | ARCH-T003 | **RESOLVED** |
+| MAT-V010 | ARCH-MAT-004 | 182–202 | Critical | ARCH-T003 | **RESOLVED** |
+| MAT-V011 | ARCH-LAYER-001 (50-line) | 129–180 | Medium | ARCH-T003 | OPEN (Phase 3) |
 
 **Total violations in `materials.py`: 11** (2 critical, 7 high, 1 medium, 1 low)
 
@@ -658,3 +660,5 @@ All 26 violations are **OPEN**. No violation is in scope for debt tracking
 | Date | Change |
 |------|--------|
 | 2026-02-23 | Initial audit created for ARCH-T002 (materials.py) and ARCH-T004 (ai_generation.py). 26 violations documented across 2 files plus cross-file coupling analysis. |
+| 2026-02-23 | ARCH-T003 Phase 1: DB layer cleaned (material.py, base.py) — print() replaced, test_company seeding removed, cursor simplified. |
+| 2026-02-23 | ARCH-T003 Phase 2: material_service.py created. MAT-V001, MAT-V002 (serialisation helpers), MAT-V009 (transition_stage), MAT-V010 (finalization guard) marked RESOLVED. 29 unit tests passing. |
