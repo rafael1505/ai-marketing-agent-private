@@ -3,6 +3,8 @@
 Auto-generated from feature plans + project constitution. Last updated: 2026-02-23
 
 ## Active Technologies
+- Python 3.11 (backend), Node 20 (frontend); Docker Compose V2 for orchestration. + FastAPI/uvicorn (backend), Next.js 14 (frontend), shadcn/ui, ruff (linter). (002-migrate-dev-practices)
+- MongoDB 4.4 (Docker container, port 27017). (002-migrate-dev-practices)
 
 - **Backend**: Python 3.11, FastAPI/uvicorn — port 8088
 - **Frontend**: Node 20, Next.js 14 (React + TypeScript) — port 3001
@@ -47,7 +49,7 @@ docker compose up -d --wait
 # Stop full development environment
 docker compose down
 
-# Backend
+# Backend (local run, non-Docker only — Docker maps container:8000 → host:8088)
 uvicorn app.main:api_app --host 127.0.0.1 --port 8088 --reload
 
 # Frontend
@@ -69,8 +71,26 @@ ruff check .
 - **Commits**: Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, etc.)
 
 ## Recent Changes
-
+- 002-migrate-dev-practices: Formalized three process specs — development best practices (26 rules, PR-AI-001–005), bug-fixing workflow (BFIX-001/002/003), and UX guidelines (UX-001–005, 8 acceptance criteria).
 - **001-dev-env-task-audit**: Audited and fixed "Start full development environment" IDE task; aligned to Docker Compose V2 (`docker compose`), repo root `docker-compose.yml`, health-check completion, port 8088 backend, legacy scripts deprecated.
 
 <!-- MANUAL ADDITIONS START -->
+## Process Specs (Authoritative Rules — Read Before Coding)
+
+- **Development Best Practices**: `spec/process/development-best-practices.speckit.md`
+  — Stack (Python 3.11, Next.js 14, ports 8088/3001/27017), file organization,
+    PEP 8 + Clean Code, Git protocol (no emojis, feature branches), Agent Context
+    Awareness (PR-AI-001–005).
+
+- **Bug Fixing Workflow**: `spec/process/bug-fixing-workflow.speckit.md`
+  — BFIX-001: write failing test before fix. BFIX-002: document root cause before
+    coding. BFIX-003: run full pytest suite; zero new failures allowed.
+    Docker test environment rules (BFIX-ENV-001/002/003).
+
+- **UX & Frontend Guidelines**: `spec/process/ux-guidelines.speckit.md`
+  — UX-001: Apple-inspired design tokens (typography, palette, spacing, shadows).
+    UX-002: shadcn/ui only; custom CSS forbidden unless 3 conditions met.
+    UX-003: Skeleton/Spinner for every async action; AIErrorDisplay for every error.
+    UX-004: no hardcoded strings; both en+pt locales updated in same PR.
+    UX-005: mobile-first; verify at 375px / 768px / 1280px.
 <!-- MANUAL ADDITIONS END -->
