@@ -4,6 +4,12 @@
 **Last Updated**: January 29, 2025  
 **Maintainer**: Rafael Amorim
 
+> **🔄 SDD MIGRATION (2026):** These instruction files are now **secondary references**. The authoritative source is **Spec Kit SDD** in `spec/`:
+> - Constitution: `spec/constitution/project-constitution.speckit.md`
+> - Process specs: `spec/process/*.speckit.md`
+> 
+> **When in doubt, follow Spec Kit specs.** These files remain for historical reference.
+
 ---
 
 ## 📚 Quick Navigation

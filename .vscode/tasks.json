@@ -4,12 +4,16 @@
     {
       "label": "Start full development environment",
       "type": "shell",
-      "command": "sg docker -c \"echo 'Starting...' && docker compose up -d --wait && echo 'Environment is READY. Backend: http://localhost:8000 | Frontend: http://localhost:3001'\"",
+      "command": "bash scripts/start-dev-env.sh",
       "options": {
         "cwd": "${workspaceFolder}"
       },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
       "problemMatcher": [],
-      "detail": "Starts MongoDB, backend, and frontend via Docker Compose; waits for services to be ready. Requires user in docker group (sudo usermod -aG docker $USER).",
+      "detail": "Starts MongoDB, backend (8088), and frontend (3001) via Docker Compose V2. Detects already-running services and port conflicts before starting.",
       "presentation": {
         "echo": true,
         "reveal": "always",
@@ -20,12 +24,12 @@
     {
       "label": "Stop full development environment",
       "type": "shell",
-      "command": "sg docker -c \"echo 'Stopping...' && docker compose down && echo 'Environment stopped.'\"",
+      "command": "echo 'Stopping...' && docker compose down && echo 'Environment stopped successfully.'",
       "options": {
         "cwd": "${workspaceFolder}"
       },
       "problemMatcher": [],
-      "detail": "Stops all services (MongoDB, backend, frontend) via Docker Compose.",
+      "detail": "Stops all services (MongoDB, backend, frontend) via Docker Compose V2.",
       "presentation": {
         "echo": true,
         "reveal": "always",

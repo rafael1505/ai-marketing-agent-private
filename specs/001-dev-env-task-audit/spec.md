@@ -14,6 +14,11 @@
 - Q: What does "clear feedback" mean — explicit user-facing messages, command output only, or exit code only? → A: Explicit user-facing messages.
 - Q: Should the Stop full development environment task be required or optional? → A: Required.
 - Q: Should the canonical task labels include emoji or be plain text? → A: No emoji (plain "Start full development environment" and "Stop full development environment").
+- Q: Which Docker Compose CLI should the start task use — v1 standalone (docker-compose), v2 plugin (docker compose), try v2 then fallback, or support both? → A: docker compose (v2 plugin) only.
+- Q: If the developer runs Start when services are already running, should the task succeed silently, succeed with a message, fail, or restart? → A: Succeed with a short message (e.g. "Services already running" or "All services are already up").
+- Q: When does the start task consider itself finished — when compose returns, or only after services pass a health check? → A: Only after backend and/or frontend respond to a health check (e.g. HTTP GET) or a short wait; the task runs a check or wait step.
+- Q: Where should the start task look for the Compose file? → A: Repo root docker-compose.yml.
+- Q: When required ports are already in use, should the task fail with a message, try to stop existing containers first, or only document? → A: Fail with a clear, actionable message only (no automatic stop of other processes).
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -28,7 +33,7 @@ A developer working in Cursor runs a single "Start full development environment"
 **Acceptance Scenarios**:
 
 1. **Given** the developer has the project open in Cursor and the task is available, **When** they run "Start full development environment", **Then** all three components (MongoDB, backend, frontend) are started and the task completes without showing an error message.
-2. **Given** no services are currently running, **When** the developer runs the start task, **Then** they can access the backend API and the frontend application within a reasonable time (e.g. under two minutes) without manual intervention.
+2. **Given** no services are currently running, **When** the developer runs the start task, **Then** the task completes only after backend and/or frontend respond to a health check (or equivalent), and the developer can access the backend API and the frontend application within a reasonable time (e.g. under two minutes) without manual intervention.
 3. **Given** the task has been run successfully, **When** the developer checks service status (or uses the app), **Then** MongoDB, backend, and frontend are all operational.
 
 ---
@@ -66,15 +71,16 @@ When the developer runs the start task, they MUST receive explicit user-facing m
 
 ### Edge Cases
 
+- When services are already running and the developer runs the start task again, the task MUST succeed and show a short message (e.g. "Services already running" or "All services are already up"); it must not fail or restart silently without feedback.
 - What happens when Docker is not installed or not running? The task should fail with a clear, actionable message (e.g. "Docker is not running" or "Start Docker and try again") rather than a generic permission or connection error where possible.
-- What happens when required ports (e.g. for backend or frontend) are already in use? Behavior is documented or the task/message guides the user (e.g. stop existing process or use a different port).
+- When required ports (e.g. 27017, 8088, 3001) are already in use, the start task MUST fail with a clear, actionable message (e.g. which port is in use and what to do—stop the process or change the port). The task MUST NOT automatically stop or kill other processes; the developer decides how to free the port.
 - How does the system handle the case where the task is run from a context where the user does not have permission to start containers or processes? The failure is identifiable (e.g. permission denied) and documentation or messaging indicates the required permission or environment (e.g. user in Docker group, or run from a terminal where Docker is available).
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: The project MUST provide a single, runnable "Start full development environment" task that starts MongoDB, the backend service, and the frontend application. The task MUST use Docker Compose only (one command; all three services run as containers).
+- **FR-001**: The project MUST provide a single, runnable "Start full development environment" task that starts MongoDB, the backend service, and the frontend application. The task MUST use Docker Compose only (one command; all three services run as containers). The task MUST use the Docker Compose V2 plugin CLI (`docker compose`), not the legacy standalone `docker-compose`. The task MUST consider itself finished only after backend and/or frontend respond to a health check (e.g. HTTP GET) or after a defined wait step—not only when `docker compose up -d` returns.
 - **FR-002**: The start task MUST be executable from Cursor without modification by the developer (e.g. no manual sudo or path changes) when their environment (Docker, permissions, ports) is correctly set up.
 - **FR-002b**: The start task MUST print explicit user-facing messages (e.g. "Starting…", "All services started" or "Ready") in the terminal so the developer sees clear progress and completion.
 - **FR-003**: Task configuration MUST live in `.vscode/tasks.json` only, be valid and consumable by Cursor (e.g. no duplicate JSON blocks or invalid syntax that prevent the task from being listed or run).
@@ -82,17 +88,20 @@ When the developer runs the start task, they MUST receive explicit user-facing m
 - **FR-004**: When the start task fails (e.g. Docker unavailable or permission denied), the outcome MUST be identifiable so the developer or documentation can direct the user to fix the environment (e.g. start Docker, add user to Docker group).
 - **FR-005**: The audit MUST document what was changed from the original VSCode-oriented setup (if anything) and any assumptions about the environment (e.g. Docker installed, user in Docker group, ports 27017, 8000, 3001).
 - **FR-006**: The project MUST provide a "Stop full development environment" (or equivalent) task that stops MongoDB, backend, and frontend in one action (e.g. via Docker Compose down).
+- **FR-007**: When the start task is run and all services are already running, the task MUST succeed and display a short, explicit user-facing message (e.g. "Services already running" or "All services are already up") so the developer is not left guessing.
+- **FR-008**: When required ports (e.g. 27017, 8088, 3001) are already in use, the start task MUST fail with a clear, actionable message (e.g. which port is in use and what the developer can do). The task MUST NOT automatically stop or kill other processes.
 
 ### Key Entities
 
 - **Start full development environment task**: The single IDE task with label "Start full development environment" (no emoji) that, when run, starts MongoDB, backend, and frontend via Docker Compose. It is defined in `.vscode/tasks.json` and must work in Cursor.
 - **Stop full development environment task**: The IDE task with label "Stop full development environment" (no emoji) that stops MongoDB, backend, and frontend in one action (e.g. Docker Compose down). Defined in `.vscode/tasks.json`.
 - **Task configuration**: The single file `.vscode/tasks.json` in the repository that defines IDE tasks (e.g. start, stop, status). Must be consistent, valid, and free of duplicates or VSCode-only assumptions that break Cursor.
+- **Compose file**: The canonical file for the start/stop tasks is `docker-compose.yml` at the repository root. Tasks run with working directory set to repo root and use this file (no `-f` override unless documented).
 - **Development environment**: The set of services (MongoDB, backend API, frontend app) required for local development, run as containers via Docker Compose, and their expected ports or endpoints.
 
 ## Assumptions
 
-- The start task uses Docker Compose only: a single command (e.g. `docker compose up -d`) starts MongoDB, backend, and frontend as containers. No mixed mode (local uvicorn/npm) for this task.
+- The start task uses Docker Compose only: a single command (e.g. `docker compose up -d`) from the repository root, using the Compose file `docker-compose.yml` at repo root, starts MongoDB, backend, and frontend as containers. The task uses the Docker Compose V2 plugin (`docker compose`), not the legacy `docker-compose` binary. No mixed mode (local uvicorn/npm) for this task.
 - Cursor can run the same task format (e.g. shell tasks with a command and working directory) as VSCode; differences are limited to how the shell or Docker is invoked (e.g. permissions, default shell).
 - Developers have or can get Docker and Docker Compose installed and their user in the Docker group (or equivalent) so that the start task does not require manual sudo for Docker commands.
 - Success is measured by "task runs without error and all three services are running" via Docker Compose.
@@ -101,7 +110,7 @@ When the developer runs the start task, they MUST receive explicit user-facing m
 
 ### Measurable Outcomes
 
-- **SC-001**: Developers can start the full development environment (MongoDB, backend, frontend) with one IDE action in under two minutes, without seeing an error message, when their environment is correctly set up.
+- **SC-001**: Developers can start the full development environment (MongoDB, backend, frontend) with one IDE action in under two minutes, without seeing an error message, when their environment is correctly set up. "Started" means the start task has run, containers are up, and backend and/or frontend have responded to a health check (or equivalent wait) so the task reports success only when services are reachable.
 - **SC-002**: The "Start full development environment" task appears exactly once in the task list and runs without configuration or syntax errors when executed in Cursor.
 - **SC-003**: When the task fails due to environment issues (e.g. Docker not running, permission denied), the cause is identifiable from the task output or documentation so the developer can fix it without guessing.
 - **SC-004**: An audit document or changelog describes what was updated from the original VSCode setup and what the project assumes about the developer’s environment (Docker, permissions, ports).

@@ -4,6 +4,18 @@
 **Last Updated**: November 6, 2025  
 **Maintainer**: Rafael Amorim
 
+> **🔄 SDD MIGRATION (2026):** This file is now a **secondary reference**. The authoritative source of rules and workflows is the **Spec Kit SDD configuration** in `spec/`:
+> - **Constitution**: `spec/constitution/project-constitution.speckit.md` - Global rules and architecture constraints
+> - **Process Specs**: `spec/process/` - Development workflows:
+>   - `development-best-practices.speckit.md` - Coding standards
+>   - `bug-fixing-workflow.speckit.md` - Debugging procedures
+>   - `ux-guidelines.speckit.md` - Frontend design rules
+>   - `architecture-guidelines.speckit.md` - System design decisions
+>
+> **When in doubt, follow Spec Kit specs.** This file remains for historical reference and quick lookups, but Spec Kit is the source of truth.
+
+---
+
 > **⚠️ CRITICAL:** Before making ANY changes, you MUST mentally load and follow ALL instruction files, even if not automatically attached to this conversation:
 > - **Architecture Guidelines** (`.github/instructions/ai-marketing-agent.architecture-and-development-guidelines.instructions.md`)
 > - **Development Best Practices** (`.github/instructions/ai-marketing-agent.development-best-practices.instructions.md`)

@@ -33,9 +33,9 @@
 - `command`: Shell command that (1) starts all services via Docker Compose, (2) waits for readiness where possible, (3) prints explicit "Starting..." and "Environment is READY" (or equivalent) messages.
 - `options.cwd`: `"${workspaceFolder}"`
 
-**Recommended command shape** (from research.md):
+**Recommended command shape** (from research.md): Use Docker Compose V2 (`docker compose`); working directory repo root; compose file `docker-compose.yml` at repo root. Task completes only after health check (use `docker compose up -d --wait`). When already running, succeed with message "Services already running" or equivalent.
 ```text
-echo "Starting..." && docker compose up -d --wait && echo "Environment is READY. Backend: http://localhost:8000 | Frontend: http://localhost:3001"
+echo "Starting..." && docker compose up -d --wait && echo "Environment is READY. Backend: http://localhost:8088 | Frontend: http://localhost:3001"
 ```
 
 **Optional**: `detail`, `problemMatcher`, `presentation` per VS Code schema.

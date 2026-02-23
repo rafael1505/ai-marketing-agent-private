@@ -1,7 +1,13 @@
-# Legacy scripts (deprecated)
+# Legacy Scripts (Deprecated)
 
-Scripts in this folder are **deprecated** and not supported for normal development.
+Scripts in this folder are no longer supported.
+The only supported way to start or stop the full development environment is:
 
-**Supported way to run the full development environment**: Use the VS Code/Cursor task **"Start full development environment"** (Docker Compose). Stop with **"Stop full development environment"**. See the project README and `specs/001-dev-env-task-audit/quickstart.md`.
+  VS Code / Cursor task: "Start full development environment"
+  VS Code / Cursor task: "Stop full development environment"
 
-These legacy scripts were moved here to avoid configuration drift. They started the backend, frontend, or MongoDB in ways that compete with Docker Compose (e.g. local uvicorn, local npm, or standalone MongoDB container). Do not rely on them for new work.
+These tasks use Docker Compose V2 (`docker compose up/down`) with the
+repo-root `docker-compose.yml` file.
+
+Scripts here are kept for historical reference only.
+Do not rely on them for normal development.

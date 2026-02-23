@@ -17,18 +17,16 @@
 - Custom script that polls HTTP endpoints: adds maintenance and platform-dependent logic. Rejected in favor of Compose native behavior.
 - Rely on healthchecks in docker-compose.yml: if present, `--wait` can wait for them; we recommend adding simple healthchecks for web and frontend so `--wait` is meaningful. Document in implementation.
 
-**Note**: If the project's Docker Compose or Docker version does not support `--wait`, fallback to `docker compose up -d` and document that "Ready" means "containers started"; consider adding a short sleep or a one-line poll in the task for minimal wait. Prefer upgrading Docker Compose if possible.
+**Note**: Use Docker Compose V2 CLI (`docker compose`) only, not legacy `docker-compose`. Compose file is repo root `docker-compose.yml`. If the project's Docker Compose or Docker version does not support `--wait`, fallback to `docker compose up -d` and document that "Ready" means "containers started"; consider adding a short sleep or a one-line poll for minimal wait. Prefer upgrading Docker Compose if possible.
 
 ---
 
 ## 2. Readiness message and URLs
 
 **Decision**: After a successful start, print:  
-`Environment is READY. Backend: http://localhost:8000 | Frontend: http://localhost:3001`
+`Environment is READY. Backend: http://localhost:8088 | Frontend: http://localhost:3001`
 
-**Rationale**: Spec and guideline require explicit "Ready" messages. Current docker-compose.yml exposes web on 8000 and frontend on 3001 (host). Single line is script-friendly and AI-parseable.
-
-**Alternatives considered**: Only "Environment is READY" without URLs: rejected because URLs improve developer experience. Including MongoDB URL (e.g. localhost:27017): optional; can be added if needed for debugging.
+**Rationale**: Spec and project constitution require backend on port 8088, frontend on 3001. Explicit "Ready" messages and URLs improve developer experience. docker-compose must expose backend on host port 8088 (constitution); if the app inside the container listens on 8000, use `"8088:8000"` in compose.
 
 ---
 
@@ -79,12 +77,23 @@
 
 ---
 
+## 6. Already running and port conflict
+
+**Already running**: When the developer runs the start task and all services are already running, the task MUST succeed and display a short, explicit message (e.g. "Services already running" or "All services are already up"). Rely on `docker compose up -d --wait` idempotency; optionally detect "already up" and print that message so the developer is not left guessing.
+
+**Port conflict**: When required ports (27017, 8088, 3001) are already in use, the start task MUST fail with a clear, actionable message (e.g. which port is in use and what to do—stop the process or change the port). The task MUST NOT automatically stop or kill other processes. Implement by checking port availability before `docker compose up` or by catching compose failure and mapping it to a clear message; document in quickstart.
+
+---
+
 ## Summary Table
 
 | Topic | Decision |
 |-------|----------|
+| Compose CLI | Docker Compose V2 only (`docker compose`); compose file repo root `docker-compose.yml` |
 | Start command | `docker compose up -d --wait` (with fallback if --wait unavailable) |
-| Readiness message | `Environment is READY. Backend: http://localhost:8000 \| Frontend: http://localhost:3001` |
+| Readiness message | `Environment is READY. Backend: http://localhost:8088 \| Frontend: http://localhost:3001` |
+| Already running | Succeed with short message (e.g. "Services already running") |
+| Port conflict | Fail with clear, actionable message; no auto-stop of other processes |
 | Task config | Single `.vscode/tasks.json`; two tasks only; labels without emoji |
 | Legacy scripts | Remove or move to `scripts/legacy/` and document unsupported |
 | Hot-reload | Document; optional volume mounts in compose for later |
