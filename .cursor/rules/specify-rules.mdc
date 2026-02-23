@@ -5,6 +5,7 @@ Auto-generated from feature plans + project constitution. Last updated: 2026-02-
 ## Active Technologies
 - Python 3.11 (backend), Node 20 (frontend); Docker Compose V2 for orchestration. + FastAPI/uvicorn (backend), Next.js 14 (frontend), shadcn/ui, ruff (linter). (002-migrate-dev-practices)
 - MongoDB 4.4 (Docker container, port 27017). (002-migrate-dev-practices)
+- Python 3.11 (backend), Node 20 (frontend); Docker Compose V2 for orchestration. + FastAPI/uvicorn (backend), Next.js 14 (frontend), Motor (MongoDB async driver). (003-architecture-core-and-compliance)
 
 - **Backend**: Python 3.11, FastAPI/uvicorn — port 8088
 - **Frontend**: Node 20, Next.js 14 (React + TypeScript) — port 3001
@@ -71,6 +72,7 @@ ruff check .
 - **Commits**: Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, etc.)
 
 ## Recent Changes
+- 003-architecture-core-and-compliance: Added Python 3.11 (backend), Node 20 (frontend); Docker Compose V2 for orchestration. + FastAPI/uvicorn (backend), Next.js 14 (frontend), Motor (MongoDB async driver).
 - 002-migrate-dev-practices: Formalized three process specs — development best practices (26 rules, PR-AI-001–005), bug-fixing workflow (BFIX-001/002/003), and UX guidelines (UX-001–005, 8 acceptance criteria).
 - **001-dev-env-task-audit**: Audited and fixed "Start full development environment" IDE task; aligned to Docker Compose V2 (`docker compose`), repo root `docker-compose.yml`, health-check completion, port 8088 backend, legacy scripts deprecated.
 
