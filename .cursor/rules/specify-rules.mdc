@@ -49,7 +49,7 @@ docker compose up -d --wait
 # Stop full development environment
 docker compose down
 
-# Backend
+# Backend (local run, non-Docker only — Docker maps container:8000 → host:8088)
 uvicorn app.main:api_app --host 127.0.0.1 --port 8088 --reload
 
 # Frontend
