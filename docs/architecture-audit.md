@@ -103,7 +103,9 @@ is infrastructure setup; it belongs in the service initialisation path, not in
 route handlers.
 
 Remediation task: **ARCH-T003**.
-Status: **OPEN**
+Status: **RESOLVED** — route rewritten in Phase 3; `MaterialDB` is constructed
+exclusively inside `material_service._make_db()`. Route handlers contain only
+`db = request.app.mongodb` before the service call.
 
 ---
 
@@ -126,7 +128,9 @@ handler — a double violation of ARCH-LAYER-001.
 
 Remediation task: **ARCH-T003** — add `MaterialDB.delete(material_id)` and call
 it from the service.
-Status: **OPEN**
+Status: **RESOLVED** — `delete_material` route now calls `material_service.delete()`;
+service calls `material_db.delete()` inherited from `BaseDB.delete()`. No raw Motor
+collection access remains in the route.
 
 ---
 
@@ -160,7 +164,11 @@ This violates:
 The exception `pass` also means failures are invisible.
 
 Remediation task: **ARCH-T003** (materials side) + **ARCH-T005** (connector side).
-Status: **OPEN**
+Status: **RESOLVED** — inline provider call and provider-identity branch entirely
+removed from `add_generated_image`. Route now accepts a `GeneratedImageInput` body
+and delegates to `material_service.add_generated_image()`. The MCP contract
+violation (ARCH-MCP-001/002) is fully addressed on the materials side; ARCH-T005
+addresses it on the AI generation side.
 
 ---
 
@@ -175,7 +183,9 @@ Module-level imports placed inside a function body are a PEP 8 violation (also
 PR-BE-001). Minor, but tracked for completeness.
 
 Remediation task: **ARCH-T003** — move `import json` to module top-level.
-Status: **OPEN**
+Status: **RESOLVED** — `import json` and all JSON parsing removed from route.
+`generation_params` is now a typed `dict` field in `GeneratedImageInput` (Pydantic
+handles deserialisation).
 
 ---
 
@@ -195,15 +205,14 @@ Six `print()` calls in route handlers (ARCH-LAYER-003 requires `logging.getLogge
 **[MAT-V008]** `ARCH-LAYER-003` — six `print()` calls in `app/api/v1/materials.py`.
 
 Remediation task: **ARCH-T003** — remove all; replace with `logger = logging.getLogger(__name__)`.
-Status: **OPEN**
+Status: **RESOLVED** — all six `print()` calls removed in Phase 3 route rewrite.
+The route file now contains zero `print()` statements (verified by grep).
 
 ---
 
-> **Note — `app/db/material.py`**: A further 22 `print()` calls exist in
-> `app/db/material.py` (lines 39, 40, 48, 53, 57, 70, 78, 80, 85, 138, 155, 168,
-> 174, 177, 181, 193, 195, 209, 212, 218 and others). These violate ARCH-LAYER-003
-> at the DB layer. Remediation is in scope for ARCH-T003, which will refactor the
-> full stack for materials.
+> **Note — `app/db/material.py`**: The 22 `print()` calls and test_company seeding
+> block were removed in Phase 1 (commit e8c2a99). `app/db/base.py` print() calls
+> also resolved. Both files pass `ruff check` clean.
 
 ---
 
@@ -260,7 +269,8 @@ Excessive length is a symptom of the business logic (MAT-V006) embedded in the
 handler. Remediation of MAT-V006 will bring this under the limit.
 
 Remediation task: **ARCH-T003**.
-Status: **OPEN**
+Status: **RESOLVED** — largest handler (`add_generated_image`) is now 12 lines;
+all 9 handlers are ≤ 15 lines. AC-001 satisfied.
 
 ---
 
@@ -270,17 +280,17 @@ Status: **OPEN**
 |----|------|---------|----------|------|
 | MAT-V001 | ARCH-LAYER-002 | 21–26 | High | ARCH-T003 | **RESOLVED** |
 | MAT-V002 | ARCH-LAYER-002 | 28–30 | High | ARCH-T003 | **RESOLVED** |
-| MAT-V003 | ARCH-LAYER-001 | 9 sites | High | ARCH-T003 | OPEN (Phase 3) |
-| MAT-V004 | ARCH-LAYER-001 | 9 sites | High | ARCH-T003 | OPEN (Phase 3) |
-| MAT-V005 | ARCH-LAYER-001 | 274–283 | High | ARCH-T003 | OPEN (Phase 3) |
-| MAT-V006 | ARCH-LAYER-001 + ARCH-MCP-001/002 | 155–165 | Critical | ARCH-T003/T005 | OPEN (Phase 3) |
-| MAT-V007 | PR-BE-001 (PEP 8) | 149 | Low | ARCH-T003 | OPEN (Phase 3) |
-| MAT-V008 | ARCH-LAYER-003 | 39–41, 68, 79, 282 | High | ARCH-T003 | OPEN (Phase 3) |
+| MAT-V003 | ARCH-LAYER-001 | 9 sites | High | ARCH-T003 | **RESOLVED** |
+| MAT-V004 | ARCH-LAYER-001 | 9 sites | High | ARCH-T003 | **RESOLVED** |
+| MAT-V005 | ARCH-LAYER-001 | 274–283 | High | ARCH-T003 | **RESOLVED** |
+| MAT-V006 | ARCH-LAYER-001 + ARCH-MCP-001/002 | 155–165 | Critical | ARCH-T003/T005 | **RESOLVED** (materials side) |
+| MAT-V007 | PR-BE-001 (PEP 8) | 149 | Low | ARCH-T003 | **RESOLVED** |
+| MAT-V008 | ARCH-LAYER-003 | 39–41, 68, 79, 282 | High | ARCH-T003 | **RESOLVED** |
 | MAT-V009 | ARCH-MAT-002 | 230–251 | High | ARCH-T003 | **RESOLVED** |
 | MAT-V010 | ARCH-MAT-004 | 182–202 | Critical | ARCH-T003 | **RESOLVED** |
-| MAT-V011 | ARCH-LAYER-001 (50-line) | 129–180 | Medium | ARCH-T003 | OPEN (Phase 3) |
+| MAT-V011 | ARCH-LAYER-001 (50-line) | 129–180 | Medium | ARCH-T003 | **RESOLVED** |
 
-**Total violations in `materials.py`: 11** (2 critical, 7 high, 1 medium, 1 low)
+**Total violations in `materials.py`: 11 — all RESOLVED by ARCH-T003** (Phases 1–3)
 
 ---
 
@@ -662,3 +672,4 @@ All 26 violations are **OPEN**. No violation is in scope for debt tracking
 | 2026-02-23 | Initial audit created for ARCH-T002 (materials.py) and ARCH-T004 (ai_generation.py). 26 violations documented across 2 files plus cross-file coupling analysis. |
 | 2026-02-23 | ARCH-T003 Phase 1: DB layer cleaned (material.py, base.py) — print() replaced, test_company seeding removed, cursor simplified. |
 | 2026-02-23 | ARCH-T003 Phase 2: material_service.py created. MAT-V001, MAT-V002 (serialisation helpers), MAT-V009 (transition_stage), MAT-V010 (finalization guard) marked RESOLVED. 29 unit tests passing. |
+| 2026-02-23 | ARCH-T003 Phase 3: app/api/v1/materials.py rewritten as thin route layer. MAT-V003, MAT-V004 (direct MaterialDB/get_db_collection in routes), MAT-V005 (direct delete_one), MAT-V006 (inline AI generation), MAT-V007 (import json in handler), MAT-V008 (6 print() calls), MAT-V011 (handler >50 lines) marked RESOLVED. All 11 materials.py violations now RESOLVED. ruff check clean. 29 unit tests passing. |
