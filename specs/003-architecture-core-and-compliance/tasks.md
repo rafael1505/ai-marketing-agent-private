@@ -4,8 +4,8 @@
 **Date completed**: 2026-02-23
 **Status**: ALL TASKS COMPLETED
 
-**Total Tasks**: 73
-**Completed**: 73 / 73 (100%)
+**Total Tasks**: 111
+**Completed**: 111 / 111 (100%)
 
 ---
 
@@ -168,6 +168,15 @@
 
 ---
 
+## Phase 9 — Infrastructure Refinement
+
+- [x] **T-108** — Define `@runtime_checkable` MCPConnector Protocol (`app/services/mcp_connector.py`)
+- [x] **T-109** — Implement MCPRegistry with provider resolution logic (`app/core/mcp_registry.py`)
+- [x] **T-110** — Inject MCPRegistry into ai_generation_service (`_get_registry(db)`, `registry.get_underlying_manager()`)
+- [x] **T-111** — Validate unit tests (24/24 AI generation tests passed with Registry injection)
+
+---
+
 ## Completion Summary
 
 | Phase | Tasks | Completed |
@@ -181,6 +190,7 @@
 | ARCH-T003 Phase 3 — Materials Route Thinning (11 tasks) | 11 | 11 ✓ |
 | ARCH-T005 Phase 1 — AI Generation Service + Tests (15 tasks) | 15 | 15 ✓ |
 | ARCH-T005 Phase 2 — AI Generation Route Thinning (13 tasks) | 13 | 13 ✓ |
-| **Total** | **107** | **107 ✓** |
+| Phase 9 — Infrastructure Refinement (4 tasks) | 4 | 4 ✓ |
+| **Total** | **111** | **111 ✓** |
 
-**All tasks completed on branch `003-architecture-core-and-compliance`, 2026-02-23.**
+**All tasks completed on branch `003-architecture-core-and-compliance`, 2026-02-23 (Phase 9: 2026-02-24).**

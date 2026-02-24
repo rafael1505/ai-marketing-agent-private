@@ -14,7 +14,7 @@ Formalized the architecture governance spec and resolved all highest-priority
 structural violations: backup/test files in production source, materials route
 business logic leakage, and AI generation route bypassing the service layer.
 Delivered the MCP Connector contract as the foundation for all future AI provider
-integrations. Introduced 53 unit tests and 42 documented, resolved violations.
+integrations. Phase 9 decoupled the MCP Registry from the AI service (`app/core/mcp_registry.py`, `app/services/mcp_connector.py`); 24/24 AI tests pass with registry injection. Introduced 53 unit tests and 42 documented, resolved violations.
 
 ---
 
@@ -154,6 +154,17 @@ Rewrote `app/api/v1/ai_generation.py` (221 lines → 98 lines):
 
 Resolved: GEN-V001–V013. **All 13 ai_generation.py violations RESOLVED.**
 
+### Phase 9 — Infrastructure Refinement
+
+**Goal**: Decouple MCP Registry from AI Service so connector resolution lives in a dedicated registry layer (docs/mcp-connector-contract.md §4).
+
+**Result**:
+- Created `app/core/mcp_registry.py` — `MCPRegistry` class with injected manager factory, `get(provider_id)`, `list_available()`, `async refresh(db, user_id)`, and `get_underlying_manager()` for transition.
+- Created `app/services/mcp_connector.py` — `@runtime_checkable` `MCPConnector` Protocol (connect, disconnect, validate, execute, health_check) and `MCPConnectorError` dataclass with `error_details` property per contract §2–3.
+- Updated `app/services/ai_generation_service.py` — Replaced `_refreshed_manager(db)` with `_get_registry(db)`; service uses `MCPRegistry(get_provider_manager)` and `registry.refresh(db)` then `registry.get_underlying_manager()` for all operations. No provider branching; tests patch `get_provider_manager` at service boundary and mock flows into registry via injection.
+
+**Verification**: 24/24 AI unit tests passing with the new Registry injection.
+
 ---
 
 ## Commit History
@@ -168,6 +179,7 @@ Resolved: GEN-V001–V013. **All 13 ai_generation.py violations RESOLVED.**
 | `82ed448` | refactor | finalize materials route thinning and resolve all audit violations (ARCH-T003) |
 | `b228f43` | feat | implement ai_generation_service with MCP Registry and error mapping (ARCH-T005) |
 | `87871cd` | refactor | finalize ai_generation route thinning and resolve all audit violations (ARCH-T005) |
+| _(Phase 9)_ | refactor | MCP Registry + connector protocol; decouple registry from AI service (Phase 9) |
 
 ---
 
@@ -185,7 +197,9 @@ Resolved: GEN-V001–V013. **All 13 ai_generation.py violations RESOLVED.**
 | `app/db/base.py` | Cleaned — logging, unused imports removed | -15 |
 | `app/services/__init__.py` | Created (package init) | 0 |
 | `app/services/material_service.py` | Created | +244 |
-| `app/services/ai_generation_service.py` | Created | +332 |
+| `app/services/ai_generation_service.py` | Created; Phase 9: uses MCPRegistry | +335 |
+| `app/services/mcp_connector.py` | Created (Phase 9) | +76 |
+| `app/core/mcp_registry.py` | Created (Phase 9) | +120 |
 | `debug/auth_fixed.py` | Moved from `app/core/` | 0 |
 | `debug/auth_test.py` | Moved from `app/api/v1/` | 0 |
 | `app/api/v1/ai_providers_backup.py` | Deleted | -277 |
