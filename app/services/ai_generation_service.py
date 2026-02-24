@@ -2,11 +2,11 @@
 AI Generation Service — all business logic for AI image generation.
 
 Layer contract (ARCH-LAYER-001):
-  Route → ai_generation_service (this file) → AIProviderManager → providers
+  Route → ai_generation_service (this file) → MCPRegistry → AIProviderManager
 
 Registry resolution (ARCH-MCP-002):
-  All provider resolution is delegated to AIProviderManager.  Services and
-  routes MUST NOT branch on provider_id (e.g. if provider == "openai").
+  All provider resolution is delegated to MCPRegistry (app/core/mcp_registry.py).
+  Services and routes MUST NOT branch on provider_id (e.g. if provider == "openai").
 
 Error schema (ARCH-MCP-005):
   Every error path returns a compliant error_details dict:
@@ -27,6 +27,7 @@ from app.ai_providers.provider_manager import (
     ImageGenerationRequest,
     get_provider_manager,
 )
+from app.core.mcp_registry import MCPRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -82,17 +83,17 @@ def _normalise_error_details(
     }
 
 
-async def _refreshed_manager(db: Any):
+async def _get_registry(db: Any) -> MCPRegistry:
     """
-    Return the AIProviderManager singleton with up-to-date DB config.
+    Return a refreshed MCPRegistry for this request.
 
-    The manager is the MCP registry: provider_id → connector implementation.
-    Calling refresh_provider_configs() here ensures routes never need to
-    know about this lifecycle step (GEN-V002 fix).
+    Constructs an MCPRegistry injecting the module-level ``get_provider_manager``
+    so that tests can patch ``app.services.ai_generation_service.get_provider_manager``
+    and have the mock flow into the registry transparently (ARCH-MCP-002).
     """
-    manager = get_provider_manager(database_client=db)
-    await manager.refresh_provider_configs()
-    return manager
+    registry = MCPRegistry(get_provider_manager)
+    await registry.refresh(db)
+    return registry
 
 
 # ---------------------------------------------------------------------------
@@ -132,7 +133,7 @@ async def generate_image(
     )
 
     try:
-        manager = await _refreshed_manager(db)
+        manager = (await _get_registry(db)).get_underlying_manager()
 
         gen_request = ImageGenerationRequest(
             prompt=prompt,
@@ -208,7 +209,7 @@ async def get_available_providers(db: Any) -> Dict[str, Any]:
     no static lists or provider branching.
     """
     try:
-        manager = await _refreshed_manager(db)
+        manager = (await _get_registry(db)).get_underlying_manager()
         provider_status = manager.get_provider_status()
         return {
             "providers": [
@@ -258,7 +259,7 @@ async def get_recommended_provider(
     """
     cid = correlation_id or str(uuid.uuid4())
     try:
-        manager = await _refreshed_manager(db)
+        manager = (await _get_registry(db)).get_underlying_manager()
         recommended = manager.get_recommended_provider(features)
         provider_status = manager.get_provider_status()
         if recommended in provider_status:
@@ -303,8 +304,9 @@ async def refresh_configs(db: Any) -> Dict[str, Any]:
     restarting the process.
     """
     try:
-        manager = get_provider_manager(database_client=db)
-        await manager.refresh_provider_configs()
+        registry = MCPRegistry(get_provider_manager)
+        await registry.refresh(db)
+        manager = registry.get_underlying_manager()
         configured = sum(
             1 for p in manager.providers.values() if p.is_configured()
         )
