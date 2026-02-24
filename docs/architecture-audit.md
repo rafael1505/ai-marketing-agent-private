@@ -539,21 +539,21 @@ Status: **OPEN**
 
 | ID | Rule | Line(s) | Severity | Task |
 |----|------|---------|----------|------|
-| GEN-V001 | ARCH-LAYER-001 | 33, 125, 161, 195 | High | ARCH-T005 | PARTIAL — service created (Phase 1); route refactor pending (Phase 2) |
-| GEN-V002 | ARCH-LAYER-001 | 36, 128, 164, 197 | High | ARCH-T005 | PARTIAL — service created (Phase 1); route refactor pending (Phase 2) |
-| GEN-V003 | ARCH-LAYER-001 | 53–58 | High | ARCH-T005 | PARTIAL — parallel/single decision centralised in `generate_image()` service; route refactor pending (Phase 2) |
-| GEN-V004 | ARCH-LAYER-001 | 64–84 | Medium | ARCH-T005 | PARTIAL — result processing in service; route refactor pending (Phase 2) |
-| GEN-V005 | ARCH-LAYER-001 | 166, 200–201 | High | ARCH-T005 | PARTIAL — `get_available_providers` / `get_recommended_provider` in service; route refactor pending (Phase 2) |
-| GEN-V006 | ARCH-MCP-001/002 | All handlers | Critical | ARCH-T005 | PARTIAL — service wraps AIProviderManager registry; no provider branching in service; route refactor pending (Phase 2) |
-| GEN-V007 | ARCH-MCP-005 | 98–100, 106–111 | Critical | ARCH-T005 | PARTIAL — service enforces ARCH-MCP-005 schema on all error paths; route refactor pending (Phase 2) |
-| GEN-V008 | ARCH-MCP-005 | 151, 153–154 | Critical | ARCH-T005 | PARTIAL — service enforces ARCH-MCP-005 schema on all error paths; route refactor pending (Phase 2) |
-| GEN-V009 | ARCH-MCP-005 | 184–185 | Critical | ARCH-T005 | PARTIAL — service enforces ARCH-MCP-005 schema on all error paths; route refactor pending (Phase 2) |
-| GEN-V010 | ARCH-MCP-005 | 217–218 | Critical | ARCH-T005 | PARTIAL — service enforces ARCH-MCP-005 schema on all error paths; route refactor pending (Phase 2) |
-| GEN-V011 | ARCH-MCP-005 | All handlers | Critical | ARCH-T005 | PARTIAL — `correlation_id` propagated in all service responses; route refactor pending (Phase 2) |
-| GEN-V012 | Dead code | 220 | Low | ARCH-T005 | OPEN — unreachable code still in route; removed in Phase 2 |
-| GEN-V013 | ARCH-LAYER-001 (50-line) | 26–112 | Medium | ARCH-T005 | OPEN — handler still 87 lines; resolved in Phase 2 |
+| GEN-V001 | ARCH-LAYER-001 | 33, 125, 161, 195 | High | ARCH-T005 | **RESOLVED** — route delegates to ai_generation_service; no get_provider_manager() in route |
+| GEN-V002 | ARCH-LAYER-001 | 36, 128, 164, 197 | High | ARCH-T005 | **RESOLVED** — route delegates to ai_generation_service; no get_provider_manager() in route |
+| GEN-V003 | ARCH-LAYER-001 | 53–58 | High | ARCH-T005 | **RESOLVED** — parallel/single decision in ai_generation_service.generate_image() |
+| GEN-V004 | ARCH-LAYER-001 | 64–84 | Medium | ARCH-T005 | **RESOLVED** — result processing in service; route passes through |
+| GEN-V005 | ARCH-LAYER-001 | 166, 200–201 | High | ARCH-T005 | **RESOLVED** — list_available_providers/get_recommended_provider call service methods |
+| GEN-V006 | ARCH-MCP-001/002 | All handlers | Critical | ARCH-T005 | **RESOLVED** — route never touches AIProviderManager; service is the sole registry boundary |
+| GEN-V007 | ARCH-MCP-005 | 98–100, 106–111 | Critical | ARCH-T005 | **RESOLVED** — service returns error_details on all failure paths; route passes through |
+| GEN-V008 | ARCH-MCP-005 | 151, 153–154 | Critical | ARCH-T005 | **RESOLVED** — service returns error_details on all failure paths; route passes through |
+| GEN-V009 | ARCH-MCP-005 | 184–185 | Critical | ARCH-T005 | **RESOLVED** — service returns error_details on all failure paths; route passes through |
+| GEN-V010 | ARCH-MCP-005 | 217–218 | Critical | ARCH-T005 | **RESOLVED** — service returns error_details on all failure paths; route passes through |
+| GEN-V011 | ARCH-MCP-005 | All handlers | Critical | ARCH-T005 | **RESOLVED** — _cid(request) at route entry; correlation_id in every response |
+| GEN-V012 | Dead code | 220 | Low | ARCH-T005 | **RESOLVED** — unreachable line removed in route rewrite |
+| GEN-V013 | ARCH-LAYER-001 (50-line) | 26–112 | Medium | ARCH-T005 | **RESOLVED** — largest handler is now 15 lines; AC-001 satisfied |
 
-**Total violations in `ai_generation.py`: 13** (6 critical, 4 high, 2 medium, 1 low) — 11 PARTIAL (service ready), 2 OPEN (route-only, Phase 2)
+**Total violations in `ai_generation.py`: 13 — all RESOLVED by ARCH-T005** (Phases 1 and 2)
 
 ---
 
@@ -662,7 +662,7 @@ The following pre-conditions MUST be satisfied before the refactoring tasks begi
 
 Materials violations: all 11 **RESOLVED** (ARCH-T003 Phases 1–3).
 AI generation violations: 11 **PARTIAL** (service created, route pending), 2 **OPEN** (route-only).
-Cross-file violations: 2 — MAT-V006 materials side **RESOLVED**, AI generation side pending ARCH-T005 Phase 2.
+Cross-file violations: 2 — MAT-V006 materials side **RESOLVED**, AI generation side RESOLVED in ARCH-T005 Phase 2.
 
 ---
 
@@ -675,3 +675,4 @@ Cross-file violations: 2 — MAT-V006 materials side **RESOLVED**, AI generation
 | 2026-02-23 | ARCH-T003 Phase 2: material_service.py created. MAT-V001, MAT-V002 (serialisation helpers), MAT-V009 (transition_stage), MAT-V010 (finalization guard) marked RESOLVED. 29 unit tests passing. |
 | 2026-02-23 | ARCH-T003 Phase 3: app/api/v1/materials.py rewritten as thin route layer. MAT-V003, MAT-V004 (direct MaterialDB/get_db_collection in routes), MAT-V005 (direct delete_one), MAT-V006 (inline AI generation), MAT-V007 (import json in handler), MAT-V008 (6 print() calls), MAT-V011 (handler >50 lines) marked RESOLVED. All 11 materials.py violations now RESOLVED. ruff check clean. 29 unit tests passing. |
 | 2026-02-23 | ARCH-T005 Phase 1: app/services/ai_generation_service.py created. Methods: generate_image (single + parallel), get_available_providers, get_recommended_provider, refresh_configs. ARCH-MCP-002 registry delegation, ARCH-MCP-005 error_details + correlation_id on all paths. GEN-V001–V011 marked PARTIAL (service ready, route refactor pending Phase 2). GEN-V012, V013 remain OPEN (route). 25 unit tests passing. |
+| 2026-02-23 | ARCH-T005 Phase 2: app/api/v1/ai_generation.py rewritten as thin route layer. All 13 GEN violations RESOLVED. Handlers —15 lines each. Dead code removed. X-Correlation-ID extracted at route entry. ruff check clean. 53 unit tests passing (24 AI gen + 29 materials). |

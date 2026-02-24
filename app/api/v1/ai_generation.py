@@ -1,17 +1,23 @@
 """
-Image generation endpoint using multiple AI providers
+Image generation routes — thin delegation layer (ARCH-LAYER-001).
+
+Pattern per handler:
+  cid = _cid(request)               # extract or generate correlation ID
+  db  = request.app.mongodb
+  return await ai_generation_service.method(db, ..., correlation_id=cid)
 """
-from fastapi import APIRouter, Depends, HTTPException, Query, Body, Request
+import uuid
 from typing import Annotated, Dict, Any, Optional, List
+from fastapi import APIRouter, Request, Query
 from pydantic import BaseModel
-from app.ai_providers.provider_manager import get_provider_manager, ImageGenerationRequest
-import logging
-import traceback
+
+import app.services.ai_generation_service as ai_generation_service
 
 router = APIRouter()
-logger = logging.getLogger(__name__)
+
 
 class ImageGenerationRequestBody(BaseModel):
+    """Request body for POST /generate-image."""
     prompt: str
     ai_provider: str = "free-test-provider"
     size: str = "1024x1024"
@@ -20,23 +26,24 @@ class ImageGenerationRequestBody(BaseModel):
     variations: int = 1
     negative_prompt: Optional[str] = None
     seed: Optional[int] = None
-    people_preference: str = "auto"  # Smart 4-mode system: "auto" | "include" | "exclude" | "minimal"
+    people_preference: str = "auto"
+
+
+def _cid(request: Request) -> str:
+    """Extract X-Correlation-ID from headers, or generate a fresh UUID."""
+    return request.headers.get("X-Correlation-ID") or str(uuid.uuid4())
+
 
 @router.post("/generate-image")
 async def generate_image_with_provider(
     request: Request,
-    request_body: ImageGenerationRequestBody
+    request_body: ImageGenerationRequestBody,
 ) -> Dict[str, Any]:
-    """Generate an image using the specified AI provider"""
-    
-    # Get provider manager with database connection
-    manager = get_provider_manager(database_client=getattr(request.app, 'mongodb', None))
-    
-    # Refresh provider configs from database to get latest API keys
-    await manager.refresh_provider_configs()
-    
-    # Create internal request object
-    generation_request = ImageGenerationRequest(
+    """Generate one or more images using the specified AI provider."""
+    db = request.app.mongodb
+    return await ai_generation_service.generate_image(
+        db=db,
+        provider_id=request_body.ai_provider,
         prompt=request_body.prompt,
         size=request_body.size,
         style=request_body.style,
@@ -44,71 +51,10 @@ async def generate_image_with_provider(
         variations=request_body.variations,
         negative_prompt=request_body.negative_prompt,
         seed=request_body.seed,
-        people_preference=request_body.people_preference
+        people_preference=request_body.people_preference,
+        correlation_id=_cid(request),
     )
-    
-    try:
-        logger.info(f"Generating image with provider: {request_body.ai_provider}, variations: {request_body.variations}")
-        
-        # Use parallel generation for multiple variations (Phase 2.4 optimization)
-        if request_body.variations > 1:
-            logger.info(f"Using parallel generation for {request_body.variations} images")
-            result = await manager.generate_images_parallel(request_body.ai_provider, generation_request)
-        else:
-            result = await manager.generate_image(request_body.ai_provider, generation_request)
-        
-        if result.success:
-            logger.info(f"Image generation successful: {len(result.images)} images generated")
-            
-            # Log image URL details
-            for i, img_url in enumerate(result.images):
-                logger.info(f"Image {i+1} URL length: {len(img_url)} characters")
-                logger.info(f"Image {i+1} URL preview: {img_url[:100]}...")
-            
-            response_data = {
-                "success": True,
-                "images": result.images,
-                "prompt": request_body.prompt,
-                "provider": result.provider,
-                "model": result.model,
-                "metadata": result.metadata,
-                "cost": result.cost
-            }
-            logger.info(f"Returning response with {len(result.images)} images")
-            logger.info(f"Total response size estimate: {len(str(response_data))} characters")
-            
-            try:
-                import json
-                json_response = json.dumps(response_data)
-                logger.info(f"Response successfully serialized to JSON: {len(json_response)} bytes")
-                return response_data
-            except Exception as json_error:
-                logger.error(f"Failed to serialize response to JSON: {json_error}")
-                raise
-        else:
-            # Return enriched error details if available
-            logger.error(f"Image generation failed: {result.error}")
-            if result.error_details:
-                return {
-                    "success": False,
-                    "error": result.error,
-                    "error_details": result.error_details,
-                    "provider": result.provider
-                }
-            else:
-                # Fallback to simple error
-                raise HTTPException(status_code=500, detail=result.error)
-            
-    except HTTPException:
-        # Re-raise HTTP exceptions
-        logger.error("HTTPException occurred during image generation")
-        raise
-    except Exception as e:
-        # Log the full exception with traceback
-        logger.error(f"Unexpected error in image generation: {str(e)}")
-        logger.error(f"Error type: {type(e).__name__}")
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"Image generation failed: {str(e)}")
+
 
 @router.post("/generate-image-multi")
 async def generate_multiple_images(
@@ -117,104 +63,35 @@ async def generate_multiple_images(
     ai_provider: Annotated[str, Query()] = "free-test-provider",
     size: Annotated[str, Query()] = "1024x1024",
     style: Annotated[str, Query()] = "photorealistic",
-    variations: Annotated[int, Query()] = 5
+    variations: Annotated[int, Query()] = 5,
 ) -> Dict[str, Any]:
-    """Generate multiple image variations (backward compatibility endpoint)"""
-    
-    # Get provider manager with database connection
-    manager = get_provider_manager(database_client=getattr(request.app, 'mongodb', None))
-    
-    # Refresh provider configs from database
-    await manager.refresh_provider_configs()
-    
-    generation_request = ImageGenerationRequest(
+    """Backward-compatibility endpoint for multiple image variations."""
+    db = request.app.mongodb
+    return await ai_generation_service.generate_image(
+        db=db,
+        provider_id=ai_provider,
         prompt=prompt,
         size=size,
         style=style,
-        variations=variations
+        variations=variations,
+        correlation_id=_cid(request),
     )
-    
-    try:
-        result = await manager.generate_image(ai_provider, generation_request)
-        
-        if result.success:
-            return {
-                "success": True,
-                "images": result.images,
-                "prompt": prompt,
-                "provider": result.provider,
-                "model": result.model,
-                "metadata": result.metadata,
-                "cost": result.cost
-            }
-        else:
-            raise HTTPException(status_code=500, detail=result.error)
-            
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Image generation failed: {str(e)}")
+
 
 @router.get("/providers")
 async def list_available_providers(request: Request) -> Dict[str, Any]:
-    """List available AI providers with their status and capabilities"""
-    try:
-        # Get provider manager with database connection
-        manager = get_provider_manager(database_client=getattr(request.app, 'mongodb', None))
-        
-        # Refresh provider configs from database
-        await manager.refresh_provider_configs()
-        
-        provider_status = manager.get_provider_status()
-        return {
-            "providers": [
-                {
-                    "id": provider_id,
-                    "name": info["name"],
-                    "configured": info["configured"],
-                    "available": info["available"],
-                    "model": info["model"],
-                    "max_variations": info["max_variations"],
-                    "supported_sizes": info["supported_sizes"],
-                    "features": info["features"],
-                    "pricing": info["pricing"],
-                    "status": info["status"]
-                }
-                for provider_id, info in provider_status.items()
-            ]
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get provider status: {str(e)}")
+    """List all registered providers with status and capabilities."""
+    return await ai_generation_service.get_available_providers(request.app.mongodb)
+
 
 @router.get("/providers/recommended")
 async def get_recommended_provider(
     request: Request,
-    features: Annotated[List[str], Query()] = None
+    features: Annotated[List[str], Query()] = None,
 ) -> Dict[str, Any]:
-    """Get recommended provider based on requirements"""
-    try:
-        # Get provider manager with database connection
-        manager = get_provider_manager(database_client=getattr(request.app, 'mongodb', None))
-        
-        # Refresh provider configs from database
-        await manager.refresh_provider_configs()
-        
-        recommended = manager.get_recommended_provider(features)
-        provider_status = manager.get_provider_status()
-        
-        if recommended in provider_status:
-            return {
-                "provider_id": recommended,
-                "name": provider_status[recommended]["name"],
-                "reason": f"Best available provider for requested features",
-                "status": provider_status[recommended]
-            }
-        else:
-            return {
-                "provider_id": "free-test-provider",
-                "name": "Test Provider",
-                "reason": "Fallback provider",
-                "status": {}
-            }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-        provider_status = manager.get_provider_status()
+    """Return the recommended provider for the given feature requirements."""
+    return await ai_generation_service.get_recommended_provider(
+        db=request.app.mongodb,
+        features=features,
+        correlation_id=_cid(request),
+    )
