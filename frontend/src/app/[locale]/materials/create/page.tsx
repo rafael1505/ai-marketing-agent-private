@@ -1,13 +1,14 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getTranslations } from "@/i18n";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { IdeaGenerationForm } from "@/components/forms/idea-generation-form";
 import { EnhancedRefinementForm } from "@/components/forms/enhanced-refinement-form";
 import { FinalizationForm } from "@/components/forms/finalization-form";
-import { AIErrorDisplay } from "@/components/ui/ai-error-display";
+import { useError } from "@/contexts/error-context";
+import { getErrorLogContext } from "@/services/api";
 import { StepNavigation } from "@/components/materials/step-navigation";
 import { MaterialStage, MaterialStatus, IdeaGenerationFormData, RefinementFormData, FinalizationFormData, GeneratedImage, Material } from "@/types";
 import { createMaterial, addGeneratedImage, selectImage, addFeedback, updateStage } from "@/services/materials";
@@ -22,16 +23,14 @@ export default function CreateMaterialPage({
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   
+  const { setErrorDetails, clearError } = useError();
   const [currentStep, setCurrentStep] = useState(0);
   const [material, setMaterial] = useState<Material | null>(null);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [activeProviders, setActiveProviders] = useState<ProviderConfig[]>([]);
-  const [aiError, setAiError] = useState<any>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [canProceedToNext, setCanProceedToNext] = useState(false);
-  
-  // Ref for error container to enable auto-scroll
-  const errorRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     const loadTranslations = async () => {
       setIsLoading(true);
@@ -49,8 +48,9 @@ export default function CreateMaterialPage({
 
         // Load AI provider configurations
         await loadActiveProviders();
-      } catch (error) {
-        console.error("Error loading translations:", error);
+      } catch (err) {
+        const { correlation_id, user_message } = getErrorLogContext(err);
+        setErrorDetails({ user_message: user_message || "Error loading page.", correlation_id: correlation_id || `client-${Date.now()}` });
       } finally {
         setIsLoading(false);
       }
@@ -82,28 +82,6 @@ export default function CreateMaterialPage({
     };
   }, [locale]);
 
-  // Auto-scroll to error when it appears (UX improvement)
-  useEffect(() => {
-    if (aiError && errorRef.current) {
-      // Smooth scroll to error with offset for better visibility
-      const errorElement = errorRef.current;
-      const offset = 100; // 100px above the error for context
-      const elementPosition = errorElement.getBoundingClientRect().top + window.pageYOffset;
-      const offsetPosition = elementPosition - offset;
-
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth'
-      });
-
-      // Optional: Add a subtle pulse animation to draw attention
-      errorElement.classList.add('animate-pulse');
-      setTimeout(() => {
-        errorElement.classList.remove('animate-pulse');
-      }, 2000);
-    }
-  }, [aiError]);
-
   const loadActiveProviders = async () => {
     try {
       console.log('Loading active AI providers for material creation...');
@@ -115,8 +93,9 @@ export default function CreateMaterialPage({
       if (activeProvidersData.length === 0) {
         console.warn('No active AI providers found. Users need to configure providers in the AI Providers tab.');
       }
-    } catch (error) {
-      console.error('Error loading active providers:', error);
+    } catch (err) {
+      const { correlation_id, user_message } = getErrorLogContext(err);
+      setErrorDetails({ user_message: user_message || "Error loading AI providers.", correlation_id: correlation_id || `client-${Date.now()}` });
       setActiveProviders([]);
     }
   };
@@ -141,31 +120,28 @@ export default function CreateMaterialPage({
       setMaterial(createdMaterial);
       setCurrentStep(1);
       console.log("Material created with campaign_date:", data.campaign_date);
-    } catch (error) {
-      console.error("Error creating material:", error);
-      // Show error to user
-      alert(`Something went wrong: ${error.message || "Unknown error"}\n\nPlease try again.`);
+    } catch (err) {
+      const { correlation_id, user_message } = getErrorLogContext(err);
+      setErrorDetails({
+        user_message: user_message || `Something went wrong: ${(err as Error)?.message || "Unknown error"}. Please try again.`,
+        correlation_id: correlation_id || `client-${Date.now()}`,
+      });
     }
   };
 
   const handleGenerateImage = async (prompt: string, aiProvider: string, batchSize: number = 3, peoplePreference: string = "auto") => {
     if (!material) {
-      console.error("Cannot generate image: no material found");
-      alert("Material not found. Please refresh the page.");
+      setErrorDetails({ user_message: "Material not found. Please refresh the page.", correlation_id: `client-${Date.now()}` });
       return;
     }
-    
-    console.log("Generating multiple images with new AI provider service:", { materialId: material.id, prompt, aiProvider, batchSize, peoplePreference });
-    
-    // Clear any previous errors
-    setAiError(null);
-    
+
+    clearError();
+
     try {
-      // Check if the selected provider is active and configured
       const selectedProvider = activeProviders.find(p => p.id === aiProvider);
-      
+
       if (!selectedProvider && activeProviders.length === 0) {
-        alert("No AI providers are configured and active. Please configure an AI provider in the AI Providers tab first.");
+        setErrorDetails({ user_message: "No AI providers are configured and active. Please configure an AI provider in the AI Providers tab first.", correlation_id: `client-${Date.now()}` });
         return;
       }
       
@@ -182,12 +158,16 @@ export default function CreateMaterialPage({
       const result = await generateMultipleImages(prompt, providerToUse, batchSize, '1024x1024', peoplePreference);
       
       if (!result.success) {
-        // Display enriched error if available
         if (result.error_details) {
-          setAiError(result.error_details);
-          return; // Exit early to show error display component
+          const ed = result.error_details as { user_message?: string; correlation_id?: string; [k: string]: unknown };
+          setErrorDetails({
+            user_message: ed.user_message || result.error || "Failed to generate images",
+            correlation_id: ed.correlation_id || `client-${Date.now()}`,
+            ...ed,
+          });
+          return;
         }
-        throw new Error(result.error || 'Failed to generate images');
+        throw new Error(result.error || "Failed to generate images");
       }
       
       console.log(`Successfully generated ${result.images.length} images:`, result);
@@ -230,39 +210,32 @@ export default function CreateMaterialPage({
       const costMessage = result.cost && result.cost > 0 ? ` (Cost: $${result.cost.toFixed(4)})` : '';
       console.log(`Successfully generated ${result.images.length} images using ${result.provider}!${costMessage}`);
       
-    } catch (error: any) {
-      console.error("Error generating images:", error);
-      
-      // Check if error has enriched details (from network errors, timeout, etc.)
-      if (error.error_details) {
-        setAiError(error.error_details);
-      } else if (error.isTimeout) {
-        // Handle timeout errors specifically
-        setAiError({
-          error_type: 'timeout',
-          message: error.userMessage || 'Request timeout',
-          user_message: 'errors.ai.timeout',
-          provider: aiProvider || 'unknown',
-          correlation_id: error.error_details?.correlation_id || `client-${Date.now()}`,
+    } catch (error: unknown) {
+      const err = error as { error_details?: { user_message?: string; correlation_id?: string; [k: string]: unknown }; isTimeout?: boolean; userMessage?: string; message?: string };
+      if (err?.error_details) {
+        const ed = err.error_details;
+        setErrorDetails({
+          user_message: ed.user_message || "An error occurred",
+          correlation_id: ed.correlation_id || `client-${Date.now()}`,
+          ...ed,
+        });
+      } else if (err?.isTimeout) {
+        setErrorDetails({
+          user_message: "errors.ai.timeout",
+          correlation_id: (err.error_details as { correlation_id?: string })?.correlation_id || `client-${Date.now()}`,
+          error_type: "timeout",
+          provider: aiProvider || "unknown",
           timestamp: new Date().toISOString(),
           http_status: 408,
-          suggested_actions: [
-            'actions.try_again',
-            'actions.try_different_provider',
-            'actions.reduce_image_complexity'
-          ],
-          details: error.error_details?.details || {}
         });
       } else {
-        // Set generic error for unexpected exceptions
-        setAiError({
-          error_type: 'unknown',
-          message: error.message || "Unknown error",
-          user_message: "errors.ai.unknown",
-          provider: aiProvider || 'unknown',
-          correlation_id: `client-${Date.now()}`,
+        const { correlation_id, user_message } = getErrorLogContext(error);
+        setErrorDetails({
+          user_message: user_message || (err?.message || "Unknown error"),
+          correlation_id: correlation_id || `client-${Date.now()}`,
+          error_type: "unknown",
+          provider: aiProvider || "unknown",
           timestamp: new Date().toISOString(),
-          suggested_actions: ["actions.try_again", "actions.check_console"]
         });
       }
     }
@@ -286,34 +259,24 @@ export default function CreateMaterialPage({
       console.log("Material stage updated:", updatedMaterial);
       setMaterial(updatedMaterial);
       setCurrentStep(2);
-    } catch (error: any) {
-      console.error("Error updating stage:", error);
-      
-      // Enhanced error handling
-      const errorMessage = error?.response?.data?.detail || 
-                          error?.message || 
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { detail?: string }; status?: number }; message?: string };
+      const errorMessage = err?.response?.data?.detail ||
+                          err?.message ||
                           "Unknown error occurred while updating stage";
-      const statusCode = error?.response?.status;
+      const statusCode = err?.response?.status;
       
-      // Set AI error state for better UX
-      setAiError({
-        error_type: statusCode === 404 ? 'not_found' : 'unknown',
-        message: errorMessage,
-        user_message: statusCode === 404 
-          ? 'errors.stage_update_not_found' 
-          : 'errors.stage_update_failed',
+      setErrorDetails({
+        user_message: statusCode === 404 ? "errors.stage_update_not_found" : "errors.stage_update_failed",
         correlation_id: `stage-update-${Date.now()}`,
+        error_type: statusCode === 404 ? "not_found" : "unknown",
+        message: errorMessage,
         timestamp: new Date().toISOString(),
         http_status: statusCode,
-        suggested_actions: ['actions.try_again', 'actions.refresh_page'],
-        details: {
-          materialId: material.id,
-          targetStage: MaterialStage.FINALIZATION,
-          error: errorMessage
-        }
+        suggested_actions: ["actions.try_again", "actions.refresh_page"],
       });
-      
-      throw error; // Re-throw to allow form to handle error state
+
+      throw error;
     }
   };
 
@@ -338,8 +301,12 @@ export default function CreateMaterialPage({
       
       // Redirect to the material detail page
       router.push(`/${locale}/materials/${material.id}`);
-    } catch (error) {
-      console.error("Error finalizing material:", error);
+    } catch (err) {
+      const { correlation_id, user_message } = getErrorLogContext(err);
+      setErrorDetails({
+        user_message: user_message || "Error finalizing material.",
+        correlation_id: correlation_id || `client-${Date.now()}`,
+      });
     }
   };
 
@@ -389,8 +356,12 @@ export default function CreateMaterialPage({
       }
       
       setHasUnsavedChanges(false);
-    } catch (error) {
-      console.error('Error saving draft:', error);
+    } catch (err) {
+      const { correlation_id, user_message } = getErrorLogContext(err);
+      setErrorDetails({
+        user_message: user_message || "Error saving draft.",
+        correlation_id: correlation_id || `client-${Date.now()}`,
+      });
     }
   };
 
@@ -533,21 +504,6 @@ export default function CreateMaterialPage({
       </div>
 
       <div className="mt-8 mb-24">
-        {/* AI Error Display - Shows when image generation fails */}
-        {aiError && (
-          <div ref={errorRef} className="mb-6">
-            <AIErrorDisplay 
-              error={aiError.message || "An error occurred"}
-              errorDetails={aiError}
-              onRetry={() => {
-                setAiError(null);
-                // User can retry by clicking generate again
-              }}
-              locale={locale}
-            />
-          </div>
-        )}
-        
         {currentStep === 0 && (
           <IdeaGenerationForm
             onSubmit={handleIdeaSubmit}

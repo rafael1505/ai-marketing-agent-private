@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { IdeaGenerationForm } from "@/components/forms/idea-generation-form";
 import { EnhancedRefinementForm } from "@/components/forms/enhanced-refinement-form";
 import { FinalizationForm } from "@/components/forms/finalization-form";
-import { AIErrorDisplay } from "@/components/ui/ai-error-display";
+import { useError } from "@/contexts/error-context";
+import { getErrorLogContext } from "@/services/api";
 import { StepNavigation } from "@/components/materials/step-navigation";
 import { MaterialStage, MaterialStatus, IdeaGenerationFormData, RefinementFormData, FinalizationFormData, GeneratedImage, Material } from "@/types";
 import { getMaterial, updateMaterial, addGeneratedImage, selectImage, addFeedback, updateStage } from "@/services/materials";
@@ -23,20 +24,15 @@ export default function EditMaterialPage({
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
   const [currentStep, setCurrentStep] = useState(0);
+  const { setErrorDetails, clearError } = useError();
   const [material, setMaterial] = useState<Material | null>(null);
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [aiError, setAiError] = useState<any | null>(null);
   const [activeProviders, setActiveProviders] = useState<ProviderConfig[]>([]);
   const [translations, setTranslations] = useState<Record<string, any>>({});
-  
-  // Navigation state
+
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [canProceedToNext, setCanProceedToNext] = useState(false);
   const [autoSaveTimer, setAutoSaveTimer] = useState<NodeJS.Timeout | null>(null);
-  
-  // Ref for error container to enable auto-scroll
-  const errorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const loadMaterial = async () => {
@@ -70,8 +66,11 @@ export default function EditMaterialPage({
           setGeneratedImages(existingMaterial.generated_images);
         }
       } catch (err) {
-        console.error("Error loading material:", err);
-        
+        const { correlation_id, user_message } = getErrorLogContext(err);
+        setErrorDetails({
+          user_message: user_message || "Error loading material.",
+          correlation_id: correlation_id || `client-${Date.now()}`,
+        });
         // Create a mock material for editing if API fails
         const mockMaterial: Material = {
           id: id,
@@ -93,7 +92,6 @@ export default function EditMaterialPage({
         
         setMaterial(mockMaterial);
         setCurrentStep(0);
-        setError(null); // Clear error since we're using mock data
       } finally {
         setIsLoading(false);
       }
@@ -128,28 +126,6 @@ export default function EditMaterialPage({
     };
   }, [id]);
 
-  // Auto-scroll to error when it appears (UX improvement)
-  useEffect(() => {
-    if (aiError && errorRef.current) {
-      // Smooth scroll to error with offset for better visibility
-      const errorElement = errorRef.current;
-      const offset = 100; // 100px above the error for context
-      const elementPosition = errorElement.getBoundingClientRect().top + window.pageYOffset;
-      const offsetPosition = elementPosition - offset;
-
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth'
-      });
-
-      // Optional: Add a subtle pulse animation to draw attention
-      errorElement.classList.add('animate-pulse');
-      setTimeout(() => {
-        errorElement.classList.remove('animate-pulse');
-      }, 2000);
-    }
-  }, [aiError]);
-
   const loadActiveProviders = async () => {
     try {
       console.log('Loading active AI providers for material editing...');
@@ -161,29 +137,26 @@ export default function EditMaterialPage({
       if (activeProvidersData.length === 0) {
         console.warn('No active AI providers found. Users need to configure providers in the AI Providers tab.');
       }
-    } catch (error) {
-      console.error('Error loading active providers:', error);
+    } catch (err) {
+      const { correlation_id, user_message } = getErrorLogContext(err);
+      setErrorDetails({ user_message: user_message || "Error loading AI providers.", correlation_id: correlation_id || `client-${Date.now()}` });
       setActiveProviders([]);
     }
   };
 
   const handleGenerateImage = async (prompt: string, aiProvider: string, batchSize: number = 3, peoplePreference: string = "auto"): Promise<void> => {
     if (!material) {
-      alert("Material not found. Please refresh the page.");
+      setErrorDetails({ user_message: "Material not found. Please refresh the page.", correlation_id: `client-${Date.now()}` });
       return;
     }
-    
-    // Clear previous errors
-    setAiError(null);
-    
-    console.log(`Generating image with prompt: "${prompt}" using provider: ${aiProvider}, batchSize: ${batchSize}, peoplePreference: ${peoplePreference}`);
-    
+
+    clearError();
+
     try {
-      // Check if the selected provider is active and configured
       const selectedProvider = activeProviders.find(p => p.id === aiProvider);
-      
+
       if (!selectedProvider && activeProviders.length === 0) {
-        alert("No AI providers are configured and active. Please configure an AI provider in the AI Providers tab first.");
+        setErrorDetails({ user_message: "No AI providers are configured and active. Please configure an AI provider in the AI Providers tab first.", correlation_id: `client-${Date.now()}` });
         return;
       }
       
@@ -200,12 +173,16 @@ export default function EditMaterialPage({
       const result = await generateMultipleImages(prompt, providerToUse, batchSize, '1024x1024', peoplePreference);
       
       if (!result.success) {
-        // Display enriched error if available
         if (result.error_details) {
-          setAiError(result.error_details);
-          return; // Exit early to show error display component
+          const ed = result.error_details as { user_message?: string; correlation_id?: string; [k: string]: unknown };
+          setErrorDetails({
+            user_message: ed.user_message || result.error || "Failed to generate images",
+            correlation_id: ed.correlation_id || `client-${Date.now()}`,
+            ...ed,
+          });
+          return;
         }
-        throw new Error(result.error || 'Failed to generate images');
+        throw new Error(result.error || "Failed to generate images");
       }
       
       console.log(`Successfully generated ${result.images.length} images:`, result);
@@ -248,39 +225,32 @@ export default function EditMaterialPage({
       const costMessage = result.cost && result.cost > 0 ? ` (Cost: $${result.cost.toFixed(4)})` : '';
       console.log(`Successfully generated ${result.images.length} images using ${result.provider}!${costMessage}`);
       
-    } catch (error: any) {
-      console.error("Error generating images:", error);
-      
-      // Check if error has enriched details (from network errors, timeout, etc.)
-      if (error.error_details) {
-        setAiError(error.error_details);
-      } else if (error.isTimeout) {
-        // Handle timeout errors specifically
-        setAiError({
-          error_type: 'timeout',
-          message: error.userMessage || 'Request timeout',
-          user_message: 'errors.ai.timeout',
-          provider: aiProvider || 'unknown',
-          correlation_id: error.error_details?.correlation_id || `client-${Date.now()}`,
+    } catch (error: unknown) {
+      const err = error as { error_details?: { user_message?: string; correlation_id?: string; [k: string]: unknown }; isTimeout?: boolean; userMessage?: string; message?: string };
+      if (err?.error_details) {
+        const ed = err.error_details;
+        setErrorDetails({
+          user_message: ed.user_message || "An error occurred",
+          correlation_id: ed.correlation_id || `client-${Date.now()}`,
+          ...ed,
+        });
+      } else if (err?.isTimeout) {
+        setErrorDetails({
+          user_message: "errors.ai.timeout",
+          correlation_id: (err.error_details as { correlation_id?: string })?.correlation_id || `client-${Date.now()}`,
+          error_type: "timeout",
+          provider: aiProvider || "unknown",
           timestamp: new Date().toISOString(),
           http_status: 408,
-          suggested_actions: [
-            'actions.try_again',
-            'actions.try_different_provider',
-            'actions.reduce_image_complexity'
-          ],
-          details: error.error_details?.details || {}
         });
       } else {
-        // Set generic error for unexpected exceptions
-        setAiError({
-          error_type: 'unknown',
-          message: error.message || "Unknown error",
-          user_message: "errors.ai.unknown",
-          provider: aiProvider || 'unknown',
-          correlation_id: `client-${Date.now()}`,
+        const { correlation_id, user_message } = getErrorLogContext(error);
+        setErrorDetails({
+          user_message: user_message || (err?.message || "Unknown error"),
+          correlation_id: correlation_id || `client-${Date.now()}`,
+          error_type: "unknown",
+          provider: aiProvider || "unknown",
           timestamp: new Date().toISOString(),
-          suggested_actions: ["actions.try_again", "actions.check_console"]
         });
       }
     }
@@ -310,10 +280,13 @@ export default function EditMaterialPage({
       console.log("Material updated:", materialWithStage);
       setMaterial(materialWithStage);
       setCurrentStep(1);
-    } catch (error) {
-      console.error("Error updating material:", error);
-      alert(`Failed to proceed to refinement: ${error.message || "Unknown error"}`);
-      throw error;
+    } catch (err) {
+      const { correlation_id, user_message } = getErrorLogContext(err);
+      setErrorDetails({
+        user_message: user_message || `Failed to proceed to refinement: ${(err as Error)?.message || "Unknown error"}`,
+        correlation_id: correlation_id || `client-${Date.now()}`,
+      });
+      throw err;
     }
   };
 
@@ -334,33 +307,21 @@ export default function EditMaterialPage({
       console.log("Material stage updated:", materialWithStage);
       setMaterial(materialWithStage);
       setCurrentStep(2);
-    } catch (error: any) {
-      console.error("Error updating stage:", error);
-      
-      // Enhanced error handling
-      const errorMessage = error?.response?.data?.detail || 
-                          error?.message || 
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { detail?: string }; status?: number }; message?: string };
+      const errorMessage = err?.response?.data?.detail ||
+                          err?.message ||
                           "Unknown error occurred while updating stage";
-      const statusCode = error?.response?.status;
-      
-      // Set AI error state for better UX
-      setAiError({
-        error_type: statusCode === 404 ? 'not_found' : 'unknown',
-        message: errorMessage,
-        user_message: statusCode === 404 
-          ? 'errors.stage_update_not_found' 
-          : 'errors.stage_update_failed',
+      const statusCode = err?.response?.status;
+      setErrorDetails({
+        user_message: statusCode === 404 ? "errors.stage_update_not_found" : "errors.stage_update_failed",
         correlation_id: `stage-update-${Date.now()}`,
+        error_type: statusCode === 404 ? "not_found" : "unknown",
+        message: errorMessage,
         timestamp: new Date().toISOString(),
         http_status: statusCode,
-        suggested_actions: ['actions.try_again', 'actions.refresh_page'],
-        details: {
-          materialId: material.id,
-          targetStage: MaterialStage.FINALIZATION,
-          error: errorMessage
-        }
+        suggested_actions: ["actions.try_again", "actions.refresh_page"],
       });
-      
       throw error;
     }
   };
@@ -389,10 +350,13 @@ export default function EditMaterialPage({
       
       // Navigate to the material view page
       router.push(`/${locale}/materials/${material.id}`);
-    } catch (error) {
-      console.error("Error finalizing material:", error);
-      alert(`Failed to finalize material: ${error.message || "Unknown error"}`);
-      throw error;
+    } catch (err) {
+      const { correlation_id, user_message } = getErrorLogContext(err);
+      setErrorDetails({
+        user_message: user_message || `Failed to finalize material: ${(err as Error)?.message || "Unknown error"}`,
+        correlation_id: correlation_id || `client-${Date.now()}`,
+      });
+      throw err;
     }
   };
 
@@ -445,8 +409,12 @@ export default function EditMaterialPage({
       }
       
       setHasUnsavedChanges(false);
-    } catch (error) {
-      console.error('Error saving draft:', error);
+    } catch (err) {
+      const { correlation_id, user_message } = getErrorLogContext(err);
+      setErrorDetails({
+        user_message: user_message || "Error saving draft.",
+        correlation_id: correlation_id || `client-${Date.now()}`,
+      });
     }
   };
 
@@ -635,26 +603,6 @@ export default function EditMaterialPage({
       </div>
 
       <div className="mt-8 mb-24">
-        {/* Display AI Error if present */}
-        {aiError && (
-          <div ref={errorRef} className="mb-6">
-            <AIErrorDisplay
-              error={aiError.message}
-              errorDetails={aiError}
-              onRetry={() => {
-                setAiError(null);
-                // Could trigger retry logic here
-              }}
-              onSwitchProvider={() => {
-                setAiError(null);
-                router.push(`/${locale}/settings/ai-providers`);
-              }}
-              locale={locale}
-              translations={translations}
-            />
-          </div>
-        )}
-        
         {currentStep === 0 && (
           <IdeaGenerationForm
             onSubmit={handleIdeaSubmit}

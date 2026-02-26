@@ -5,6 +5,8 @@ import Link from "next/link";
 import { getTranslations } from "@/i18n";
 import { Button } from "@/components/ui/button";
 import { getMaterials, deleteMaterial } from "@/services/materials";
+import { getErrorLogContext } from "@/services/api";
+import { useError } from "@/contexts/error-context";
 import { Material, MaterialStage, MaterialStatus } from "@/types";
 import { MaterialCard } from "@/components/ui/material-card";
 
@@ -14,10 +16,12 @@ export default function MaterialsPage({
   params: { locale: string }
 }) {
   const locale = params.locale || "en";
+  const { setErrorDetails, clearError } = useError();
   const [t, setT] = useState<Record<string, any>>({});
-  const [translationsLoaded, setTranslationsLoaded] = useState(false);  const [materials, setMaterials] = useState<Material[]>([]);
+  const [translationsLoaded, setTranslationsLoaded] = useState(false);
+  const [materials, setMaterials] = useState<Material[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [fetchFailed, setFetchFailed] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const loadingGuardRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const fetchCompletedRef = useRef(false);
@@ -56,23 +60,33 @@ export default function MaterialsPage({
     loadingGuardRef.current = setTimeout(() => {
       loadingGuardRef.current = null;
       if (fetchCompletedRef.current) return;
-      setError("Request took too long. Please try again.");
+      setErrorDetails({
+        user_message: "Request took too long. Please try again.",
+        correlation_id: `timeout-${Date.now()}`,
+      });
       setMaterials([]);
+      setFetchFailed(true);
       setIsLoading(false);
       setIsRefreshing(false);
     }, LOADING_MAX_MS);
 
     try {
+      clearError();
       const data = await getMaterials(undefined, undefined, 0, 100, forceRefresh);
       if (Array.isArray(data)) {
         setMaterials(data);
       } else {
         setMaterials([]);
       }
-      setError("");
-    } catch {
-      setError("Unable to load materials. Please try again later.");
+      setFetchFailed(false);
+    } catch (err) {
+      const { correlation_id, user_message } = getErrorLogContext(err);
+      setErrorDetails({
+        user_message: user_message || "Unable to load materials. Please try again later.",
+        correlation_id: correlation_id || `client-${Date.now()}`,
+      });
       setMaterials([]);
+      setFetchFailed(true);
     } finally {
       fetchCompletedRef.current = true;
       if (loadingGuardRef.current) {
@@ -106,8 +120,12 @@ export default function MaterialsPage({
     try {
       await deleteMaterial(id);
       await fetchMaterials(true);
-    } catch {
-      setError(t.materials?.delete_error || "Failed to delete material. Please try again.");
+    } catch (err) {
+      const { correlation_id, user_message } = getErrorLogContext(err);
+      setErrorDetails({
+        user_message: user_message || t.materials?.delete_error || "Failed to delete material. Please try again.",
+        correlation_id: correlation_id || `client-${Date.now()}`,
+      });
     }
   };
 
@@ -161,13 +179,9 @@ export default function MaterialsPage({
         <div className="flex justify-center items-center py-12">
           <div className="spinner" />
           <span className="ml-2">{t.common.loading}</span>
-        </div>      ) : error ? (
+        </div>      ) : fetchFailed ? (
         <div className="text-center py-12">
-          <div className="text-red-500 mb-4">
-            <h2 className="text-xl font-bold">{error.includes("connection") ? "Connection Error" : error.includes("too long") ? "Request Timeout" : "Server Error"}</h2>
-            <p>{error}</p>
-          </div>
-          <Button onClick={() => { setError(""); fetchMaterials(true); }} disabled={isRefreshing}>
+          <Button onClick={() => { clearError(); setFetchFailed(false); fetchMaterials(true); }} disabled={isRefreshing}>
             {t.common && t.common.retry ? t.common.retry : "Retry"}
           </Button>
         </div>
