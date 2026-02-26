@@ -21,6 +21,10 @@ npm run dev
 
 Open [http://localhost:3001](http://localhost:3001) with your browser to see the result.
 
+## Architecture
+
+See [ARCHITECTURE.md](./ARCHITECTURE.md) for API client standards (UUID correlation IDs, defensive URL normalization), isomorphic base URL, and the Materials module’s use of the real backend API (no localStorage mocks).
+
 ## Project Structure
 
 - `src/app` - Next.js App Router pages

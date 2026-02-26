@@ -75,8 +75,9 @@ export const Navbar: React.FC<NavbarProps> = ({ locale = "en" }) => {
         try {
           const count = await getUnreadNotificationCount();
           setNotificationsCount(count);
-        } catch (error) {
-          console.error('Failed to fetch notification count:', error);
+        } catch {
+          setNotificationsCount(0); // Fallback so layout never crashes (005 verification)
+          console.warn('Failed to fetch notification count; using 0');
         }
       }
       

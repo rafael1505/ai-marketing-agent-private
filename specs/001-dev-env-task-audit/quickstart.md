@@ -53,5 +53,6 @@ Environment stopped successfully.
 - **Services already running**: Running the start task again when everything is already up exits cleanly with `All services are already up and running at http://localhost:3001`. No restart occurs.
 - **Task not listed in the Command Palette**: Ensure `.vscode/tasks.json` exists and is valid JSON (single root object with a `tasks` array). Reload the editor window (Ctrl+Shift+P → Developer: Reload Window) if needed.
 - **`docker compose` not found**: Verify Docker Compose V2 is installed (`docker compose version`). If only the legacy `docker-compose` is available, install the `docker-compose-plugin` package or upgrade Docker Desktop.
+- **Frontend changes not appearing (e.g. new API client, correlation IDs)**: The frontend runs from a built image. Rebuild the frontend container so it picks up the latest code: stop the environment (Stop full development environment), then from the repo root run `docker compose build frontend` (or `sg docker -c "docker compose build frontend"` if you use the same shell as the task), then start the environment again. No need for `npm` on the host when using Docker.
 
 No manual `uvicorn` or `npm run dev` or standalone scripts are required for the supported path; everything runs inside Docker Compose. Compose file is `docker-compose.yml` at repo root.

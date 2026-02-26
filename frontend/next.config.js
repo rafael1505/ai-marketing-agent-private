@@ -42,11 +42,11 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: `${process.env.API_URL || 'http://127.0.0.1:8088'}/api/:path*`,
+        destination: `${process.env.API_URL || 'http://127.0.0.1:8088'}/api/v1/:path*`,
       },
       {
         source: '/diagnostic/:path*',
-        destination: `${process.env.API_URL || 'http://127.0.0.1:8088'}/diagnostic/:path*`,
+        destination: `${process.env.API_URL || 'http://127.0.0.1:8088'}/api/v1/diagnostic/:path*`,
       },
       // Add specific proxy bypass for authentication endpoint
       {

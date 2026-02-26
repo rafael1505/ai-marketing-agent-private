@@ -5,33 +5,32 @@ from app.core.config import settings
 def get_db_collection(mongodb: Any, collection_name: str) -> Any:
     """
     Helper function to get a collection from either MongoDB or SimpleMockDatabase.
-    This handles the difference in access patterns between the two database types.
-    
+    Handles: (1) app passes database (request.app.mongodb = mongodb.db), (2) client, (3) SimpleMockDatabase.
+
     Args:
-        mongodb: The database instance (could be either MongoDB client or SimpleMockDatabase)
+        mongodb: The database instance (Motor database, Motor client, or SimpleMockDatabase)
         collection_name: Name of the collection to access
-        
+
     Returns:
         The collection object
     """
+    # When app passes the database (e.g. request.app.mongodb = mongodb.db), use direct collection access
     try:
-        # First try the standard MongoDB access pattern
+        collection = getattr(mongodb, collection_name, None)
+        if collection is not None and not inspect.iscoroutine(collection):
+            return collection
+    except (TypeError, AttributeError):
+        pass
+    try:
+        return mongodb[collection_name]
+    except (TypeError, KeyError, AttributeError):
+        pass
+    # Client pattern: client[db_name][collection_name]
+    try:
         return mongodb[settings.MONGODB_DB][collection_name]
     except (TypeError, KeyError, AttributeError):
-        # If that fails, try SimpleMockDatabase direct property access
-        # We assume the collection is available as a property on the db object
-        try:
-            collection = getattr(mongodb, collection_name)
-            # Check if it's a coroutine function/object and not already awaited
-            if inspect.iscoroutine(collection):
-                raise ValueError(
-                    f"Collection '{collection_name}' is a coroutine and must be awaited. "
-                    "Use 'await get_db_collection(...)' instead."
-                )
-            return collection
-        except (AttributeError):
-            # If that also fails, raise a descriptive error
-            raise ValueError(
-                f"Could not access collection '{collection_name}'. "
-                "Neither MongoDB nor SimpleMockDatabase patterns worked."
-            )
+        pass
+    raise ValueError(
+        f"Could not access collection '{collection_name}'. "
+        "Tried database attribute, database[collection], and client[db][collection]."
+    )

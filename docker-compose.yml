@@ -24,7 +24,7 @@ services:
     ports:
       - "3001:3001"
     environment:
-      - NEXT_PUBLIC_API_URL=http://localhost:8088/api/v1
+      - NEXT_PUBLIC_API_URL=http://web:8000/api/v1
       - NEXT_TELEMETRY_DISABLED=1
       - ESLINT_NO_DEV_ERRORS=true
       - TYPESCRIPT_STRICT=true

@@ -10,6 +10,8 @@ Finalization guard is enforced in select_image() (ARCH-MAT-004).
 """
 import logging
 from typing import Any, List, Optional
+from datetime import datetime
+from bson import ObjectId
 
 from fastapi import HTTPException
 
@@ -28,17 +30,40 @@ logger = logging.getLogger(__name__)
 # Serialisation helpers (ARCH-LAYER-002 — moved from route file)
 # ---------------------------------------------------------------------------
 
-def serialize_material(material: dict) -> dict:
-    """Convert MongoDB _id to string 'id' for JSON serialisation."""
-    if material and "_id" in material:
-        material["id"] = str(material["_id"])
-        del material["_id"]
-    return material
+def _json_safe_value(value: Any) -> Any:
+    """Convert a value to a JSON-serializable form (datetime, ObjectId)."""
+    if isinstance(value, datetime):
+        return value.isoformat() + "Z" if value.tzinfo is None else value.isoformat()
+    if isinstance(value, ObjectId):
+        return str(value)
+    if isinstance(value, dict):
+        return {k: _json_safe_value(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_json_safe_value(v) for v in value]
+    return value
+
+
+def serialize_material(material: Optional[dict]) -> dict:
+    """
+    Convert a MongoDB material document to a JSON-serializable dict.
+    Handles _id -> id, and converts datetime/ObjectId to strings so FastAPI doesn't 500.
+    """
+    if not material:
+        return {}
+    out = material.copy()
+    if "_id" in out:
+        out["id"] = str(out["_id"])
+        del out["_id"]
+    else:
+        out.setdefault("id", "")
+    return _json_safe_value(out)
 
 
 def serialize_materials(materials: List[dict]) -> List[dict]:
-    """Serialise a list of material dicts."""
-    return [serialize_material(m.copy()) for m in materials]
+    """Serialise a list of material dicts (empty list safe)."""
+    if not materials:
+        return []
+    return [serialize_material(m) for m in materials]
 
 
 # ---------------------------------------------------------------------------
@@ -89,12 +114,19 @@ async def list_materials(
     skip: int = 0,
     limit: int = 100,
 ) -> List[dict]:
-    """List materials for a company with optional stage/status filtering."""
-    material_db = _make_db(db)
-    materials = await material_db.get_company_materials(
-        company_id, stage=stage, status=status, skip=skip, limit=limit
-    )
-    return serialize_materials(materials)
+    """List materials for a company with optional stage/status filtering. Handles empty results."""
+    try:
+        material_db = _make_db(db)
+        materials = await material_db.get_company_materials(
+            company_id, stage=stage, status=status, skip=skip, limit=limit
+        )
+        return serialize_materials(materials) if materials else []
+    except ValueError as e:
+        logger.warning("list_materials: collection access failed: %s", e)
+        raise HTTPException(status_code=503, detail="Database configuration error") from e
+    except Exception as e:
+        logger.exception("list_materials: unexpected error for company_id=%s", company_id)
+        raise HTTPException(status_code=500, detail="Failed to list materials") from e
 
 
 async def update(

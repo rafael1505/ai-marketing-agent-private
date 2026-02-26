@@ -1,5 +1,5 @@
 from typing import Any, Annotated, Optional
-from fastapi import APIRouter, Depends, Request, Query
+from fastapi import APIRouter, Depends, HTTPException, Request, Query
 from pydantic import BaseModel
 
 from app.api.v1.deps import get_current_active_user
@@ -12,6 +12,17 @@ from app.models.material import (
 import app.services.material_service as material_service
 
 router = APIRouter()
+
+
+def _company_id(current_user: dict) -> str:
+    """Resolve company_id from current user; avoid KeyError 500."""
+    cid = current_user.get("company_id")
+    if not cid:
+        raise HTTPException(
+            status_code=400,
+            detail="User has no company_id; cannot list materials.",
+        )
+    return str(cid)
 
 
 class GeneratedImageInput(BaseModel):
@@ -28,9 +39,12 @@ async def create_material(
     current_user: Annotated[dict, Depends(get_current_active_user)],
     request: Request,
 ) -> Any:
-    db = request.app.mongodb
+    db = getattr(request.app, "mongodb", None)
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    user_id = str(current_user.get("_id", current_user.get("id", "")))
     return await material_service.create(
-        db, material, str(current_user["_id"]), current_user["company_id"]
+        db, material, user_id, _company_id(current_user)
     )
 
 
@@ -43,10 +57,14 @@ async def list_materials(
     skip: int = 0,
     limit: int = 100,
 ) -> Any:
-    db = request.app.mongodb
+    """List materials for the current user's company. Queries MongoDB `materials` collection."""
+    db = getattr(request.app, "mongodb", None)
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    company_id = _company_id(current_user)
     return await material_service.list_materials(
         db,
-        current_user["company_id"],
+        company_id,
         stage=stage,
         status=status,
         skip=skip,
@@ -60,8 +78,10 @@ async def get_material(
     current_user: Annotated[dict, Depends(get_current_active_user)],
     request: Request,
 ) -> Any:
-    db = request.app.mongodb
-    return await material_service.get(db, material_id, current_user["company_id"])
+    db = getattr(request.app, "mongodb", None)
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    return await material_service.get(db, material_id, _company_id(current_user))
 
 
 @router.put("/{material_id}")
@@ -71,10 +91,12 @@ async def update_material(
     current_user: Annotated[dict, Depends(get_current_active_user)],
     request: Request,
 ) -> Any:
-    db = request.app.mongodb
+    db = getattr(request.app, "mongodb", None)
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
     update_data = material.model_dump(exclude_none=True)
     return await material_service.update(
-        db, material_id, current_user["company_id"], update_data
+        db, material_id, _company_id(current_user), update_data
     )
 
 
@@ -85,11 +107,13 @@ async def add_generated_image(
     current_user: Annotated[dict, Depends(get_current_active_user)],
     request: Request,
 ) -> Any:
-    db = request.app.mongodb
+    db = getattr(request.app, "mongodb", None)
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
     return await material_service.add_generated_image(
         db,
         material_id,
-        current_user["company_id"],
+        _company_id(current_user),
         body.url,
         body.prompt,
         body.ai_provider,
@@ -104,9 +128,11 @@ async def select_image(
     current_user: Annotated[dict, Depends(get_current_active_user)],
     request: Request,
 ) -> Any:
-    db = request.app.mongodb
+    db = getattr(request.app, "mongodb", None)
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
     return await material_service.select_image(
-        db, material_id, current_user["company_id"], image_url
+        db, material_id, _company_id(current_user), image_url
     )
 
 
@@ -117,9 +143,12 @@ async def add_feedback(
     current_user: Annotated[dict, Depends(get_current_active_user)],
     request: Request,
 ) -> Any:
-    db = request.app.mongodb
+    db = getattr(request.app, "mongodb", None)
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    user_id = str(current_user.get("_id", current_user.get("id", "")))
     return await material_service.add_feedback(
-        db, material_id, current_user["company_id"], str(current_user["_id"]), comment
+        db, material_id, _company_id(current_user), user_id, comment
     )
 
 
@@ -131,9 +160,11 @@ async def update_stage(
     request: Request,
     status: MaterialStatus = MaterialStatus.IN_PROGRESS,
 ) -> Any:
-    db = request.app.mongodb
+    db = getattr(request.app, "mongodb", None)
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
     return await material_service.transition_stage(
-        db, material_id, current_user["company_id"], stage, status
+        db, material_id, _company_id(current_user), stage, status
     )
 
 
@@ -143,5 +174,7 @@ async def delete_material(
     current_user: Annotated[dict, Depends(get_current_active_user)],
     request: Request,
 ) -> Any:
-    db = request.app.mongodb
-    return await material_service.delete(db, material_id, current_user["company_id"])
+    db = getattr(request.app, "mongodb", None)
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not available")
+    return await material_service.delete(db, material_id, _company_id(current_user))

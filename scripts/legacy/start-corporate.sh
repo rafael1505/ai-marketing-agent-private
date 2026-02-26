@@ -32,11 +32,11 @@ API_PID=$!
 echo "API started with PID: $API_PID"
 echo "API will be available at: http://127.0.0.1:9000"
 
-# Update the frontend environment file to point to the correct API URL
+# Update the frontend environment file (Next.js reads frontend/.env.local, not frontend/.env/.env.local).
+# This script starts the API on port 9000, so frontend must point to 9000. For Docker backend (8088), use frontend/.env.local with NEXT_PUBLIC_API_URL=http://localhost:8088/api/v1.
 echo -e "${GREEN}Configuring frontend...${NC}"
-mkdir -p frontend/.env
-echo "NEXT_PUBLIC_API_URL=http://127.0.0.1:9000/api/v1" > frontend/.env/.env.local
-echo "NODE_TLS_REJECT_UNAUTHORIZED=0" >> frontend/.env/.env.local
+echo "NEXT_PUBLIC_API_URL=http://127.0.0.1:9000/api/v1" > frontend/.env.local
+echo "NODE_TLS_REJECT_UNAUTHORIZED=0" >> frontend/.env.local
 
 # Wait for API to start
 echo "Waiting for API to initialize..."

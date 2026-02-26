@@ -1,20 +1,12 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { getTranslations } from "@/i18n";
 import { Button } from "@/components/ui/button";
 import { getMaterials, deleteMaterial } from "@/services/materials";
 import { Material, MaterialStage, MaterialStatus } from "@/types";
 import { MaterialCard } from "@/components/ui/material-card";
-
-// Edge compatibility debug (only in development)
-if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-  console.log('=== Materials Page - Edge Compatibility Check ===');
-  console.log('User Agent:', navigator.userAgent);
-  console.log('Location:', window.location.href);
-  console.log('localStorage available:', typeof localStorage !== 'undefined');
-}
 
 export default function MaterialsPage({
   params
@@ -27,15 +19,16 @@ export default function MaterialsPage({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [isRefreshing, setIsRefreshing] = useState(false);
-  
+  const loadingGuardRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fetchCompletedRef = useRef(false);
+
   useEffect(() => {
     const loadTranslations = async () => {
       try {
         const translations = await getTranslations(locale === "pt" ? "pt" : "en");
         setT(translations);
         setTranslationsLoaded(true);
-      } catch (error) {
-        console.error("Failed to load translations:", error);
+      } catch {
         setT({
           errors: { server_error: "Server error. Please try again later." },
           common: { loading: "Loading..." }
@@ -44,38 +37,48 @@ export default function MaterialsPage({
       }
     };
     loadTranslations();
-  }, [locale]);  // Function to fetch materials that can be called on demand
+  }, [locale]);
+
   const fetchMaterials = async (forceRefresh = false) => {
-    console.log('[Materials Page] fetchMaterials called, forceRefresh:', forceRefresh);
-    
+    fetchCompletedRef.current = false;
+    if (loadingGuardRef.current) {
+      clearTimeout(loadingGuardRef.current);
+      loadingGuardRef.current = null;
+    }
+
     if (forceRefresh) {
       setIsRefreshing(true);
     } else {
       setIsLoading(true);
     }
-    
+
+    const LOADING_MAX_MS = 30000; // 30s cap per FR-007
+    loadingGuardRef.current = setTimeout(() => {
+      loadingGuardRef.current = null;
+      if (fetchCompletedRef.current) return;
+      setError("Request took too long. Please try again.");
+      setMaterials([]);
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }, LOADING_MAX_MS);
+
     try {
-      console.log('[Materials Page] Calling getMaterials...');
       const data = await getMaterials(undefined, undefined, 0, 100, forceRefresh);
-      console.log('[Materials Page] getMaterials returned:', data);
-      console.log('[Materials Page] Data is array?', Array.isArray(data));
-      console.log('[Materials Page] Data length:', data?.length);
-      
-      // Defensive check: ensure data is an array
       if (Array.isArray(data)) {
-        console.log('[Materials Page] Setting materials state with', data.length, 'items');
         setMaterials(data);
       } else {
-        console.error('[Materials Page] getMaterials returned non-array data:', data);
-        setMaterials([]); // Set empty array as fallback
+        setMaterials([]);
       }
-      
-      setError(""); // Clear any previous errors
-    } catch (err) {
-      console.error("[Materials Page] Error fetching materials:", err);
+      setError("");
+    } catch {
       setError("Unable to load materials. Please try again later.");
-      setMaterials([]); // Set empty array on error
+      setMaterials([]);
     } finally {
+      fetchCompletedRef.current = true;
+      if (loadingGuardRef.current) {
+        clearTimeout(loadingGuardRef.current);
+        loadingGuardRef.current = null;
+      }
       setIsLoading(false);
       setIsRefreshing(false);
     }
@@ -83,22 +86,27 @@ export default function MaterialsPage({
 
   // Effect to fetch materials when translations are loaded
   useEffect(() => {
-    // Only fetch if translations are loaded
     if (Object.keys(t).length > 0) {
       fetchMaterials();
     }
-  }, [t]); // Use t as dependency
+  }, [t]);
+
+  // Clear loading guard timer on unmount to prevent memory leaks and setState after unmount (005 verification)
+  useEffect(() => {
+    return () => {
+      if (loadingGuardRef.current) {
+        clearTimeout(loadingGuardRef.current);
+        loadingGuardRef.current = null;
+      }
+    };
+  }, []);
 
   // Handle delete material
   const handleDeleteMaterial = async (id: string) => {
     try {
-      console.log('[Materials Page] Deleting material:', id);
       await deleteMaterial(id);
-      console.log('[Materials Page] Material deleted successfully, refreshing list...');
-      // Refresh the materials list
       await fetchMaterials(true);
-    } catch (err) {
-      console.error("[Materials Page] Error deleting material:", err);
+    } catch {
       setError(t.materials?.delete_error || "Failed to delete material. Please try again.");
     }
   };
@@ -113,9 +121,7 @@ export default function MaterialsPage({
     );
   }
 
-  // Make sure translations are loaded before rendering
   if (!t.nav || !t.materials || !t.common) {
-    console.error("Translation keys are missing", t);
     return (
       <div className="flex justify-center items-center py-12 text-red-500">
         <p>Error loading page content. Please refresh the page.</p>
@@ -123,24 +129,8 @@ export default function MaterialsPage({
     );
   }
   
-  // Check if we're in demo/mock mode (this happens when the backend has DB issues)
-  // Defensive check: ensure materials is an array before calling .some()
-  const isDemoMode = Array.isArray(materials) && materials.some(mat => mat.api_error === true);
-
   return (
     <div className="space-y-6">
-      {isDemoMode && (
-        <div className="bg-blue-50 p-3 rounded border border-blue-200 text-blue-800 text-sm mb-4">
-          <div className="flex items-center mb-1">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2h-1V9z" clipRule="evenodd" />
-            </svg>
-            <strong>Demo Mode Active</strong>
-          </div>
-          <p>You're seeing demo materials for development and testing purposes.</p>
-        </div>
-      )}
-
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold tracking-tight">{t.nav.materials}</h1>
         <div className="flex gap-2">
@@ -174,10 +164,10 @@ export default function MaterialsPage({
         </div>      ) : error ? (
         <div className="text-center py-12">
           <div className="text-red-500 mb-4">
-            <h2 className="text-xl font-bold">{error.includes("connection") ? "Connection Error" : "Server Error"}</h2>
+            <h2 className="text-xl font-bold">{error.includes("connection") ? "Connection Error" : error.includes("too long") ? "Request Timeout" : "Server Error"}</h2>
             <p>{error}</p>
           </div>
-          <Button onClick={() => window.location.reload()}>
+          <Button onClick={() => { setError(""); fetchMaterials(true); }} disabled={isRefreshing}>
             {t.common && t.common.retry ? t.common.retry : "Retry"}
           </Button>
         </div>

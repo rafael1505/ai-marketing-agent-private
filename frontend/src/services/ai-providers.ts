@@ -1,5 +1,6 @@
 import { AIProviderConfig } from "@/types";
-import { apiRequest } from "./api";
+import type { ErrorDetails } from "@/types/api-errors";
+import { apiRequest, generateCorrelationId } from "./api";
 import { DEFAULT_AI_PROVIDERS } from "@/constants";
 import api from "./api"; // Import api instance for timeout override
 import axios from "axios"; // Import axios directly for bypassing Next.js proxy
@@ -59,21 +60,10 @@ export interface ImageGenerationResult {
   images: string[];
   provider: string;
   model: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   cost?: number;
   error?: string;
-  error_details?: {
-    error_type: string;
-    message: string;
-    user_message: string;
-    provider: string;
-    correlation_id: string;
-    timestamp: string;
-    http_status?: number;
-    suggested_actions: string[];
-    details?: Record<string, any>;
-    retry_after?: number;
-  };
+  error_details?: ErrorDetails;
 }
 
 // Configuration interfaces
@@ -113,7 +103,7 @@ const getTestApiUrl = (path: string): string => {
 export const getAvailableProviders = async (): Promise<AIProvider[]> => {
   try {
     // Database-driven only - no fallbacks
-    const response = await apiRequest('/api/v1/ai-providers', {
+    const response = await apiRequest('ai-providers', {
       method: 'GET'
     });
     
@@ -140,7 +130,7 @@ export const getAvailableProviders = async (): Promise<AIProvider[]> => {
 export const getProviderOptions = async (providerId: string): Promise<{ models: string[] }> => {
   try {
     // Try API call to get provider-specific options
-    const response = await apiRequest(`/api/v1/ai-providers/${providerId}/options`, {
+    const response = await apiRequest(`ai-providers/${providerId}/options`, {
       method: "GET"
     });
     
@@ -172,8 +162,8 @@ export const getConfigurableProviders = async (): Promise<AIProvider[]> => {
   console.log(`🚀 [DEBUG] ${timestamp} About to enter try block`);
   try {
     // Use direct fetch to bypass the apiRequest base URL issue
-    console.log(`🔄 [DEBUG] ${timestamp} Making direct fetch to /api/v1/ai-providers`);
-    const response = await fetch(`/api/v1/ai-providers?bust=${Date.now()}`, {
+    console.log(`🔄 [DEBUG] ${timestamp} Making direct fetch to ai-providers`);
+    const response = await fetch(`/api/ai-providers?bust=${Date.now()}`, {
       method: 'GET',
       headers: {
         'Accept': 'application/json',
@@ -232,7 +222,7 @@ export const getUserAIProviders = async (): Promise<AIProviderConfig[]> => {
     console.log("getUserAIProviders: Fetching from database...");
     
     // Database-driven only - no localStorage, no fallbacks
-    const response = await apiRequest("/api/v1/ai-providers", {
+    const response = await apiRequest("ai-providers", {
       method: "GET"
     });
     
@@ -267,7 +257,7 @@ export const getUserAIProviders = async (): Promise<AIProviderConfig[]> => {
 // Save an AI provider configuration
 export const saveAIProvider = async (provider: AIProviderConfig): Promise<AIProviderConfig | null> => {
   try {
-    const response = await apiRequest("/api/v1/ai-providers", {
+    const response = await apiRequest("ai-providers", {
       method: "POST",
       body: JSON.stringify(provider)
     });
@@ -292,8 +282,8 @@ export const updateAIProvider = async (providerId: string, updates: Partial<AIPr
   console.log('updateAIProvider called with:', { providerId, updates });
   
   try {
-    console.log('Making API request to update provider:', `/api/v1/ai-providers/${providerId}`);
-    const response = await apiRequest(`/api/v1/ai-providers/${providerId}`, {
+    console.log('Making API request to update provider:', `ai-providers/${providerId}`);
+    const response = await apiRequest(`ai-providers/${providerId}`, {
       method: "PUT",
       body: JSON.stringify(updates)
     });
@@ -315,7 +305,7 @@ export const updateAIProvider = async (providerId: string, updates: Partial<AIPr
 // Delete an AI provider
 export const deleteAIProvider = async (providerId: string): Promise<boolean> => {
   try {
-    const response = await apiRequest(`/api/v1/ai-providers/${providerId}`, {
+    const response = await apiRequest(`ai-providers/${providerId}`, {
       method: "DELETE"
     });
     
@@ -332,7 +322,7 @@ export const validateAPIKey = async (providerId: string, apiKey: string): Promis
   try {
     // Try to validate via API
     try {
-      const response = await apiRequest(`/api/v1/ai-providers/validate`, {
+      const response = await apiRequest(`ai-providers/validate`, {
         method: "POST",
         body: JSON.stringify({ providerId, apiKey })
       });
@@ -459,8 +449,9 @@ export const generateImagesWithProvider = async (request: ImageGenerationRequest
       
       return data;
     } else if (data && !data.success && data.error_details) {
-      // Return enriched error details
-      console.error('API returned error with details:', data.error_details);
+      // Return enriched error details (backend contract shape)
+      const details = data.error_details as ErrorDetails;
+      console.error('API returned error with details:', details);
       return {
         success: false,
         images: [],
@@ -468,22 +459,48 @@ export const generateImagesWithProvider = async (request: ImageGenerationRequest
         model: 'unknown',
         metadata: {},
         error: data.error,
-        error_details: data.error_details
+        error_details: details
       };
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    type ApiErr = { normalizedErrorDetails?: ErrorDetails; config?: { headers?: Record<string, unknown> }; response?: { data?: unknown }; message?: string; code?: string; isTimeout?: boolean };
+    const err = error as ApiErr;
     const elapsedTime = Math.floor((Date.now() - startTime) / 1000);
     console.error('Error generating images with main API:', error);
     console.error(`Request failed after ${elapsedTime}s (timeout was ${dynamicTimeout/1000}s)`);
-    
-    // Check if this is a timeout error from axios interceptor
-    if (error.isTimeout || error.code === 'ECONNABORTED') {
-      console.error('Timeout error detected:', error);
-      
-      // Calculate estimated time for user messaging
-      const estimatedMin = Math.ceil(dynamicTimeout / 1000 * 0.7); // 70% of timeout
-      const estimatedMax = Math.ceil(dynamicTimeout / 1000); // Full timeout
-      
+
+    // Prefer normalized error from api interceptor (UUID correlation_id)
+    if (err.normalizedErrorDetails) {
+      return {
+        success: false,
+        images: [],
+        provider: request.provider,
+        model: 'unknown',
+        metadata: {},
+        error: err.message || 'Failed to generate images',
+        error_details: err.normalizedErrorDetails
+      };
+    }
+
+    // Check if this is a timeout error from axios interceptor (legacy path)
+    if (err.isTimeout || err.code === 'ECONNABORTED') {
+      const correlationId = (err.config?.headers?.['X-Correlation-ID'] as string) || generateCorrelationId();
+      const fallbackDetails: ErrorDetails = {
+        error_type: 'timeout',
+        user_message: 'errors.ai.timeout',
+        provider: request.provider,
+        correlation_id: correlationId,
+        http_status: 408,
+        details: {
+          timeout_seconds: dynamicTimeout / 1000,
+          images_requested: request.variations || 1,
+          provider: request.provider,
+          elapsed_seconds: elapsedTime,
+          url: err.config?.url
+        },
+        timestamp: new Date().toISOString(),
+        suggested_actions: ['actions.try_again', 'actions.reduce_image_count', 'actions.simplify_prompt', 'actions.try_different_provider']
+      };
       return {
         success: false,
         images: [],
@@ -491,42 +508,21 @@ export const generateImagesWithProvider = async (request: ImageGenerationRequest
         model: 'unknown',
         metadata: {},
         error: `Request timed out after ${dynamicTimeout/1000}s`,
-        error_details: error.error_details || {
-          error_type: 'timeout',
-          message: `AI image generation exceeded ${dynamicTimeout/1000} second timeout for ${request.variations || 1} images`,
-          user_message: 'errors.ai.timeout',
-          provider: request.provider,
-          correlation_id: error.config?.headers?.['X-Correlation-ID'] || `client-${Date.now()}`,
-          timestamp: new Date().toISOString(),
-          http_status: 408,
-          suggested_actions: [
-            'actions.try_again',
-            'actions.reduce_image_count',    // Most effective for timeout
-            'actions.simplify_prompt',
-            'actions.try_different_provider' // Stability AI is faster than DALL-E
-          ],
-          details: {
-            timeout_seconds: dynamicTimeout / 1000,
-            images_requested: request.variations || 1,
-            provider: request.provider,
-            elapsed_seconds: elapsedTime,
-            estimated_time_range: `${estimatedMin}-${estimatedMax}s`,
-            url: error.config?.url
-          }
-        }
+        error_details: fallbackDetails
       };
     }
-    
-    // Check if error has enriched details from backend
-    if (error.error_details) {
+
+    // Check if error has enriched details from backend (legacy)
+    if (err.response?.data && typeof err.response.data === 'object' && (err.response.data as Record<string, unknown>).error_details) {
+      const details = (err.response.data as { error_details: ErrorDetails }).error_details;
       return {
         success: false,
         images: [],
         provider: request.provider,
         model: 'unknown',
         metadata: {},
-        error: error.message || 'Failed to generate images',
-        error_details: error.error_details
+        error: err.message || 'Failed to generate images',
+        error_details: details
       };
     }
     
@@ -614,7 +610,7 @@ export const generateMultipleImages = async (
  */
 export const getRecommendedProvider = async (): Promise<string> => {
   try {
-    const response = await apiRequest('/api/v1/ai/providers/recommended');
+    const response = await apiRequest('ai/providers/recommended');
     if (response && response.recommended_provider) {
       return response.recommended_provider;
     }
@@ -633,7 +629,7 @@ export const saveProviderConfiguration = async (config: ProviderConfig): Promise
     
     // Try main API first
     try {
-      const response = await apiRequest('/api/v1/ai-providers', {
+      const response = await apiRequest('ai-providers', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -662,7 +658,7 @@ export const saveProviderConfiguration = async (config: ProviderConfig): Promise
     // Try fallback to test server
     try {
       console.log('Attempting to save via test server...');
-      const testResponse = await fetch(getTestApiUrl('/api/v1/ai-providers'), {
+      const testResponse = await fetch(getTestApiUrl('api/v1/ai-providers'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -727,7 +723,7 @@ export const updateProviderConfiguration = async (providerId: string, updates: P
     
     // Try main API first
     try {
-      const response = await apiRequest(`/api/v1/ai-providers/${providerId}`, {
+      const response = await apiRequest(`ai-providers/${providerId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -756,7 +752,7 @@ export const updateProviderConfiguration = async (providerId: string, updates: P
     // Try fallback to test server
     try {
       console.log('Attempting to update via test server...');
-      const testResponse = await fetch(getTestApiUrl(`/api/v1/ai-providers/${providerId}`), {
+      const testResponse = await fetch(getTestApiUrl(`api/v1/ai-providers/${providerId}`), {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -803,7 +799,7 @@ export const testProviderConfiguration = async (config: ProviderConfig): Promise
   try {
     // Try main API first
     try {
-      const response = await apiRequest('/api/v1/ai-providers/validate', {
+      const response = await apiRequest('ai-providers/validate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -906,7 +902,7 @@ export const getProviderConfigurations = async (): Promise<ProviderConfig[]> => 
     
     // Try main API to get initial configurations only for first setup
     try {
-      const response = await apiRequest('/api/v1/ai-providers/configurations', {
+      const response = await apiRequest('ai-providers/configurations', {
         method: 'GET',
       });
       
@@ -1041,7 +1037,7 @@ const isMaskedApiKey = (apiKey: string | undefined): boolean => {
  */
 export const deleteProviderConfiguration = async (providerId: string): Promise<void> => {
   try {
-    await apiRequest(`/api/v1/ai-providers/${providerId}`, {
+    await apiRequest(`ai-providers/${providerId}`, {
       method: 'DELETE',
     });
   } catch (error) {
@@ -1130,7 +1126,7 @@ export const getActiveProviders = async (): Promise<ProviderConfig[]> => {
     console.log('=== Getting active providers for material creation/editing (database-driven) ===');
     
     // Fetch directly from database via API
-    const response = await apiRequest("/api/v1/ai-providers", {
+    const response = await apiRequest("ai-providers", {
       method: "GET",
     });
     

@@ -77,6 +77,18 @@ async def startup_db_client():
     # Initialize i18n
     setup_i18n()
 
+    # Log all registered routes for debugging
+    def _log_routes(routes, prefix: str = ""):
+        for route in routes:
+            path = getattr(route, "path", None) or ""
+            full_path = (prefix + path) if path != "/" else prefix or "/"
+            if hasattr(route, "methods") and route.methods:
+                logging.info(f"Route: {list(route.methods)} {full_path}")
+            if hasattr(route, "routes"):
+                _log_routes(route.routes, full_path)
+    _log_routes(api_app.routes)
+    logging.info("Registered routes listed above.")
+
 
 @api_app.on_event("shutdown")
 async def shutdown_db_client():
